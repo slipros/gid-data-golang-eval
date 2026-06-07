@@ -3,16 +3,16 @@ package enum
 
 // --- Позитив: alias на basic string (реальный кейс event-collector) ---
 
-type ConsentEventType = string // want `GID-123: enum ConsentEventType — именованный тип, не alias`
+type ConsentEventType = string // want `GID-123: enum ConsentEventType must be a named type, not an alias`
 
 // --- Позитив: alias на basic int ---
 
-type Weight = int // want `GID-123: enum Weight — именованный тип, не alias`
+type Weight = int // want `GID-123: enum Weight must be a named type, not an alias`
 
 // --- Позитив: группа нетипизированных string-констант (репорт на первой) ---
 
 const (
-	RoleAdmin = "admin" // want `GID-123: группа string-констант — заведите именованный string-тип`
+	RoleAdmin = "admin" // want `GID-123: a group of string constants\. Fix: declare a named string type`
 	RoleUser  = "user"
 )
 

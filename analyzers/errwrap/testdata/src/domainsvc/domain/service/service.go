@@ -15,11 +15,11 @@ func (s *Service) call() error { return nil }
 
 func (s *Service) badWrap() error {
 	err := s.call()
-	return errors.Wrap(err, "ctx") // want `GID-176: стек уже собран на границе — используйте errors\.WithMessage вместо errors\.Wrap для пришедшей ошибки`
+	return errors.Wrap(err, "ctx") // want `GID-176: the stack is already collected at the boundary\. Fix: use errors\.WithMessage instead of errors\.Wrap for an incoming error`
 }
 
 func (s *Service) badWrapParam(err error) error {
-	return errors.Wrap(err, "ctx") // want `GID-176: стек уже собран на границе — используйте errors\.WithMessage вместо errors\.Wrap для пришедшей ошибки`
+	return errors.Wrap(err, "ctx") // want `GID-176: the stack is already collected at the boundary\. Fix: use errors\.WithMessage instead of errors\.Wrap for an incoming error`
 }
 
 // --- Негатив: WithMessage для пришедшей ошибки ---

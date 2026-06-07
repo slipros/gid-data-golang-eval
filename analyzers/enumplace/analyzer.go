@@ -24,10 +24,10 @@ import (
 
 const ruleID = "GID-211"
 
-// Analyzer — правило GID-211: enum DAL-слоя живут в /dal/entity/enum (отдельный файл на сущность).
+// Analyzer — правило GID-211: DAL-layer enums live in /dal/entity/enum (one file per entity). Fix: move the enum into /dal/entity/enum.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidenumplace",
-	Doc:  ruleID + ": enum DAL-слоя живут в /dal/entity/enum (отдельный файл на сущность)",
+	Doc:  ruleID + ": DAL-layer enums live in /dal/entity/enum (one file per entity). Fix: move the enum into /dal/entity/enum",
 	Run:  run,
 }
 
@@ -77,7 +77,7 @@ func checkEnum(pass *analysis.Pass, ts *ast.TypeSpec, withConsts map[*types.Name
 		return
 	}
 	pass.Reportf(ts.Name.Pos(),
-		"%s: enum %s живёт в /dal/entity/enum (отдельный файл по имени сущности)",
+		"%s: enum %s must live in /dal/entity/enum (one file named after the entity). Fix: move it there",
 		ruleID, ts.Name.Name)
 }
 

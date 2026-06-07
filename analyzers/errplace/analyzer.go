@@ -36,10 +36,10 @@ var forbiddenCtors = map[string]map[string]struct{}{
 	"github.com/pkg/errors": {"New": {}, "Errorf": {}},
 }
 
-// DomainAnalyzer — правило GID-144: все domain-ошибки живут в /domain/model.
+// DomainAnalyzer — правило GID-144: all domain errors live in /domain/model. Fix: declare them in /domain/model.
 var DomainAnalyzer = &analysis.Analyzer{
 	Name: "giddomainerrors",
-	Doc:  "GID-144: все domain-ошибки живут в /domain/model",
+	Doc:  "GID-144: all domain errors live in /domain/model. Fix: declare them in /domain/model",
 	Run: newRun(&config{
 		ruleID:  "GID-144",
 		tree:    []string{"domain"},
@@ -48,10 +48,10 @@ var DomainAnalyzer = &analysis.Analyzer{
 	}),
 }
 
-// DALAnalyzer — правило GID-145: все dal-ошибки живут в /dal/entity.
+// DALAnalyzer — правило GID-145: all dal errors live in /dal/entity. Fix: declare them in /dal/entity.
 var DALAnalyzer = &analysis.Analyzer{
 	Name: "giddalerrors",
-	Doc:  "GID-145: все dal-ошибки живут в /dal/entity",
+	Doc:  "GID-145: all dal errors live in /dal/entity. Fix: declare them in /dal/entity",
 	Run: newRun(&config{
 		ruleID:  "GID-145",
 		tree:    []string{"dal"},
@@ -105,7 +105,7 @@ func checkErrorVars(pass *analysis.Pass, cfg *config, file *ast.File) {
 					continue
 				}
 				pass.Reportf(name.Pos(),
-					"%s: ошибка %q объявлена в %q — ошибки этого слоя живут в %s",
+					"%s: error %q is declared in %q. Fix: keep this layer's errors in %s",
 					cfg.ruleID, name.Name, pass.Pkg.Path(), cfg.home)
 			}
 		}
@@ -133,7 +133,7 @@ func checkErrorCtors(pass *analysis.Pass, cfg *config, file *ast.File) {
 			return true
 		}
 		pass.Reportf(call.Pos(),
-			"%s: создание ошибки через %s.%s запрещено — обменивайте на ошибку из %s (Wrap/WithStack — допустимы)",
+			"%s: creating an error via %s.%s is forbidden. Fix: exchange it for an error from %s (Wrap/WithStack are allowed)",
 			cfg.ruleID, fPkg.Name(), f.Name(), cfg.home)
 		return true
 	})

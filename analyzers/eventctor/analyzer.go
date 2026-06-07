@@ -57,7 +57,7 @@ type Settings struct {
 func NewAnalyzer(cfg Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name: "gideventctor",
-		Doc:  ruleID + ": конструкторы consumer'ов принимают logrus-logger, конструкторы producer'ов — нет",
+		Doc:  ruleID + ": consumer constructors take a logrus logger, producer constructors do not. Fix: add *logrus.Logger to consumer constructors, remove it from producers",
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, cfg)
 		},
@@ -128,14 +128,14 @@ func check(pass *analysis.Pass, sc scope, fn *ast.FuncDecl, sig *types.Signature
 	case scopeConsumer:
 		if !has {
 			pass.Reportf(fn.Name.Pos(),
-				"%s: consumer принимает *logrus.Logger и собирает Entry с полями broker/consumer (см. event.md)",
+				"%s: a consumer constructor must take *logrus.Logger and build an Entry with broker/consumer fields (see event.md)",
 				ruleID)
 		}
 	case scopeProducer:
 		if has {
 			pass.Reportf(fn.Name.Pos(),
-				"%s: producer не принимает logger — ошибки пробрасываются вызывающему коду; "+
-					"осознанное исключение — //nolint:gideventctor",
+				"%s: a producer constructor must not take a logger; errors are propagated to the caller. "+
+					"Fix: remove the logger (intentional exception: //nolint:gideventctor)",
 				ruleID)
 		}
 	}

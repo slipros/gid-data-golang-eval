@@ -7,7 +7,7 @@ import "os"
 // --- Позитивный кейс: exit-вызов вне func main (в хелпере) ---
 
 func fail() {
-	os.Exit(1) // want `GID-181: os\.Exit вне func main запрещён — верните error наверх`
+	os.Exit(1) // want `GID-181: os\.Exit is forbidden outside func main\. Fix: return an error up the call stack`
 }
 
 // --- Негативный кейс: ровно один os.Exit в конце main ---

@@ -11,7 +11,7 @@ func (c *Client) do() error { return nil }
 
 func (c *Client) badPassThrough() error {
 	err := c.do()
-	return err // want `GID-176: оберните errors\.Wrap — ошибка с границы приложения должна собрать стек и контекст`
+	return err // want `GID-176: wrap with errors\.Wrap\. Fix: an error from the app boundary must collect stack and context`
 }
 
 // --- Негатив: обёрнуто Wrap ---

@@ -3,7 +3,7 @@ package entity
 
 // --- Позитив: int-enum с ≥2 const-значений ---
 
-type Status int // want `GID-123: enum Status строится на string, не int`
+type Status int // want `GID-123: enum Status must be based on string, not int`
 
 const (
 	StatusActive   Status = 1
@@ -12,7 +12,7 @@ const (
 
 // --- Позитив: alias на string ---
 
-type Code = string // want `GID-123: enum Code — именованный тип, не alias`
+type Code = string // want `GID-123: enum Code must be a named type, not an alias`
 
 // --- Негатив: правильный string-enum ---
 

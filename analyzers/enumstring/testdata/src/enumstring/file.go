@@ -3,7 +3,7 @@ package enumstring
 
 // --- Позитив: enum без String() ---
 
-type SnapshotStatus string // want `GID-124: enum SnapshotStatus обязан реализовать метод String\(\) string`
+type SnapshotStatus string // want `GID-124: enum SnapshotStatus must implement the String\(\) string method`
 
 const (
 	SnapshotStatusPending   SnapshotStatus = "pending"
@@ -11,7 +11,7 @@ const (
 )
 
 // Граничный кейс: метод String с неправильной сигнатурой — не считается.
-type JobStatus string // want `GID-124: enum JobStatus обязан реализовать метод String\(\) string`
+type JobStatus string // want `GID-124: enum JobStatus must implement the String\(\) string method`
 
 const JobStatusActive JobStatus = "active"
 

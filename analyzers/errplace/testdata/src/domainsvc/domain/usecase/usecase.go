@@ -7,7 +7,7 @@ type Upload struct{}
 
 // Позитив: fmt.Errorf — создание ошибки.
 func (u *Upload) bad(id string) error {
-	return fmt.Errorf("upload %s failed", id) // want `GID-144: создание ошибки через fmt\.Errorf запрещено — обменивайте на ошибку из /domain/model`
+	return fmt.Errorf("upload %s failed", id) // want `GID-144: creating an error via fmt\.Errorf is forbidden\. Fix: exchange it for an error from /domain/model`
 }
 
 // Негатив (граница): fmt.Sprintf — не конструктор ошибок.

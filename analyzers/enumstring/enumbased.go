@@ -16,7 +16,7 @@ const ruleIDBased = "GID-123"
 // не голый string/int. Действует только в /domain/model/** и /dal/entity/**.
 var BasedAnalyzer = &analysis.Analyzer{
 	Name: "gidenumbased",
-	Doc:  ruleIDBased + ": enum — именованный тип на основе string, не голый string/int",
+	Doc:  ruleIDBased + ": an enum must be a named type based on string, not a bare string/int. Fix: declare a named string type",
 	Run:  runBased,
 }
 
@@ -57,7 +57,7 @@ func checkTypeDecl(pass *analysis.Pass, gd *ast.GenDecl, intEnums map[*types.Nam
 		// Проверка 1: alias на basic string/int.
 		if ts.Assign != token.NoPos && isBasicStringOrInt(pass.TypesInfo.TypeOf(ts.Type)) {
 			pass.Reportf(ts.Name.Pos(),
-				"%s: enum %s — именованный тип, не alias (type %s = ...)",
+				"%s: enum %s must be a named type, not an alias (type %s = ...)",
 				ruleIDBased, ts.Name.Name, ts.Name.Name)
 			continue
 		}
@@ -72,7 +72,7 @@ func checkTypeDecl(pass *analysis.Pass, gd *ast.GenDecl, intEnums map[*types.Nam
 		}
 		if _, isIntEnum := intEnums[named]; isIntEnum {
 			pass.Reportf(ts.Name.Pos(),
-				"%s: enum %s строится на string, не int", ruleIDBased, ts.Name.Name)
+				"%s: enum %s must be based on string, not int", ruleIDBased, ts.Name.Name)
 		}
 	}
 }
@@ -113,7 +113,7 @@ func checkUntypedStringConstGroup(pass *analysis.Pass, gd *ast.GenDecl) {
 	}
 	if count >= 2 {
 		pass.Reportf(firstPos,
-			"%s: группа string-констант — заведите именованный string-тип (enum)", ruleIDBased)
+			"%s: a group of string constants. Fix: declare a named string type (enum)", ruleIDBased)
 	}
 }
 

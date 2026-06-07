@@ -3,7 +3,7 @@ package repository
 
 // --- Позитивный класс: string-enum с const в /dal/repository — нарушение ---
 
-type Mode string // want `GID-211: enum Mode живёт в /dal/entity/enum \(отдельный файл по имени сущности\)`
+type Mode string // want `GID-211: enum Mode must live in /dal/entity/enum \(one file named after the entity\)\. Fix: move it there`
 
 const (
 	ModeRead  Mode = "read"

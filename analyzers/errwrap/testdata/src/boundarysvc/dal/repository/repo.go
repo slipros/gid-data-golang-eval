@@ -17,24 +17,24 @@ func (r *Repo) callRow() (int, error) { return 0, nil }
 
 func (r *Repo) badPassThrough() error {
 	err := r.call()
-	return err // want `GID-176: оберните errors\.Wrap — ошибка с границы приложения должна собрать стек и контекст`
+	return err // want `GID-176: wrap with errors\.Wrap\. Fix: an error from the app boundary must collect stack and context`
 }
 
 func (r *Repo) badPassThroughMulti() (int, error) {
 	n, err := r.callRow()
-	return n, err // want `GID-176: оберните errors\.Wrap — ошибка с границы приложения должна собрать стек и контекст`
+	return n, err // want `GID-176: wrap with errors\.Wrap\. Fix: an error from the app boundary must collect stack and context`
 }
 
 // --- Позитив: WithStack/WithMessage не добавляют контекст ---
 
 func (r *Repo) badWithStack() error {
 	err := r.call()
-	return errors.WithStack(err) // want `GID-176: ошибка с границы приложения оборачивается errors\.Wrap — собрать стек и контекст \(WithStack контекста не добавляет\)`
+	return errors.WithStack(err) // want `GID-176: an error from the app boundary must be wrapped with errors\.Wrap\. Fix: collect stack and context \(WithStack adds no context\)`
 }
 
 func (r *Repo) badWithMessage() error {
 	err := r.call()
-	return errors.WithMessage(err, "ctx") // want `GID-176: ошибка с границы приложения оборачивается errors\.Wrap — собрать стек и контекст \(WithMessage контекста не добавляет\)`
+	return errors.WithMessage(err, "ctx") // want `GID-176: an error from the app boundary must be wrapped with errors\.Wrap\. Fix: collect stack and context \(WithMessage adds no context\)`
 }
 
 // --- Негатив: ошибка из вызова обёрнута Wrap ---

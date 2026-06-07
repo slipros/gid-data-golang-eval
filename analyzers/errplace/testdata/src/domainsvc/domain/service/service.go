@@ -9,18 +9,18 @@ import (
 
 // --- Позитив: объявление ошибки вне model (даже через pkg/errors) ---
 
-var ErrLocal = errors.New("local") // want `GID-144: ошибка "ErrLocal" объявлена в "domainsvc/domain/service" — ошибки этого слоя живут в /domain/model` `GID-144: создание ошибки через errors\.New запрещено`
+var ErrLocal = errors.New("local") // want `GID-144: error "ErrLocal" is declared in "domainsvc/domain/service"\. Fix: keep this layer's errors in /domain/model` `GID-144: creating an error via errors\.New is forbidden`
 
 type Snapshot struct{}
 
 // --- Позитив: создание ошибок в рантайме ---
 
 func (s *Snapshot) bad() error {
-	return errors.New("ad-hoc") // want `GID-144: создание ошибки через errors\.New запрещено — обменивайте на ошибку из /domain/model \(Wrap/WithStack — допустимы\)`
+	return errors.New("ad-hoc") // want `GID-144: creating an error via errors\.New is forbidden\. Fix: exchange it for an error from /domain/model \(Wrap/WithStack are allowed\)`
 }
 
 func (s *Snapshot) badErrorf(id string) error {
-	return errors.Errorf("snapshot %s", id) // want `GID-144: создание ошибки через errors\.Errorf запрещено`
+	return errors.Errorf("snapshot %s", id) // want `GID-144: creating an error via errors\.Errorf is forbidden`
 }
 
 // --- Негатив: обмен на ошибку из model и обогащение стеком ---

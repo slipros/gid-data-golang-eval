@@ -17,10 +17,10 @@ import (
 
 const ruleID = "GID-124"
 
-// Analyzer — правило GID-124: enum (string-тип с const-значениями) реализует String() string.
+// Analyzer — правило GID-124: an enum (string type with const values) must implement String() string. Fix: add a String() string method.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidenumstring",
-	Doc:  ruleID + ": enum (string-тип с const-значениями) реализует String() string",
+	Doc:  ruleID + ": an enum (string type with const values) must implement String() string. Fix: add a String() string method",
 	Run:  run,
 }
 
@@ -63,7 +63,7 @@ func checkEnum(pass *analysis.Pass, ts *ast.TypeSpec, withConsts map[*types.Name
 		return
 	}
 	pass.Reportf(ts.Name.Pos(),
-		"%s: enum %s обязан реализовать метод String() string", ruleID, ts.Name.Name)
+		"%s: enum %s must implement the String() string method. Fix: add a String() string method", ruleID, ts.Name.Name)
 }
 
 // enumTypesWithConsts — string-типы пакета, имеющие const-значения.

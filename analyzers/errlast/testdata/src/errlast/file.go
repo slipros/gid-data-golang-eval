@@ -23,22 +23,22 @@ type ErrIface interface {
 // --- Класс 1: позитивные (нарушения) ---
 
 // error не последний — после него идёт int.
-func f() (error, int) { // want `GID-190: error должен быть последним возвращаемым значением`
+func f() (error, int) { // want `GID-190: error must be the last return value\. Fix: move it to the end`
 	return nil, 0
 }
 
 // результат — конкретный error-тип (*MyError), а не интерфейс error.
-func g() *MyError { // want `GID-190: возвращайте интерфейс error, не \*errlast.MyError — конкретный тип в interface-позиции даёт typed-nil ловушку`
+func g() *MyError { // want `GID-190: return the error interface, not \*errlast.MyError\. Fix: a concrete type in the error position causes a typed-nil trap`
 	return nil
 }
 
 // метод: error не последний (есть ok после него).
-func (t T) Do() (err error, ok bool) { // want `GID-190: error должен быть последним возвращаемым значением`
+func (t T) Do() (err error, ok bool) { // want `GID-190: error must be the last return value\. Fix: move it to the end`
 	return nil, false
 }
 
 // результат — конкретный error-тип по значению (ValError).
-func valErr() ValError { // want `GID-190: возвращайте интерфейс error, не errlast.ValError — конкретный тип в interface-позиции даёт typed-nil ловушку`
+func valErr() ValError { // want `GID-190: return the error interface, not errlast.ValError\. Fix: a concrete type in the error position causes a typed-nil trap`
 	return ValError{}
 }
 
@@ -77,6 +77,6 @@ func single() error {
 }
 
 // несколько результатов, error последний, среди прочих — конкретный тип не-error.
-func ok3() (T, ValError, error) { // want `GID-190: возвращайте интерфейс error, не errlast.ValError — конкретный тип в interface-позиции даёт typed-nil ловушку`
+func ok3() (T, ValError, error) { // want `GID-190: return the error interface, not errlast.ValError\. Fix: a concrete type in the error position causes a typed-nil trap`
 	return T{}, ValError{}, nil
 }

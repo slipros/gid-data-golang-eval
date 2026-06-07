@@ -30,7 +30,7 @@ const ruleID = "GID-136"
 // Analyzer — правило GID-136: errors.New (pkg/errors) только в package-level var.
 var Analyzer = &analysis.Analyzer{
 	Name: "giderrnew",
-	Doc:  ruleID + ": errors.New (pkg/errors) только в package-level var, не в рантайме",
+	Doc:  ruleID + ": errors.New (pkg/errors) only in a package-level var, not at runtime. Fix: declare a package-level var ErrX",
 	Run:  run,
 }
 
@@ -78,7 +78,7 @@ func checkFile(pass *analysis.Pass, file *ast.File) {
 			}
 			if isPkgErrorsNew(pass, call) {
 				pass.Reportf(call.Pos(),
-					"%s: errors.New в рантайме — объявите package-level var ErrX (см. GID-169: error.go)",
+					"%s: errors.New at runtime. Fix: declare a package-level var ErrX (see GID-169: error.go)",
 					ruleID)
 			}
 			return true

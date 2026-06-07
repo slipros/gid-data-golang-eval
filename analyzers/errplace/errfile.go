@@ -43,7 +43,7 @@ func NewFileAnalyzer(s Settings) *analysis.Analyzer {
 	}
 	return &analysis.Analyzer{
 		Name: "giderrfile",
-		Doc:  errFileRuleID + ": ошибки слоя живут в выделенном файле (error.go/errors.go/err.go)",
+		Doc:  errFileRuleID + ": layer errors live in a dedicated file (error.go/errors.go/err.go). Fix: move errors into error.go",
 		Run: func(pass *analysis.Pass) (any, error) {
 			return runErrFile(pass, allowed)
 		},
@@ -105,7 +105,7 @@ func checkErrFileVars(pass *analysis.Pass, fname string, file *ast.File) {
 					continue
 				}
 				pass.Reportf(name.Pos(),
-					"%s: ошибка %q объявлена в %s — ошибки слоя живут в error.go",
+					"%s: error %q is declared in %s. Fix: keep layer errors in error.go",
 					errFileRuleID, name.Name, fname)
 			}
 		}

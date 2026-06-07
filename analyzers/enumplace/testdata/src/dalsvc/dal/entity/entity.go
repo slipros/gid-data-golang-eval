@@ -3,7 +3,7 @@ package entity
 
 // --- Позитивный класс: string-enum с const в /dal/entity — нарушение ---
 
-type Status string // want `GID-211: enum Status живёт в /dal/entity/enum \(отдельный файл по имени сущности\)`
+type Status string // want `GID-211: enum Status must live in /dal/entity/enum \(one file named after the entity\)\. Fix: move it there`
 
 const (
 	StatusActive   Status = "active"

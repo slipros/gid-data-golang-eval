@@ -9,16 +9,16 @@ import (
 )
 
 func mustLoad() {
-	stdlog.Fatal("cannot load") // want `GID-181: log\.Fatal вне func main запрещён — верните error наверх`
+	stdlog.Fatal("cannot load") // want `GID-181: log\.Fatal is forbidden outside func main\. Fix: return an error up the call stack`
 }
 
 func mustParse() {
-	logrus.Fatalf("bad config") // want `GID-181: logrus\.Fatalf вне func main запрещён — верните error наверх`
+	logrus.Fatalf("bad config") // want `GID-181: logrus\.Fatalf is forbidden outside func main\. Fix: return an error up the call stack`
 }
 
 // Метод logrus-логгера тоже считается exit-вызовом.
 func withLogger(l *logrus.Logger) {
-	l.Fatal("boom") // want `GID-181: logrus\.Fatal вне func main запрещён — верните error наверх`
+	l.Fatal("boom") // want `GID-181: logrus\.Fatal is forbidden outside func main\. Fix: return an error up the call stack`
 }
 
 // --- Негативный кейс: возврат error вместо завершения процесса ---

@@ -22,10 +22,10 @@ const ruleID = "GID-181"
 // logrusPkgPath — путь пакета logrus.
 const logrusPkgPath = "github.com/sirupsen/logrus"
 
-// Analyzer — правило GID-181: os.Exit/log.Fatal*/logrus.Fatal* — только один раз и только в func main.
+// Analyzer — правило GID-181: os.Exit/log.Fatal*/logrus.Fatal* only once and only in func main. Fix: return an error up the call stack instead.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidexitonce",
-	Doc:  ruleID + ": os.Exit/log.Fatal*/logrus.Fatal* — только один раз и только в func main",
+	Doc:  ruleID + ": os.Exit/log.Fatal*/logrus.Fatal* only once and only in func main. Fix: return an error up the call stack instead",
 	Run:  run,
 }
 
@@ -76,13 +76,13 @@ func run(pass *analysis.Pass) (any, error) {
 				mainCount++
 				if mainCount > 1 {
 					pass.Reportf(call.Pos(),
-						"%s: повторный %s в main — выходите из программы в одном месте",
+						"%s: duplicate %s in main. Fix: exit the program in a single place",
 						ruleID, name)
 				}
 				return true
 			}
 			pass.Reportf(call.Pos(),
-				"%s: %s вне func main запрещён — верните error наверх", ruleID, name)
+				"%s: %s is forbidden outside func main. Fix: return an error up the call stack", ruleID, name)
 			return true
 		})
 	}

@@ -13,6 +13,6 @@ func NewMyError() *MyError {
 }
 
 // Проверка 1 (error не последний) действует и в errors.go.
-func badOrder() (error, int) { // want `GID-190: error должен быть последним возвращаемым значением`
+func badOrder() (error, int) { // want `GID-190: error must be the last return value\. Fix: move it to the end`
 	return nil, 0
 }

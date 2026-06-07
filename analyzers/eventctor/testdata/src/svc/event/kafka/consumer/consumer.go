@@ -14,7 +14,7 @@ type OrderConsumer struct {
 	svc Service
 }
 
-func NewOrderConsumer(svc Service) *OrderConsumer { // want `GID-216: consumer принимает \*logrus\.Logger и собирает Entry с полями broker/consumer \(см\. event\.md\)`
+func NewOrderConsumer(svc Service) *OrderConsumer { // want `GID-216: a consumer constructor must take \*logrus\.Logger and build an Entry with broker/consumer fields \(see event\.md\)`
 	return &OrderConsumer{svc: svc}
 }
 

@@ -24,13 +24,13 @@ var (
 // makeErr — package-level var с func-литералом; errors.New в его теле
 // вычисляется при вызове литерала → рантайм.
 var makeErr = func() error {
-	return errors.New("made at runtime") // want `GID-136: errors.New в рантайме`
+	return errors.New("made at runtime") // want `GID-136: errors.New at runtime`
 }
 
 // --- Позитив: errors.New в теле функции ---
 
 func loadSomething() error {
-	return errors.New("load failed") // want `GID-136: errors.New в рантайме`
+	return errors.New("load failed") // want `GID-136: errors.New at runtime`
 }
 
 // --- Граница: errors.Errorf в теле — не зона GID-136 ---

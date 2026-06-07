@@ -11,14 +11,14 @@ import (
 
 // --- Позитив: объявление ошибки вне entity ---
 
-var ErrConn = errors.New("conn") // want `GID-145: ошибка "ErrConn" объявлена в "dalsvc/dal/repository" — ошибки этого слоя живут в /dal/entity` `GID-145: создание ошибки через errors\.New запрещено`
+var ErrConn = errors.New("conn") // want `GID-145: error "ErrConn" is declared in "dalsvc/dal/repository"\. Fix: keep this layer's errors in /dal/entity` `GID-145: creating an error via errors\.New is forbidden`
 
 type Snapshot struct{}
 
 // --- Позитив: создание ошибок в рантайме ---
 
 func (s *Snapshot) bad() error {
-	return fmt.Errorf("query failed") // want `GID-145: создание ошибки через fmt\.Errorf запрещено — обменивайте на ошибку из /dal/entity`
+	return fmt.Errorf("query failed") // want `GID-145: creating an error via fmt\.Errorf is forbidden\. Fix: exchange it for an error from /dal/entity`
 }
 
 // --- Негатив: обмен ошибки подключения на entity-ошибку ---

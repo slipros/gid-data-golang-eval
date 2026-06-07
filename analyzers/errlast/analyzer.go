@@ -42,7 +42,7 @@ var errorFiles = map[string]bool{
 // Analyzer — правило GID-190: error — последний результат, конкретные error-типы не возвращаются.
 var Analyzer = &analysis.Analyzer{
 	Name: "giderrlast",
-	Doc:  ruleID + ": error — последний результат; в результатах возвращается интерфейс error, не конкретный тип",
+	Doc:  ruleID + ": error must be the last result, and the error interface (not a concrete type) is returned. Fix: move error last and return the error interface",
 	Run:  run,
 }
 
@@ -107,7 +107,7 @@ func checkResults(pass *analysis.Pass, fn *ast.FuncDecl, errIface *types.Interfa
 		// Проверка 1: error не последний — есть результаты после него.
 		if isExactError(r.typ) && i != len(results)-1 {
 			pass.Reportf(r.expr.Pos(),
-				"%s: error должен быть последним возвращаемым значением", ruleID)
+				"%s: error must be the last return value. Fix: move it to the end", ruleID)
 			continue
 		}
 
@@ -117,7 +117,7 @@ func checkResults(pass *analysis.Pass, fn *ast.FuncDecl, errIface *types.Interfa
 		}
 		if isConcreteError(r.typ, errIface) {
 			pass.Reportf(r.expr.Pos(),
-				"%s: возвращайте интерфейс error, не %s — конкретный тип в interface-позиции даёт typed-nil ловушку",
+				"%s: return the error interface, not %s. Fix: a concrete type in the error position causes a typed-nil trap",
 				ruleID, r.typ.String())
 		}
 	}

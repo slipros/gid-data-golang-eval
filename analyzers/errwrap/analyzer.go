@@ -62,8 +62,8 @@ type Settings struct {
 func NewWrapAnalyzer(s Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name: "giderrwrap",
-		Doc: ruleIDWrap + ": ошибки извне оборачиваются errors.Wrap; " +
-			"внутри приложения нестатичную ошибку не Wrap, а WithMessage",
+		Doc: ruleIDWrap + ": errors from outside are wrapped with errors.Wrap; " +
+			"inside the app, wrap a non-static error with WithMessage, not Wrap",
 		Run: runWrap,
 	}
 }
@@ -72,7 +72,7 @@ func NewWrapAnalyzer(s Settings) *analysis.Analyzer {
 func NewStaticAnalyzer(s Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name: "gidstaticerr",
-		Doc:  ruleIDStatic + ": статичные ошибки при возврате оборачиваются errors.WithStack",
+		Doc:  ruleIDStatic + ": static errors are wrapped with errors.WithStack on return. Fix: wrap with errors.WithStack",
 		Run: func(pass *analysis.Pass) (any, error) {
 			return runStatic(pass, s)
 		},
@@ -125,8 +125,8 @@ func checkBoundaryPassThrough(pass *analysis.Pass, fn *ast.FuncDecl) {
 				if name == "WithStack" || name == "WithMessage" {
 					if len(call.Args) > 0 && isLocalCallErr(pass, call.Args[0], callErrs) {
 						pass.Reportf(call.Pos(),
-							"%s: ошибка с границы приложения оборачивается errors.Wrap — "+
-								"собрать стек и контекст (%s контекста не добавляет)",
+							"%s: an error from the app boundary must be wrapped with errors.Wrap. "+
+								"Fix: collect stack and context (%s adds no context)",
 							ruleIDWrap, name)
 					}
 					continue
@@ -136,7 +136,7 @@ func checkBoundaryPassThrough(pass *analysis.Pass, fn *ast.FuncDecl) {
 			}
 			if isLocalCallErr(pass, expr, callErrs) {
 				pass.Reportf(expr.Pos(),
-					"%s: оберните errors.Wrap — ошибка с границы приложения должна собрать стек и контекст",
+					"%s: wrap with errors.Wrap. Fix: an error from the app boundary must collect stack and context",
 					ruleIDWrap)
 			}
 		}
@@ -164,7 +164,7 @@ func checkDomainWrap(pass *analysis.Pass, file *ast.File) {
 		// Нестатичная (локальная переменная из вызова и т.п.) — запрещён.
 		if isErrorExpr(pass, call.Args[0]) {
 			pass.Reportf(call.Pos(),
-				"%s: стек уже собран на границе — используйте errors.WithMessage вместо errors.Wrap для пришедшей ошибки",
+				"%s: the stack is already collected at the boundary. Fix: use errors.WithMessage instead of errors.Wrap for an incoming error",
 				ruleIDWrap)
 		}
 		return true
@@ -213,7 +213,7 @@ func checkStaticReturn(pass *analysis.Pass, s Settings, expr ast.Expr) {
 	}
 	if isStaticError(pass, expr) {
 		pass.Reportf(expr.Pos(),
-			"%s: статичная ошибка возвращается без стека — оберните errors.WithStack (или errors.Wrap, если нужен контекст)",
+			"%s: a static error is returned without a stack. Fix: wrap with errors.WithStack (or errors.Wrap if you need context)",
 			ruleIDStatic)
 	}
 }
