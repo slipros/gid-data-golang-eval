@@ -32,10 +32,10 @@ import (
 
 const ruleID = "GID-183"
 
-// Analyzer — правило GID-183: make(map) без capacity при заполнении из range — укажите хинт len(src).
+// Analyzer — правило GID-183: make(map) without capacity when filled from range; give the len(src) hint. Fix: make(map[K]V, len(src)).
 var Analyzer = &analysis.Analyzer{
 	Name: "gidmapcap",
-	Doc:  ruleID + ": make(map) без capacity при заполнении из range — укажите хинт len(src)",
+	Doc:  ruleID + ": make(map) without capacity when filled from range; give the len(src) hint. Fix: make(map[K]V, len(src))",
 	Run:  run,
 }
 
@@ -92,7 +92,7 @@ func analyzeAfterMake(pass *analysis.Pass, rest []ast.Stmt, obj types.Object, ma
 				return // условное заполнение или иное использование m в теле — не матчим.
 			}
 			pass.Reportf(makeCall.Pos(),
-				"%s: make без capacity при заполнении из range — укажите хинт: make(map[K]V, len(src))",
+				"%s: make without capacity while filling from range. Fix: make(map[K]V, len(src))",
 				ruleID)
 			return
 		}

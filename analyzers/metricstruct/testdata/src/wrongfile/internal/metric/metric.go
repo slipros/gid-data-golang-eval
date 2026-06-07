@@ -2,7 +2,7 @@
 package metric
 
 // Prometheus в файле metric.go вместо prometheus.go — нарушение.
-type Prometheus struct { // want `GID-174: агрегатор Prometheus живёт в prometheus.go`
+type Prometheus struct { // want `GID-174: the Prometheus aggregator must live in prometheus.go\. Fix: move it there`
 	Total int
 }
 

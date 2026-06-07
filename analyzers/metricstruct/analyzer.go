@@ -52,7 +52,7 @@ const (
 // определяется через types (учитывая value/pointer receiver).
 var Analyzer = &analysis.Analyzer{
 	Name: "gidmetricstruct",
-	Doc:  ruleID + ": пакет метрик стандартизирован — путь/имя metric, struct Prometheus с методом Register",
+	Doc:  ruleID + ": the metrics package is standardized: path/name metric, a Prometheus struct with a Register method. Fix: follow that layout",
 	Run:  run,
 }
 
@@ -64,7 +64,7 @@ func run(pass *analysis.Pass) (any, error) {
 	case pathseg.EndsWith(path, "metrics"):
 		// Проверка 1: пакет назван metrics вместо metric.
 		reportOnPackageClause(pass,
-			"%s: пакет метрик называется metric, не metrics", ruleID)
+			"%s: the metrics package must be named metric, not metrics. Fix: rename it to metric", ruleID)
 		return nil, nil
 	case pathseg.EndsWith(path, "metric"):
 		// продолжаем проверки 2-4
@@ -76,7 +76,7 @@ func run(pass *analysis.Pass) (any, error) {
 	if named == nil {
 		// Проверка 2: типа Prometheus нет.
 		reportOnPackageClause(pass,
-			"%s: пакет metric объявляет агрегатор метрик — struct %s с методом %s",
+			"%s: the metric package must declare a metrics aggregator: struct %s with a %s method. Fix: add it",
 			ruleID, typeName, regMethod)
 		return nil, nil
 	}
@@ -85,14 +85,14 @@ func run(pass *analysis.Pass) (any, error) {
 	st, ok := named.Underlying().(*types.Struct)
 	if !ok {
 		pass.Reportf(ts.Name.Pos(),
-			"%s: %s обязан быть struct-агрегатором метрик", ruleID, typeName)
+			"%s: %s must be a metrics aggregator struct. Fix: make it a struct", ruleID, typeName)
 		return nil, nil
 	}
 
 	// Проверка 5: Prometheus объявлен не в prometheus.go.
 	if filepath.Base(pass.Fset.Position(ts.Name.Pos()).Filename) != wiringFile {
 		pass.Reportf(ts.Name.Pos(),
-			"%s: агрегатор %s живёт в %s", ruleID, typeName, wiringFile)
+			"%s: the %s aggregator must live in %s. Fix: move it there", ruleID, typeName, wiringFile)
 	}
 
 	// Проверки 6 и 7: группировка struct-типов по файлам.
@@ -101,7 +101,7 @@ func run(pass *analysis.Pass) (any, error) {
 	// Проверка 3: struct Prometheus без метода Register.
 	if !hasRegisterMethod(named) {
 		pass.Reportf(ts.Name.Pos(),
-			"%s: struct %s обязан иметь метод %s", ruleID, typeName, regMethod)
+			"%s: struct %s must have a %s method. Fix: add it", ruleID, typeName, regMethod)
 		return nil, nil
 	}
 
@@ -133,14 +133,14 @@ func checkGrouping(pass *analysis.Pass) {
 					continue // сам агрегатор в prometheus.go — ок
 				}
 				pass.Reportf(ts.Name.Pos(),
-					"%s: группа метрик живёт в отдельном файле — %s только wiring",
+					"%s: a metrics group must live in its own file; %s is wiring only. Fix: move the group out",
 					ruleID, wiringFile)
 				continue
 			}
 			groupsInFile++
 			if groupsInFile >= 2 {
 				pass.Reportf(ts.Name.Pos(),
-					"%s: одна функциональная группа метрик на файл", ruleID)
+					"%s: one functional metrics group per file. Fix: split groups into separate files", ruleID)
 			}
 		}
 	}
@@ -166,7 +166,7 @@ func checkRegisterWiring(pass *analysis.Pass, named *types.Named, st *types.Stru
 			continue
 		}
 		pass.Reportf(f.Pos(),
-			"%s: %s.%s регистрирует группу %s — вызовите её %s",
+			"%s: %s.%s registers group %s. Fix: call its %s",
 			ruleID, typeName, regMethod, f.Name(), regMethod)
 	}
 }

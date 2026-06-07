@@ -7,12 +7,12 @@ type CreateJob struct{ ID string }
 
 // --- Позитивные кейсы: нарушение ловится ---
 
-func (j *Job) CreateBatchJobs(in []CreateJob) error { return nil } // want `GID-102: метод "CreateBatchJobs" содержит слово Batch`
+func (j *Job) CreateBatchJobs(in []CreateJob) error { return nil } // want `GID-102: method "CreateBatchJobs" contains the word Batch`
 
-func (j *Job) BatchCreate(in []CreateJob) error { return nil } // want `GID-102: метод "BatchCreate" содержит слово Batch`
+func (j *Job) BatchCreate(in []CreateJob) error { return nil } // want `GID-102: method "BatchCreate" contains the word Batch`
 
 // Граничный кейс: Batch в середине имени.
-func (j *Job) UpdateBatchStatus(status string) error { return nil } // want `GID-102: метод "UpdateBatchStatus" содержит слово Batch`
+func (j *Job) UpdateBatchStatus(status string) error { return nil } // want `GID-102: method "UpdateBatchStatus" contains the word Batch`
 
 // --- Негативные кейсы: чистый код проходит ---
 

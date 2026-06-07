@@ -31,10 +31,10 @@ import (
 
 const ruleID = "GID-185"
 
-// Analyzer — правило GID-185: возвращайте/объявляйте nil-слайс вместо пустого литерала []T{}.
+// Analyzer — правило GID-185: return/declare a nil slice instead of an empty literal []T{}. Fix: use nil or var s []T.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidnilslice",
-	Doc:  ruleID + ": возвращайте/объявляйте nil-слайс вместо пустого литерала []T{}",
+	Doc:  ruleID + ": return/declare a nil slice instead of an empty literal []T{}. Fix: use nil or var s []T",
 	Run:  run,
 }
 
@@ -49,7 +49,7 @@ func run(pass *analysis.Pass) (any, error) {
 				for _, res := range node.Results {
 					if isEmptySliceLit(pass, res) {
 						pass.Reportf(res.Pos(),
-							"%s: возвращайте nil вместо пустого слайса — nil-слайс валиден", ruleID)
+							"%s: return nil instead of an empty slice. Fix: a nil slice is valid", ruleID)
 					}
 				}
 			case *ast.AssignStmt:
@@ -60,7 +60,7 @@ func run(pass *analysis.Pass) (any, error) {
 				for _, rhs := range node.Rhs {
 					if isEmptySliceLit(pass, rhs) {
 						pass.Reportf(rhs.Pos(),
-							"%s: объявляйте zero-value слайс: var s []T", ruleID)
+							"%s: declare a zero-value slice. Fix: var s []T", ruleID)
 					}
 				}
 			case *ast.ValueSpec:
@@ -68,7 +68,7 @@ func run(pass *analysis.Pass) (any, error) {
 				for _, val := range node.Values {
 					if isEmptySliceLit(pass, val) {
 						pass.Reportf(val.Pos(),
-							"%s: объявляйте zero-value слайс: var s []T", ruleID)
+							"%s: declare a zero-value slice. Fix: var s []T", ruleID)
 					}
 				}
 			}

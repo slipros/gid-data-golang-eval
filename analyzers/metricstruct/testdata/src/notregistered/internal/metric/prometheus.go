@@ -5,7 +5,7 @@ package metric
 // Prometheus агрегирует группы.
 type Prometheus struct {
 	HTTP  HTTPMetrics
-	Kafka KafkaMetrics // want `GID-174: Prometheus.Register регистрирует группу Kafka — вызовите её Register`
+	Kafka KafkaMetrics // want `GID-174: Prometheus.Register registers group Kafka\. Fix: call its Register`
 	Total int          // граничный: тип без Register — регистрировать не нужно
 }
 

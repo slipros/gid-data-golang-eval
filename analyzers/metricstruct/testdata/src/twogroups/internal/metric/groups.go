@@ -10,7 +10,7 @@ type HTTPMetrics struct {
 func (m HTTPMetrics) Register() error { return nil }
 
 // GRPCMetrics — вторая группа в том же файле — нарушение.
-type GRPCMetrics struct { // want `GID-174: одна функциональная группа метрик на файл`
+type GRPCMetrics struct { // want `GID-174: one functional metrics group per file\. Fix: split groups into separate files`
 	Calls int
 }
 

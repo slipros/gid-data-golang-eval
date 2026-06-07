@@ -5,20 +5,20 @@ package nilslice
 
 // return пустым литералом слайса.
 func retEmptyInt() []int {
-	return []int{} // want `GID-185: возвращайте nil вместо пустого слайса — nil-слайс валиден`
+	return []int{} // want `GID-185: return nil instead of an empty slice\. Fix: a nil slice is valid`
 }
 
 // инициализация через := пустым литералом.
 func defineEmpty() {
-	s := []string{} // want `GID-185: объявляйте zero-value слайс: var s \[\]T`
+	s := []string{} // want `GID-185: declare a zero-value slice\. Fix: var s \[\]T`
 	_ = s
 }
 
 // инициализация через var = пустым литералом.
-var pkgEmpty = []byte{} // want `GID-185: объявляйте zero-value слайс: var s \[\]T`
+var pkgEmpty = []byte{} // want `GID-185: declare a zero-value slice\. Fix: var s \[\]T`
 
 func varEmptyLocal() {
-	var s = []float64{} // want `GID-185: объявляйте zero-value слайс: var s \[\]T`
+	var s = []float64{} // want `GID-185: declare a zero-value slice\. Fix: var s \[\]T`
 	_ = s
 }
 

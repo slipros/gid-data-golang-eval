@@ -7,7 +7,7 @@ type Prometheus struct {
 }
 
 // HTTPMetrics в prometheus.go — нарушение: группа живёт в отдельном файле.
-type HTTPMetrics struct { // want `GID-174: группа метрик живёт в отдельном файле — prometheus.go только wiring`
+type HTTPMetrics struct { // want `GID-174: a metrics group must live in its own file; prometheus.go is wiring only\. Fix: move the group out`
 	Requests int
 }
 

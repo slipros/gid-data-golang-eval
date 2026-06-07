@@ -43,8 +43,8 @@ type Settings struct {
 func NewAnalyzer(s Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name: "gidmodelmethod",
-		Doc: ruleID + ": приватная функция service/usecase над единственным model-значением — " +
-			"поведение модели, оформляется публичным методом этого типа",
+		Doc: ruleID + ": a private service/usecase function over a single model value is " +
+			"model behaviour; expose it as a public method of that type. Fix: move it onto the model",
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, s)
 		},
@@ -96,14 +96,14 @@ func checkFunc(pass *analysis.Pass, fn *ast.FuncDecl, s Settings) {
 	display := paramPkg.Name() + "." + paramObj.Name()
 	if fn.Recv != nil {
 		pass.Reportf(fn.Name.Pos(),
-			"%s: метод %q не использует ресивер и работает только со значением %s — "+
-				"это поведение модели: оформите его публичным методом этого типа",
+			"%s: method %q ignores its receiver and works only with the %s value. "+
+				"Fix: this is model behaviour, make it a public method of that type",
 			ruleID, fn.Name.Name, display)
 		return
 	}
 	pass.Reportf(fn.Name.Pos(),
-		"%s: приватная функция %q работает только со значением %s — "+
-			"это поведение модели: оформите её публичным методом этого типа",
+		"%s: private function %q works only with the %s value. "+
+			"Fix: this is model behaviour, make it a public method of that type",
 		ruleID, fn.Name.Name, display)
 }
 

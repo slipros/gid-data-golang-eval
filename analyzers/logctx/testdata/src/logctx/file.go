@@ -14,18 +14,18 @@ type Svc struct {
 // --- Позитивные кейсы ---
 
 func (s *Svc) badNoCtx(ctx context.Context) {
-	s.logger.Info("start") // want `GID-155: лог-вызов в функции с ctx обязан содержать WithContext\(ctx\)`
+	s.logger.Info("start") // want `GID-155: a log call in a function with ctx must include WithContext\(ctx\)\. Fix: add WithContext\(ctx\)`
 }
 
 func (s *Svc) badErrorNoErr(ctx context.Context, err error) {
 	s.logger.
 		WithContext(ctx).
-		Error("failed") // want `GID-155: лог уровня Error обязан содержать WithError\(err\)`
+		Error("failed") // want `GID-155: an Error-level log must include WithError\(err\)\. Fix: add WithError\(err\)`
 }
 
 // Граничный кейс: оба нарушения в одном вызове.
 func (s *Svc) badBoth(ctx context.Context) {
-	s.logger.Error("failed") // want `GID-155: лог-вызов в функции с ctx обязан содержать WithContext\(ctx\)` `GID-155: лог уровня Error обязан содержать WithError\(err\)`
+	s.logger.Error("failed") // want `GID-155: a log call in a function with ctx must include WithContext\(ctx\)\. Fix: add WithContext\(ctx\)` `GID-155: an Error-level log must include WithError\(err\)\. Fix: add WithError\(err\)`
 }
 
 // Граничный кейс: ctx есть у внешней функции, но лог внутри замыкания

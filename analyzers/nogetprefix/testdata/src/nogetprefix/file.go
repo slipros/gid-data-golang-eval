@@ -8,12 +8,12 @@ type Job struct {
 
 // --- Позитивные кейсы: нарушение ловится ---
 
-func (j *Job) GetID() string { return j.id } // want `GID-101: метод "GetID" использует префикс Get — геттеры именуются без него: "ID"`
+func (j *Job) GetID() string { return j.id } // want `GID-101: method "GetID" uses the Get prefix\. Fix: name getters without it: "ID"`
 
-func (j *Job) GetStatus() string { return j.status } // want `GID-101: метод "GetStatus" использует префикс Get`
+func (j *Job) GetStatus() string { return j.status } // want `GID-101: method "GetStatus" uses the Get prefix`
 
 // Граничный кейс: голое Get — тоже нарушение.
-func (j *Job) Get() string { return j.id } // want `GID-101: метод "Get" использует префикс Get`
+func (j *Job) Get() string { return j.id } // want `GID-101: method "Get" uses the Get prefix`
 
 // --- Негативные кейсы: чистый код проходит ---
 

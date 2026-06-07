@@ -2,7 +2,7 @@
 package metric
 
 // Prometheus — struct без метода Register.
-type Prometheus struct { // want `GID-174: struct Prometheus обязан иметь метод Register`
+type Prometheus struct { // want `GID-174: struct Prometheus must have a Register method\. Fix: add it`
 	HTTP int
 }
 

@@ -11,7 +11,7 @@ type Svc struct {
 
 // Позитивный кейс: создание логгера в сервисе запрещено.
 func New() *Svc {
-	l := logrus.New() // want `GID-214: logrus.New\(\) вызывается только в composition root \(main, internal/app\) — пробрасывай готовый \*logrus\.Entry через конструктор`
+	l := logrus.New() // want `GID-214: logrus.New\(\) may be called only in the composition root \(main, internal/app\)\. Fix: pass a ready \*logrus\.Entry through the constructor`
 	_ = l
 	return &Svc{}
 }

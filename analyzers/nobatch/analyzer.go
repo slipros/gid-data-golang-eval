@@ -13,10 +13,10 @@ import (
 
 const ruleID = "GID-102"
 
-// Analyzer — правило GID-102: запрет слова Batch в именах методов.
+// Analyzer — правило GID-102: the word Batch is forbidden in method names. Fix: use a plural instead (CreateJob -> CreateJobs).
 var Analyzer = &analysis.Analyzer{
 	Name: "gidnobatch",
-	Doc:  ruleID + ": запрет слова Batch в именах методов",
+	Doc:  ruleID + ": the word Batch is forbidden in method names. Fix: use a plural instead (CreateJob -> CreateJobs)",
 	Run:  run,
 }
 
@@ -32,7 +32,7 @@ func run(pass *analysis.Pass) (any, error) {
 			}
 			if strings.Contains(fn.Name.Name, "Batch") {
 				pass.Reportf(fn.Name.Pos(),
-					"%s: метод %q содержит слово Batch — используйте множественное число (CreateJob -> CreateJobs)",
+					"%s: method %q contains the word Batch. Fix: use a plural instead (CreateJob -> CreateJobs)",
 					ruleID, fn.Name.Name)
 			}
 		}

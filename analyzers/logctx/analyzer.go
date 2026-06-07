@@ -22,10 +22,10 @@ import (
 
 const ruleID = "GID-155"
 
-// Analyzer — правило GID-155: лог-вызовы сопровождаются WithContext (при наличии ctx) и WithError (на уровне Error).
+// Analyzer — правило GID-155: log calls include WithContext (when ctx is present) and WithError (at Error level). Fix: add WithContext(ctx)/WithError(err).
 var Analyzer = &analysis.Analyzer{
 	Name: "gidlogctx",
-	Doc:  ruleID + ": лог-вызовы сопровождаются WithContext (при наличии ctx) и WithError (на уровне Error)",
+	Doc:  ruleID + ": log calls include WithContext (when ctx is present) and WithError (at Error level). Fix: add WithContext(ctx)/WithError(err)",
 	Run:  run,
 }
 
@@ -73,11 +73,11 @@ func checkCall(pass *analysis.Pass, call *ast.CallExpr, hasCtx bool) {
 	pos := sels[0].Sel.Pos()
 	if hasCtx && !slices.Contains(names, "WithContext") {
 		pass.Reportf(pos,
-			"%s: лог-вызов в функции с ctx обязан содержать WithContext(ctx)", ruleID)
+			"%s: a log call in a function with ctx must include WithContext(ctx). Fix: add WithContext(ctx)", ruleID)
 	}
 	if strings.HasPrefix(terminal, "Error") && !slices.Contains(names, "WithError") {
 		pass.Reportf(pos,
-			"%s: лог уровня Error обязан содержать WithError(err)", ruleID)
+			"%s: an Error-level log must include WithError(err). Fix: add WithError(err)", ruleID)
 	}
 }
 

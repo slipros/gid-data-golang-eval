@@ -16,10 +16,10 @@ import (
 
 const ruleID = "GID-101"
 
-// Analyzer — правило GID-101: запрет префикса Get в именах методов.
+// Analyzer — правило GID-101: the Get prefix is forbidden in method names. Fix: name getters without it (GetUser -> User).
 var Analyzer = &analysis.Analyzer{
 	Name: "gidnogetprefix",
-	Doc:  ruleID + ": запрет префикса Get в именах методов",
+	Doc:  ruleID + ": the Get prefix is forbidden in method names. Fix: name getters without it (GetUser -> User)",
 	Run:  run,
 }
 
@@ -35,7 +35,7 @@ func run(pass *analysis.Pass) (any, error) {
 			}
 			if hasGetPrefix(fn.Name.Name) {
 				pass.Reportf(fn.Name.Pos(),
-					"%s: метод %q использует префикс Get — геттеры именуются без него: %q",
+					"%s: method %q uses the Get prefix. Fix: name getters without it: %q",
 					ruleID, fn.Name.Name, strings.TrimPrefix(fn.Name.Name, "Get"))
 			}
 		}

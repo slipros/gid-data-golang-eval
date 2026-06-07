@@ -13,6 +13,6 @@ func (s *Service) legacyRender(snap *model.Snapshot) string { // исключё�
 	return snap.Name
 }
 
-func otherTitle(s *model.Snapshot) string { // want `GID-195: приватная функция "otherTitle" работает только со значением model.Snapshot — это поведение модели: оформите её публичным методом этого типа`
+func otherTitle(s *model.Snapshot) string { // want `GID-195: private function "otherTitle" works only with the model.Snapshot value\. Fix: this is model behaviour, make it a public method of that type`
 	return s.ID
 }

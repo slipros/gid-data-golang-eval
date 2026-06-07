@@ -13,25 +13,25 @@ type SnapshotService struct {
 
 // --- Позитив: приватная функция с единственным model-параметром ---
 
-func snapshotTitle(s *model.Snapshot) string { // want `GID-195: приватная функция "snapshotTitle" работает только со значением model.Snapshot — это поведение модели: оформите её публичным методом этого типа`
+func snapshotTitle(s *model.Snapshot) string { // want `GID-195: private function "snapshotTitle" works only with the model.Snapshot value\. Fix: this is model behaviour, make it a public method of that type`
 	return strings.ToUpper(s.Name)
 }
 
 // --- Позитив: model-enum по значению ---
 
-func isDone(st model.Status) bool { // want `GID-195: приватная функция "isDone" работает только со значением model.Status — это поведение модели: оформите её публичным методом этого типа`
+func isDone(st model.Status) bool { // want `GID-195: private function "isDone" works only with the model.Status value\. Fix: this is model behaviour, make it a public method of that type`
 	return st == model.StatusDone
 }
 
 // --- Позитив: метод, не использующий ресивер ---
 
-func (s *SnapshotService) renderSnapshot(snap *model.Snapshot) string { // want `GID-195: метод "renderSnapshot" не использует ресивер и работает только со значением model.Snapshot — это поведение модели: оформите его публичным методом этого типа`
+func (s *SnapshotService) renderSnapshot(snap *model.Snapshot) string { // want `GID-195: method "renderSnapshot" ignores its receiver and works only with the model.Snapshot value\. Fix: this is model behaviour, make it a public method of that type`
 	return snap.ID + ":" + snap.Name
 }
 
 // --- Позитив: безымянный ресивер ---
 
-func (*SnapshotService) pingSnapshot(s *model.Snapshot) bool { // want `GID-195: метод "pingSnapshot" не использует ресивер и работает только со значением model.Snapshot — это поведение модели: оформите его публичным методом этого типа`
+func (*SnapshotService) pingSnapshot(s *model.Snapshot) bool { // want `GID-195: method "pingSnapshot" ignores its receiver and works only with the model.Snapshot value\. Fix: this is model behaviour, make it a public method of that type`
 	return s.ID != ""
 }
 

@@ -42,7 +42,7 @@ var bannedFuncs = map[string]struct{}{
 // Analyzer — правило GID-214: logrus.New()/StandardLogger() — только в composition root (main, internal/app).
 var Analyzer = &analysis.Analyzer{
 	Name: "gidloggernew",
-	Doc:  ruleID + ": logrus.New()/StandardLogger() вызываются только в composition root (main, internal/app)",
+	Doc:  ruleID + ": logrus.New()/StandardLogger() are called only in the composition root (main, internal/app). Fix: pass a ready *logrus.Entry through the constructor",
 	Run:  run,
 }
 
@@ -64,8 +64,8 @@ func run(pass *analysis.Pass) (any, error) {
 			}
 			if name, ok := bannedLogrusCall(pass, call); ok {
 				pass.Reportf(call.Pos(),
-					"%s: logrus.%s() вызывается только в composition root (main, internal/app) — "+
-						"пробрасывай готовый *logrus.Entry через конструктор",
+					"%s: logrus.%s() may be called only in the composition root (main, internal/app). "+
+						"Fix: pass a ready *logrus.Entry through the constructor",
 					ruleID, name)
 			}
 			return true

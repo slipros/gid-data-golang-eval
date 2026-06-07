@@ -5,7 +5,7 @@ package mapcap
 
 // Заполнение из range по слайсу.
 func fillFromSlice(src []int) map[int]int {
-	m := make(map[int]int) // want `GID-183: make без capacity при заполнении из range — укажите хинт: make\(map\[K\]V, len\(src\)\)`
+	m := make(map[int]int) // want `GID-183: make without capacity while filling from range\. Fix: make\(map\[K\]V, len\(src\)\)`
 	for _, v := range src {
 		m[v] = v
 	}
@@ -14,7 +14,7 @@ func fillFromSlice(src []int) map[int]int {
 
 // var-форма объявления.
 func fillFromSliceVar(src []string) map[string]bool {
-	var m = make(map[string]bool) // want `GID-183: make без capacity при заполнении из range — укажите хинт: make\(map\[K\]V, len\(src\)\)`
+	var m = make(map[string]bool) // want `GID-183: make without capacity while filling from range\. Fix: make\(map\[K\]V, len\(src\)\)`
 	for _, v := range src {
 		m[v] = true
 	}
@@ -23,7 +23,7 @@ func fillFromSliceVar(src []string) map[string]bool {
 
 // Заполнение из range по мапе.
 func fillFromMap(src map[string]int) map[string]int {
-	m := make(map[string]int) // want `GID-183: make без capacity при заполнении из range — укажите хинт: make\(map\[K\]V, len\(src\)\)`
+	m := make(map[string]int) // want `GID-183: make without capacity while filling from range\. Fix: make\(map\[K\]V, len\(src\)\)`
 	for k, v := range src {
 		m[k] = v
 	}
@@ -32,7 +32,7 @@ func fillFromMap(src map[string]int) map[string]int {
 
 // Заполнение из range по строке.
 func fillFromString(src string) map[rune]int {
-	m := make(map[rune]int) // want `GID-183: make без capacity при заполнении из range — укажите хинт: make\(map\[K\]V, len\(src\)\)`
+	m := make(map[rune]int) // want `GID-183: make without capacity while filling from range\. Fix: make\(map\[K\]V, len\(src\)\)`
 	for _, r := range src {
 		m[r] = 1
 	}
