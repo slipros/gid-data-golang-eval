@@ -5,20 +5,20 @@ package widget
 // --- Позитивные кейсы (символ повторяет имя пакета) ---
 
 // WidgetOptions — тип с заиканием: снаружи widget.WidgetOptions.
-type WidgetOptions struct { // want `GID-193: WidgetOptions повторяет имя пакета widget — снаружи это widget\.Options; уберите префикс`
+type WidgetOptions struct { // want `GID-193: WidgetOptions repeats the package name widget\. Fix: from outside it is widget\.Options; drop the prefix`
 	Size int
 }
 
 // WidgetCount — функция с заиканием.
-func WidgetCount() int { // want `GID-193: WidgetCount повторяет имя пакета widget — снаружи это widget\.Count; уберите префикс`
+func WidgetCount() int { // want `GID-193: WidgetCount repeats the package name widget\. Fix: from outside it is widget\.Count; drop the prefix`
 	return 0
 }
 
 // WidgetDefault — переменная с заиканием.
-var WidgetDefault = WidgetOptions{} // want `GID-193: WidgetDefault повторяет имя пакета widget — снаружи это widget\.Default; уберите префикс`
+var WidgetDefault = WidgetOptions{} // want `GID-193: WidgetDefault repeats the package name widget\. Fix: from outside it is widget\.Default; drop the prefix`
 
 // WidgetMax — константа с заиканием.
-const WidgetMax = 100 // want `GID-193: WidgetMax повторяет имя пакета widget — снаружи это widget\.Max; уберите префикс`
+const WidgetMax = 100 // want `GID-193: WidgetMax repeats the package name widget\. Fix: from outside it is widget\.Max; drop the prefix`
 
 // --- Негативные кейсы (чистый код проходит) ---
 

@@ -20,10 +20,10 @@ import (
 
 const ruleID = "GID-151"
 
-// Analyzer — правило GID-151: экспортируемые методы сервиса принимают и возвращают model, не entity.
+// Analyzer — правило GID-151: exported service methods take and return model, not entity. Fix: convert to entity internally.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidservicemodel",
-	Doc:  ruleID + ": экспортируемые методы сервиса принимают и возвращают model, не entity",
+	Doc:  ruleID + ": exported service methods take and return model, not entity. Fix: convert to entity internally",
 	Run:  run,
 }
 
@@ -59,14 +59,14 @@ func checkSignature(pass *analysis.Pass, fn *ast.FuncDecl) {
 		for v := range tuple.Variables() {
 			if leaked := findEntityType(v.Type(), map[types.Type]bool{}); leaked != "" {
 				pass.Reportf(fn.Name.Pos(),
-					"%s: метод %q использует entity-тип %s (%s) — API сервиса принимает и возвращает model, "+
-						"конвертация в entity выполняется внутри",
+					"%s: method %q uses the entity type %s (%s). Fix: the service API takes and returns model, "+
+						"convert to entity internally",
 					ruleID, fn.Name.Name, leaked, kind)
 			}
 		}
 	}
-	check(sig.Params(), "параметр")
-	check(sig.Results(), "результат")
+	check(sig.Params(), "parameter")
+	check(sig.Results(), "result")
 }
 
 // findEntityType рекурсивно ищет в типе ссылку на тип из /dal/entity

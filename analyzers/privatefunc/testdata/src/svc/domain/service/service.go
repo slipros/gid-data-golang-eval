@@ -21,13 +21,13 @@ func (s *Snapshot) Render(ctx context.Context) string {
 	return decorate(s.name) // единственный потребитель — Snapshot
 }
 
-func decorate(s string) string { // want `GID-133: приватная функция "decorate" используется только сущностью "Snapshot" — оформите её методом`
+func decorate(s string) string { // want `GID-133: private function "decorate" is used only by entity "Snapshot"\. Fix: make it a method`
 	return ">" + s
 }
 
 // --- Позитив: не используется никем ---
 
-func orphan() string { // want `GID-133: приватная функция "orphan" принадлежит пакету — оформите её методом структуры`
+func orphan() string { // want `GID-133: private function "orphan" belongs to the package\. Fix: make it a struct method`
 	return ""
 }
 

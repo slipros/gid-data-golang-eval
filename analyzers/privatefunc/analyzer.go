@@ -28,7 +28,7 @@ var scopes = [][]string{
 // Analyzer — правило GID-133: приватные функции в service/usecase/repository — методы структур.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidprivatefunc",
-	Doc:  ruleID + ": приватные функции в service/usecase/repository — методы структур, не функции пакета",
+	Doc:  ruleID + ": private functions in service/usecase/repository must be struct methods, not package functions. Fix: make it a method",
 	Run:  run,
 }
 
@@ -48,12 +48,12 @@ func run(pass *analysis.Pass) (any, error) {
 		switch len(used) {
 		case 0:
 			pass.Reportf(fn.Name.Pos(),
-				"%s: приватная функция %q принадлежит пакету — оформите её методом структуры "+
-					"(пакетной может быть только функция, разделяемая несколькими сущностями)",
+				"%s: private function %q belongs to the package. Fix: make it a struct method "+
+					"(only a function shared by several entities may stay package-level)",
 				ruleID, fn.Name.Name)
 		case 1:
 			pass.Reportf(fn.Name.Pos(),
-				"%s: приватная функция %q используется только сущностью %q — оформите её методом",
+				"%s: private function %q is used only by entity %q. Fix: make it a method",
 				ruleID, fn.Name.Name, soleKey(used))
 		}
 	}

@@ -29,7 +29,7 @@ const ruleID = "GID-191"
 // Analyzer — правило GID-191: имена subtest в t.Run без пробелов и слешей.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidsubtestname",
-	Doc:  ruleID + ": имена subtest в t.Run/b.Run — без пробелов и слешей (snake_case)",
+	Doc:  ruleID + ": subtest names in t.Run/b.Run have no spaces or slashes (snake_case). Fix: rename to snake_case",
 	Run:  run,
 }
 
@@ -67,18 +67,18 @@ func checkCall(pass *analysis.Pass, call *ast.CallExpr) {
 
 	pos := call.Args[0].Pos()
 	if strings.Contains(name, "/") {
-		report(pass, pos, name, "слеш '/'")
+		report(pass, pos, name, "a slash '/'")
 		return
 	}
 	if strings.ContainsRune(name, ' ') {
-		report(pass, pos, name, "пробел")
+		report(pass, pos, name, "a space")
 	}
 }
 
 func report(pass *analysis.Pass, pos token.Pos, name, what string) {
 	pass.Reportf(pos,
-		"%s: имя subtest %q содержит %s — используйте snake_case: "+
-			"go test -run 'Test/имя' не найдёт его", ruleID, name, what)
+		"%s: subtest name %q contains %s. Fix: use snake_case, "+
+			"go test -run 'Test/name' will not match it", ruleID, name, what)
 }
 
 // isTestingRunReceiver сообщает, что выражение x имеет тип *testing.T или

@@ -20,10 +20,10 @@ import (
 
 const ruleID = "GID-148"
 
-// Analyzer — правило GID-148: сервис не зависит от другого сервиса — оркестрация сущностей выполняется в usecase.
+// Analyzer — правило GID-148: a service must not depend on another service; entity orchestration happens in usecase. Fix: move orchestration to usecase.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidservicesingle",
-	Doc:  ruleID + ": сервис не зависит от другого сервиса — оркестрация сущностей выполняется в usecase",
+	Doc:  ruleID + ": a service must not depend on another service; entity orchestration happens in usecase. Fix: move orchestration to usecase",
 	Run:  run,
 }
 
@@ -63,8 +63,8 @@ func checkServiceStruct(pass *analysis.Pass, owner string, st *ast.StructType) {
 			continue
 		}
 		pass.Reportf(field.Pos(),
-			"%s: сервис %q зависит от сервиса %q — сервис посвящён одной сущности, "+
-				"оркестрация нескольких сервисов выполняется в usecase",
+			"%s: service %q depends on service %q. Fix: a service serves one entity, "+
+				"orchestrate multiple services in usecase",
 			ruleID, owner, dep)
 	}
 }

@@ -4,7 +4,7 @@
 package badchild
 
 import (
-	"app/parent"       // want `GID-131: дочерний пакет импортирует родительский app/parent — инвертируйте зависимость: общее выносится вниз, родитель импортирует детей`
+	"app/parent"       // want `GID-131: a child package imports its parent app/parent\. Fix: invert the dependency, move shared code down and let the parent import children`
 	"app/parent/other" // ок: сосед, а не родитель
 )
 

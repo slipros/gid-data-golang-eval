@@ -32,7 +32,7 @@ const ruleID = "GID-193"
 // Analyzer — правило GID-193: экспортируемый символ не повторяет имя пакета (widget.WidgetOptions).
 var Analyzer = &analysis.Analyzer{
 	Name: "gidpkgstutter",
-	Doc:  ruleID + ": экспортируемый символ не повторяет имя пакета — снаружи это заикание (widget.WidgetOptions)",
+	Doc:  ruleID + ": an exported symbol must not repeat the package name; from outside it stutters (widget.WidgetOptions). Fix: drop the prefix",
 	Run:  run,
 }
 
@@ -93,7 +93,7 @@ func report(pass *analysis.Pass, pkgName, name string, pos token.Pos) {
 	}
 	suffix := name[len(pkgName):]
 	pass.Reportf(pos,
-		"%s: %s повторяет имя пакета %s — снаружи это %s.%s; уберите префикс",
+		"%s: %s repeats the package name %s. Fix: from outside it is %s.%s; drop the prefix",
 		ruleID, name, pkgName, pkgName, suffix)
 }
 

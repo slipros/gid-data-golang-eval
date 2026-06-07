@@ -14,10 +14,10 @@ import (
 
 const ruleID = "GID-122"
 
-// Analyzer — правило GID-122: nullable-поля entity — sql.Null*, не указатели.
+// Analyzer — правило GID-122: nullable entity fields use sql.Null*, not pointers. Fix: use sql.Null*.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidsqlnull",
-	Doc:  ruleID + ": nullable-поля entity — sql.Null*, не указатели",
+	Doc:  ruleID + ": nullable entity fields use sql.Null*, not pointers. Fix: use sql.Null*",
 	Run:  run,
 }
 
@@ -59,7 +59,7 @@ func checkField(pass *analysis.Pass, field *ast.Field) {
 	}
 	if hint, ok := nullableHint(ptr.Elem()); ok {
 		pass.Reportf(field.Pos(),
-			"%s: nullable-поле entity описывается типом %s, не указателем", ruleID, hint)
+			"%s: a nullable entity field must use %s, not a pointer. Fix: replace the pointer with it", ruleID, hint)
 	}
 }
 

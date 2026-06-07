@@ -8,13 +8,13 @@ const nameWithSpace = "has space"
 // --- Позитивные кейсы (нарушение ловится) ---
 
 func TestPositive(t *testing.T) {
-	t.Run("with space", func(t *testing.T) {}) // want `GID-191: имя subtest "with space" содержит пробел — используйте snake_case: go test -run 'Test/имя' не найдёт его`
-	t.Run("a/b", func(t *testing.T) {})        // want `GID-191: имя subtest "a/b" содержит слеш '/' — используйте snake_case: go test -run 'Test/имя' не найдёт его`
-	t.Run(nameWithSpace, func(t *testing.T) {}) // want `GID-191: имя subtest "has space" содержит пробел — используйте snake_case: go test -run 'Test/имя' не найдёт его`
+	t.Run("with space", func(t *testing.T) {}) // want `GID-191: subtest name "with space" contains a space\. Fix: use snake_case, go test -run 'Test/name' will not match it`
+	t.Run("a/b", func(t *testing.T) {})        // want `GID-191: subtest name "a/b" contains a slash '/'\. Fix: use snake_case, go test -run 'Test/name' will not match it`
+	t.Run(nameWithSpace, func(t *testing.T) {}) // want `GID-191: subtest name "has space" contains a space\. Fix: use snake_case, go test -run 'Test/name' will not match it`
 }
 
 func BenchmarkPositive(b *testing.B) {
-	b.Run("x y", func(b *testing.B) {}) // want `GID-191: имя subtest "x y" содержит пробел — используйте snake_case: go test -run 'Test/имя' не найдёт его`
+	b.Run("x y", func(b *testing.B) {}) // want `GID-191: subtest name "x y" contains a space\. Fix: use snake_case, go test -run 'Test/name' will not match it`
 }
 
 // --- Негативные кейсы (чистый код проходит) ---

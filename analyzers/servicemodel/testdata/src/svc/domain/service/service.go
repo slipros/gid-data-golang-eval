@@ -12,21 +12,21 @@ type Snapshot struct{}
 
 // --- Позитивные кейсы: entity в сигнатуре экспортируемого метода ---
 
-func (s *Snapshot) CreateSnapshot(ctx context.Context, in *entity.CreateSnapshot) error { // want `GID-151: метод "CreateSnapshot" использует entity-тип entity\.CreateSnapshot \(параметр\) — API сервиса принимает и возвращает model, конвертация в entity выполняется внутри`
+func (s *Snapshot) CreateSnapshot(ctx context.Context, in *entity.CreateSnapshot) error { // want `GID-151: method "CreateSnapshot" uses the entity type entity\.CreateSnapshot \(parameter\)\. Fix: the service API takes and returns model, convert to entity internally`
 	return nil
 }
 
-func (s *Snapshot) SnapshotRaw(ctx context.Context, id string) (entity.Snapshot, error) { // want `GID-151: метод "SnapshotRaw" использует entity-тип entity\.Snapshot \(результат\)`
+func (s *Snapshot) SnapshotRaw(ctx context.Context, id string) (entity.Snapshot, error) { // want `GID-151: method "SnapshotRaw" uses the entity type entity\.Snapshot \(result\)`
 	return entity.Snapshot{}, nil
 }
 
 // Граничный кейс: entity спрятана в слайсе именованного типа.
-func (s *Snapshot) SnapshotsRaw(ctx context.Context) (entity.Snapshots, error) { // want `GID-151: метод "SnapshotsRaw" использует entity-тип entity\.Snapshots \(результат\)`
+func (s *Snapshot) SnapshotsRaw(ctx context.Context) (entity.Snapshots, error) { // want `GID-151: method "SnapshotsRaw" uses the entity type entity\.Snapshots \(result\)`
 	return nil, nil
 }
 
 // Граничный кейс: entity внутри мапы.
-func (s *Snapshot) SnapshotsByID(ctx context.Context) (map[string]*entity.Snapshot, error) { // want `GID-151: метод "SnapshotsByID" использует entity-тип entity\.Snapshot \(результат\)`
+func (s *Snapshot) SnapshotsByID(ctx context.Context) (map[string]*entity.Snapshot, error) { // want `GID-151: method "SnapshotsByID" uses the entity type entity\.Snapshot \(result\)`
 	return nil, nil
 }
 

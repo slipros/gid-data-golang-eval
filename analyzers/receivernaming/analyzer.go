@@ -22,7 +22,7 @@ const ruleID = "GID-103"
 // Analyzer — правило GID-103: ресивер — первая буква типа (две — для слайс-типов).
 var Analyzer = &analysis.Analyzer{
 	Name: "gidreceiver",
-	Doc:  ruleID + ": ресивер — первая буква типа в нижнем регистре, две для слайс-типов",
+	Doc:  ruleID + ": a receiver is the lowercase first letter of the type, two for slice types. Fix: rename the receiver",
 	Run:  run,
 }
 
@@ -57,7 +57,7 @@ func checkReceiver(pass *analysis.Pass, fn *ast.FuncDecl) {
 		return
 	}
 	pass.Reportf(recv.Names[0].Pos(),
-		"%s: ресивер типа %s именуется %q — первая буква типа в нижнем регистре (две для слайс-типов), получено %q",
+		"%s: receiver of type %s is named %q. Fix: use the lowercase first letter of the type (two for slice types), got %q",
 		ruleID, typeName, want, got)
 }
 

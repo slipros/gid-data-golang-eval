@@ -27,8 +27,8 @@ type Job struct {
 // --- Позитив: сервис зависит от другого сервиса ---
 
 type Upload struct {
-	snapshots *Snapshot // want `GID-148: сервис "Upload" зависит от сервиса "Snapshot" — сервис посвящён одной сущности, оркестрация нескольких сервисов выполняется в usecase`
-	jobs      Job       // want `GID-148: сервис "Upload" зависит от сервиса "Job"`
+	snapshots *Snapshot // want `GID-148: service "Upload" depends on service "Snapshot"\. Fix: a service serves one entity, orchestrate multiple services in usecase`
+	jobs      Job       // want `GID-148: service "Upload" depends on service "Job"`
 }
 
 // --- Негатив: зависимости-интерфейсы и Options — норма (см. Snapshot, Job) ---

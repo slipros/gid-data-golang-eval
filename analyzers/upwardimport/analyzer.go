@@ -28,8 +28,8 @@ const ruleID = "GID-131"
 // Analyzer — правило GID-131: дочерний пакет не импортирует родительский.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidupwardimport",
-	Doc: ruleID + ": дочерний пакет не импортирует родительский — " +
-		"инвертируйте зависимость: общее выносится вниз, родитель импортирует детей",
+	Doc: ruleID + ": a child package must not import its parent. " +
+		"Fix: invert the dependency, move shared code down and let the parent import children",
 	Run: run,
 }
 
@@ -48,8 +48,8 @@ func run(pass *analysis.Pass) (any, error) {
 			// Это означает, что impPath — родитель текущего пакета.
 			if strings.HasPrefix(pkgPath, impPath+"/") {
 				pass.Reportf(imp.Pos(),
-					"%s: дочерний пакет импортирует родительский %s — "+
-						"инвертируйте зависимость: общее выносится вниз, родитель импортирует детей",
+					"%s: a child package imports its parent %s. "+
+						"Fix: invert the dependency, move shared code down and let the parent import children",
 					ruleID, impPath)
 			}
 		}

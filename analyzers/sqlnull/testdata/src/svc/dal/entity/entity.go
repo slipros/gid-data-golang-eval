@@ -11,13 +11,13 @@ type MyType struct{ V int }
 // --- Позитивные кейсы ---
 
 type Snapshot struct {
-	CompletedAt *time.Time // want `GID-122: nullable-поле entity описывается типом sql\.NullTime, не указателем`
-	Description *string    // want `GID-122: nullable-поле entity описывается типом sql\.NullString, не указателем`
-	FileCount   *int32     // want `GID-122: nullable-поле entity описывается типом sql\.NullInt32, не указателем`
-	Size        *int64     // want `GID-122: nullable-поле entity описывается типом sql\.NullInt64, не указателем`
+	CompletedAt *time.Time // want `GID-122: a nullable entity field must use sql\.NullTime, not a pointer\. Fix: replace the pointer with it`
+	Description *string    // want `GID-122: a nullable entity field must use sql\.NullString, not a pointer\. Fix: replace the pointer with it`
+	FileCount   *int32     // want `GID-122: a nullable entity field must use sql\.NullInt32, not a pointer\. Fix: replace the pointer with it`
+	Size        *int64     // want `GID-122: a nullable entity field must use sql\.NullInt64, not a pointer\. Fix: replace the pointer with it`
 
 	// Граничный кейс: нестандартный тип — обобщённый sql.Null[T].
-	Custom *MyType // want `GID-122: nullable-поле entity описывается типом sql\.Null\[T\], не указателем`
+	Custom *MyType // want `GID-122: a nullable entity field must use sql\.Null\[T\], not a pointer\. Fix: replace the pointer with it`
 }
 
 // --- Негативные кейсы ---
