@@ -72,6 +72,7 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/optsnaming"
 	"github.com/slipros/gid-data-golang-eval/analyzers/optsstyle"
 	"github.com/slipros/gid-data-golang-eval/analyzers/paramorder"
+	"github.com/slipros/gid-data-golang-eval/analyzers/patterns"
 	"github.com/slipros/gid-data-golang-eval/analyzers/pkgstutter"
 	"github.com/slipros/gid-data-golang-eval/analyzers/privatefunc"
 	"github.com/slipros/gid-data-golang-eval/analyzers/receivernaming"
@@ -166,6 +167,14 @@ func init() {
 	register.Plugin("gidinlineconv", newSingleAnalyzerPlugin(inlineconv.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gideventctor", newConfigurablePlugin(eventctor.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidbansymbol", newConfigurablePlugin(bansymbol.NewAnalyzer, register.LoadModeTypesInfo))
+	// Слой 1 (бывший ruleguard) — простые AST-паттерны, теперь нативные анализаторы.
+	register.Plugin("gidtimenow", newSingleAnalyzerPlugin(patterns.TimeNowAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("giduuidnil", newSingleAnalyzerPlugin(patterns.UUIDNilAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("giduuidversion", newSingleAnalyzerPlugin(patterns.UUIDVersionAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidnewderef", newSingleAnalyzerPlugin(patterns.NewDerefAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidyoda", newSingleAnalyzerPlugin(patterns.YodaAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidquoteverb", newSingleAnalyzerPlugin(patterns.QuoteVerbAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("giddeepequal", newSingleAnalyzerPlugin(patterns.DeepEqualAnalyzer, register.LoadModeTypesInfo))
 }
 
 // newSingleAnalyzerPlugin оборачивает один анализатор в плагин golangci-lint:

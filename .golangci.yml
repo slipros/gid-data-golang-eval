@@ -1,6 +1,6 @@
 # Эталонный конфиг для custom-gcl. Реестр правил — RULES.md.
 # База — боевой конфиг consent-api (UDMP/backend-go); поверх неё накинуты
-# слои GID: ruleguard (слой 1), собственные gid-анализаторы (слой 2)
+# слои GID: простые паттерны (слой 1) и собственные gid-анализаторы (слой 2) —
 # и настройки стандартных линтеров под стайлгайд (слой 3).
 version: "2"
 
@@ -38,7 +38,7 @@ linters:
     - errorlint
     - forcetypeassert
     - goconst
-    - gocritic       # + слой 1: ruleguard (см. settings)
+    - gocritic
     - gosec
     - importas       # GID-208: фиксированные алиасы импортов (pb и пр.)
     - ireturn        # GID-208: accept interfaces, return concrete types
@@ -64,6 +64,14 @@ linters:
     - musttag        # GID-208: теги у marshaled-структур
     - perfsprint     # GID-208: strconv vs fmt, конкатенация vs Sprintf
     - depguard       # GID-137: баны библиотек по import-пути (uuid-форки, см. settings)
+    # --- Слой 1: простые AST-паттерны (бывший ruleguard) ---
+    - gidtimenow       # GID-001
+    - giduuidnil       # GID-002
+    - giduuidversion   # GID-003
+    - gidnewderef      # GID-005
+    - gidyoda          # GID-006
+    - gidquoteverb     # GID-007
+    - giddeepequal     # GID-008
     # --- Слой 2: собственные go/analysis правила ---
     - gidnogetprefix   # GID-101
     - gidnobatch       # GID-102
@@ -255,18 +263,43 @@ linters:
       disabled-checks:
         - importShadow
         - emptyStringTest
-      # Тег style включает и ruleguard — слой 1 (простые паттерн-правила GID)
       enabled-tags:
         - diagnostic
         - experimental
         - opinionated
         - performance
         - style
-      settings:
-        ruleguard:
-          rules: '${base-path}/ruleguard/rules.go'
-          failOn: all
     custom:
+      # --- Слой 1: простые AST-паттерны (бывший ruleguard) ---
+      gidtimenow:
+        type: module
+        description: 'GID-001: time.Now() must not be called directly; use gdhelper.StdTime.Now()'
+        original-url: github.com/slipros/gid-data-golang-eval
+      giduuidnil:
+        type: module
+        description: 'GID-002: compare a UUID via IsNil(), not uuid.UUID{}'
+        original-url: github.com/slipros/gid-data-golang-eval
+      giduuidversion:
+        type: module
+        description: 'GID-003: generate UUIDs via uuid.Must(uuid.NewV7()), not NewV1/3/4/5/6'
+        original-url: github.com/slipros/gid-data-golang-eval
+      gidnewderef:
+        type: module
+        description: 'GID-005: avoid the new() builtin; use &T{} or var x T'
+        original-url: github.com/slipros/gid-data-golang-eval
+      gidyoda:
+        type: module
+        description: 'GID-006: no yoda conditions; the literal goes on the right'
+        original-url: github.com/slipros/gid-data-golang-eval
+      gidquoteverb:
+        type: module
+        description: 'GID-007: use %q instead of hand-escaped quotes around %s/%v'
+        original-url: github.com/slipros/gid-data-golang-eval
+      giddeepequal:
+        type: module
+        description: 'GID-008: avoid reflect.DeepEqual; use require/cmp or explicit comparison'
+        original-url: github.com/slipros/gid-data-golang-eval
+      # --- Слой 2: собственные go/analysis правила ---
       gidnogetprefix:
         type: module
         description: 'GID-101: запрет префикса Get в именах методов'
@@ -729,11 +762,6 @@ linters:
       - path: (.+)\.go$
         text: ST1000
       # --- специфика этого репозитория ---
-      # ruleguard-функции вызывает движок gocritic, а не Go-код — для unused
-      # они выглядят мёртвыми
-      - path: ruleguard/rules\.go
-        linters:
-          - unused
       # AST-анализаторы сравнивают имена идентификаторов и арности сигнатур —
       # строковые и числовые литералы здесь законны
       - path: analyzers/
