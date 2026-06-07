@@ -41,7 +41,7 @@ const ruleID = "GID-189"
 // Analyzer — правило GID-189: параметры-каналы в сигнатурах указывают направление (<-chan/chan<-).
 var Analyzer = &analysis.Analyzer{
 	Name: "gidchandir",
-	Doc:  ruleID + ": параметры-каналы в сигнатурах указывают направление (<-chan/chan<-)",
+	Doc:  ruleID + ": channel parameters must declare a direction (<-chan/chan<-). Fix: use <-chan to receive or chan<- to send.",
 	Run:  run,
 }
 
@@ -80,8 +80,8 @@ func checkParams(pass *analysis.Pass, ft *ast.FuncType) {
 		}
 		name := paramName(field)
 		pass.Reportf(field.Type.Pos(),
-			"%s: параметр-канал %s двунаправленный — укажите направление "+
-				"(<-chan для чтения, chan<- для записи)",
+			"%s: channel parameter %s is bidirectional. "+
+				"Fix: declare a direction, <-chan to receive or chan<- to send.",
 			ruleID, name)
 	}
 }

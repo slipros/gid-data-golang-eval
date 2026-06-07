@@ -31,7 +31,7 @@ const ruleID = "GID-179"
 // Analyzer — правило GID-179: размер буфера канала только 0 или 1.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidchanbuf",
-	Doc:  ruleID + ": размер буфера канала только 0 или 1",
+	Doc:  ruleID + ": channel buffer size must be 0 or 1. Fix: use an unbuffered channel or buffer 1, or justify a larger buffer with //nolint:gidchanbuf.",
 	Run:  run,
 }
 
@@ -68,8 +68,8 @@ func run(pass *analysis.Pass) (any, error) {
 				return true // 0 и 1 — допустимы.
 			}
 			pass.Reportf(sizeExpr.Pos(),
-				"%s: буфер канала %d — допустимы только 0 и 1; больший буфер требует обоснования "+
-					"(//nolint:gidchanbuf с комментарием)",
+				"%s: channel buffer %d is not allowed (only 0 or 1). "+
+					"Fix: use an unbuffered channel or buffer 1, or justify a larger buffer with //nolint:gidchanbuf.",
 				ruleID, size)
 			return true
 		})

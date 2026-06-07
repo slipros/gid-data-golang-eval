@@ -4,27 +4,27 @@ package chandir
 // --- Позитивные кейсы (двунаправленный параметр-канал) ---
 
 // Функция с параметром-каналом без направления.
-func consume(ch chan int) { // want `GID-189: параметр-канал ch двунаправленный — укажите направление \(<-chan для чтения, chan<- для записи\)`
+func consume(ch chan int) { // want `GID-189: channel parameter ch is bidirectional\. Fix: declare a direction, <-chan to receive or chan<- to send\.`
 	<-ch
 }
 
 type worker struct{}
 
 // Метод с параметром-каналом без направления.
-func (w worker) run(ch chan string) { // want `GID-189: параметр-канал ch двунаправленный — укажите направление \(<-chan для чтения, chan<- для записи\)`
+func (w worker) run(ch chan string) { // want `GID-189: channel parameter ch is bidirectional\. Fix: declare a direction, <-chan to receive or chan<- to send\.`
 	ch <- "x"
 }
 
 // Функциональный литерал с параметром-каналом без направления.
 func withLit() {
-	f := func(ch chan int) { // want `GID-189: параметр-канал ch двунаправленный — укажите направление \(<-chan для чтения, chan<- для записи\)`
+	f := func(ch chan int) { // want `GID-189: channel parameter ch is bidirectional\. Fix: declare a direction, <-chan to receive or chan<- to send\.`
 		<-ch
 	}
 	_ = f
 }
 
 // Несколько имён в одной группе параметров — диагностика на группу.
-func multi(a, b chan int) { // want `GID-189: параметр-канал a, b двунаправленный — укажите направление \(<-chan для чтения, chan<- для записи\)`
+func multi(a, b chan int) { // want `GID-189: channel parameter a, b is bidirectional\. Fix: declare a direction, <-chan to receive or chan<- to send\.`
 	<-a
 	<-b
 }

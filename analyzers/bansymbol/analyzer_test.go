@@ -28,7 +28,7 @@ func TestCustomMsg(t *testing.T) {
 		{
 			Pkg:  "example.com/otherdb",
 			Name: "TQuery",
-			Msg:  "otherdb.TQuery под запретом проекта",
+			Msg:  "otherdb.TQuery is banned by the project",
 		},
 	}})
 	analysistest.Run(t, analysistest.TestData(), a, "custom")

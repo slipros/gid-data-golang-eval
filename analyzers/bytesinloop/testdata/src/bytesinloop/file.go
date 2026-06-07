@@ -8,14 +8,14 @@ const constStr = "const"
 // []byte("x") в for.
 func byteLiteralInFor() {
 	for i := 0; i < 10; i++ {
-		_ = []byte("hello") // want `GID-182: конверсия \[\]byte в цикле — вычислите один раз перед циклом`
+		_ = []byte("hello") // want `GID-182: converting to \[\]byte inside a loop repeats the allocation\. Fix: compute it once before the loop\.`
 	}
 }
 
 // []byte(constStr) в range.
 func byteConstInRange(items []int) {
 	for range items {
-		_ = []byte(constStr) // want `GID-182: конверсия \[\]byte в цикле — вычислите один раз перед циклом`
+		_ = []byte(constStr) // want `GID-182: converting to \[\]byte inside a loop repeats the allocation\. Fix: compute it once before the loop\.`
 	}
 }
 
@@ -24,7 +24,7 @@ func runeLiteralInNestedBlock() {
 	for i := 0; i < 10; i++ {
 		if i > 5 {
 			{
-				_ = []rune("world") // want `GID-182: конверсия \[\]rune в цикле — вычислите один раз перед циклом`
+				_ = []rune("world") // want `GID-182: converting to \[\]rune inside a loop repeats the allocation\. Fix: compute it once before the loop\.`
 			}
 		}
 	}
@@ -52,7 +52,7 @@ func byteVariableInLoop(s string) {
 func closureInLoop() {
 	for i := 0; i < 10; i++ {
 		fn := func() {
-			_ = []byte("closure") // want `GID-182: конверсия \[\]byte в цикле — вычислите один раз перед циклом`
+			_ = []byte("closure") // want `GID-182: converting to \[\]byte inside a loop repeats the allocation\. Fix: compute it once before the loop\.`
 		}
 		fn()
 	}

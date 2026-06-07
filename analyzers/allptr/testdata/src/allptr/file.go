@@ -14,7 +14,7 @@ type Files []File
 
 func bad(files []File) []string {
 	var out []string
-	for _, f := range files { // want `GID-004: итерация по слайсу структур — используйте gdhelper\.AllPtr`
+	for _, f := range files { // want `GID-004: ranging over a slice of structs copies each element\. Fix: range over gdhelper\.AllPtr\(items\)`
 		out = append(out, f.Name)
 	}
 	return out
@@ -23,7 +23,7 @@ func bad(files []File) []string {
 // Граничный кейс: именованный слайс-тип.
 func badNamed(files Files) []string {
 	var out []string
-	for _, f := range files { // want `GID-004: итерация по слайсу структур — используйте gdhelper\.AllPtr`
+	for _, f := range files { // want `GID-004: ranging over a slice of structs copies each element\. Fix: range over gdhelper\.AllPtr\(items\)`
 		out = append(out, f.Name)
 	}
 	return out
@@ -33,7 +33,7 @@ func badNamed(files Files) []string {
 // стайлгайд требует AllPtr вместо любых range-форм по слайсу структур.
 func badIndexOnly(files []File) int {
 	n := 0
-	for i := range files { // want `GID-004: итерация по слайсу структур — используйте gdhelper\.AllPtr`
+	for i := range files { // want `GID-004: ranging over a slice of structs copies each element\. Fix: range over gdhelper\.AllPtr\(items\)`
 		n += i
 	}
 	return n

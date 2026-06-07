@@ -7,5 +7,5 @@ import "example.com/otherdb"
 // прогоне не задан).
 
 func callBanned() (int, error) {
-	return otherdb.TQuery[int]("select 1") // want `GID-217: otherdb\.TQuery под запретом проекта`
+	return otherdb.TQuery[int]("select 1") // want `GID-217: otherdb\.TQuery is banned by the project`
 }

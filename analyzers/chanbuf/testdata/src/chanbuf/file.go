@@ -6,15 +6,15 @@ const maxWorkers = 10
 // --- Позитивные кейсы (буфер > 1, константа) ---
 
 func bufLiteral() {
-	_ = make(chan int, 2) // want `GID-179: буфер канала 2 — допустимы только 0 и 1; больший буфер требует обоснования \(//nolint:gidchanbuf с комментарием\)`
+	_ = make(chan int, 2) // want `GID-179: channel buffer 2 is not allowed \(only 0 or 1\)\. Fix: use an unbuffered channel or buffer 1, or justify a larger buffer with //nolint:gidchanbuf\.`
 }
 
 func bufNamedConst() {
-	_ = make(chan int, maxWorkers) // want `GID-179: буфер канала 10 — допустимы только 0 и 1; больший буфер требует обоснования \(//nolint:gidchanbuf с комментарием\)`
+	_ = make(chan int, maxWorkers) // want `GID-179: channel buffer 10 is not allowed \(only 0 or 1\)\. Fix: use an unbuffered channel or buffer 1, or justify a larger buffer with //nolint:gidchanbuf\.`
 }
 
 func bufConstExpr() {
-	_ = make(chan string, 2*3) // want `GID-179: буфер канала 6 — допустимы только 0 и 1; больший буфер требует обоснования \(//nolint:gidchanbuf с комментарием\)`
+	_ = make(chan string, 2*3) // want `GID-179: channel buffer 6 is not allowed \(only 0 or 1\)\. Fix: use an unbuffered channel or buffer 1, or justify a larger buffer with //nolint:gidchanbuf\.`
 }
 
 // --- Негативные кейсы (буфер 0 или 1, либо без размера) ---

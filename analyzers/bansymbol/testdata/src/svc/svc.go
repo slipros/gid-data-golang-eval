@@ -10,12 +10,12 @@ import (
 
 // Прямой вызов запрещённого gdpostgres.TQuery.
 func callTQuery(conn *gdpostgres.Conn) (int, error) {
-	return gdpostgres.TQuery[int](conn, "select 1") // want `GID-217: используй прямые методы conn: Select, ScanRow, NamedStruct, Transaction \(repo\.md\)`
+	return gdpostgres.TQuery[int](conn, "select 1") // want `GID-217: gdpostgres\.TQuery is banned\. Fix: use conn methods directly: Select, ScanRow, NamedStruct or Transaction \(repo\.md\)`
 }
 
 // Generic-инстанциация с явным типовым аргументом — резолвится так же.
 func callTQueryString(conn *gdpostgres.Conn) (string, error) {
-	return gdpostgres.TQuery[string](conn, "select name") // want `GID-217: используй прямые методы conn: Select, ScanRow, NamedStruct, Transaction \(repo\.md\)`
+	return gdpostgres.TQuery[string](conn, "select name") // want `GID-217: gdpostgres\.TQuery is banned\. Fix: use conn methods directly: Select, ScanRow, NamedStruct or Transaction \(repo\.md\)`
 }
 
 // --- Класс 2: негативный (чистый код проходит) ---

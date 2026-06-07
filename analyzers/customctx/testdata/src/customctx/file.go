@@ -9,13 +9,13 @@ import (
 // --- Класс 1: позитивные (нарушения) ---
 
 // Кейс 2: interface, встраивающий context.Context.
-type MyContext interface { // want `GID-188: кастомный context-тип MyContext запрещён — передавайте context\.Context и кладите данные через context\.WithValue \(хелперы в /domain/model — GID-165/166\)`
+type MyContext interface { // want `GID-188: custom context type MyContext is forbidden\. Fix: pass context\.Context and store data via context\.WithValue \(helpers live in /domain/model, GID-165/166\)\.`
 	context.Context
 	Extra() string
 }
 
 // Кейс 1: struct с полным набором методов context.Context.
-type CtxStruct struct{} // want `GID-188: кастомный context-тип CtxStruct запрещён`
+type CtxStruct struct{} // want `GID-188: custom context type CtxStruct is forbidden`
 
 func (CtxStruct) Deadline() (time.Time, bool) { return time.Time{}, false }
 func (CtxStruct) Done() <-chan struct{}       { return nil }
@@ -23,7 +23,7 @@ func (CtxStruct) Err() error                  { return nil }
 func (CtxStruct) Value(key any) any           { return nil }
 
 // Кейс 3: параметр ctx — кастомный context-тип.
-func useCustom(ctx MyContext) {} // want `GID-188: параметр ctx имеет тип .*MyContext — используйте context\.Context`
+func useCustom(ctx MyContext) {} // want `GID-188: parameter ctx has type .*MyContext\. Fix: use context\.Context\.`
 
 // --- Класс 2: негативные (чистый код) ---
 
@@ -38,7 +38,7 @@ func (PartialCtx) Done() <-chan struct{} { return nil }
 // --- Класс 3: граничные ---
 
 // interface { context.Context } — embedding матчится один раз (одна диагностика).
-type OnlyEmbed interface { // want `GID-188: кастомный context-тип OnlyEmbed запрещён`
+type OnlyEmbed interface { // want `GID-188: custom context type OnlyEmbed is forbidden`
 	context.Context
 }
 

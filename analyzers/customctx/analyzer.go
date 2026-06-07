@@ -17,7 +17,7 @@ const ruleID = "GID-188"
 // Analyzer — правило GID-188: запрет кастомных context-типов — только context.Context.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidcustomctx",
-	Doc:  ruleID + ": запрет кастомных context-типов — только context.Context",
+	Doc:  ruleID + ": custom context types are forbidden, use context.Context. Fix: pass context.Context and store data via context.WithValue.",
 	Run:  run,
 }
 
@@ -117,9 +117,9 @@ func checkTypeDecls(pass *analysis.Pass, gen *ast.GenDecl, ctxIface *types.Inter
 		// Кейс 2: interface, встраивающий context.Context.
 		if iface, ok := ts.Type.(*ast.InterfaceType); ok && embedsStdlibContext(pass, iface) {
 			pass.Reportf(ts.Pos(),
-				"%s: кастомный context-тип %s запрещён — передавайте context.Context "+
-					"и кладите данные через context.WithValue "+
-					"(хелперы в /domain/model — GID-165/166)",
+				"%s: custom context type %s is forbidden. "+
+					"Fix: pass context.Context and store data via context.WithValue "+
+					"(helpers live in /domain/model, GID-165/166).",
 				ruleID, ts.Name.Name)
 			continue
 		}
@@ -143,9 +143,9 @@ func checkTypeDecls(pass *analysis.Pass, gen *ast.GenDecl, ctxIface *types.Inter
 		}
 		if types.Implements(named, ctxIface) || types.Implements(types.NewPointer(named), ctxIface) {
 			pass.Reportf(ts.Pos(),
-				"%s: кастомный context-тип %s запрещён — передавайте context.Context "+
-					"и кладите данные через context.WithValue "+
-					"(хелперы в /domain/model — GID-165/166)",
+				"%s: custom context type %s is forbidden. "+
+					"Fix: pass context.Context and store data via context.WithValue "+
+					"(helpers live in /domain/model, GID-165/166).",
 				ruleID, ts.Name.Name)
 		}
 	}
@@ -196,7 +196,7 @@ func checkFuncParams(pass *analysis.Pass, ft *ast.FuncType) {
 			continue
 		}
 		pass.Reportf(field.Type.Pos(),
-			"%s: параметр ctx имеет тип %s — используйте context.Context",
+			"%s: parameter ctx has type %s. Fix: use context.Context.",
 			ruleID, t.String())
 	}
 }

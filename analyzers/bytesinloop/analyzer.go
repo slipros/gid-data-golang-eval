@@ -32,7 +32,7 @@ const ruleID = "GID-182"
 // Analyzer — правило GID-182: конверсия строкового литерала/константы в []byte/[]rune внутри цикла.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidbytesinloop",
-	Doc:  ruleID + ": конверсия строкового литерала/константы в []byte/[]rune внутри цикла",
+	Doc:  ruleID + ": converting a string literal/constant to []byte/[]rune inside a loop. Fix: compute the conversion once before the loop.",
 	Run:  run,
 }
 
@@ -103,7 +103,8 @@ func checkConversion(pass *analysis.Pass, call *ast.CallExpr) {
 		return
 	}
 	pass.Reportf(call.Pos(),
-		"%s: конверсия %s в цикле — вычислите один раз перед циклом", ruleID, kind)
+		"%s: converting to %s inside a loop repeats the allocation. "+
+			"Fix: compute it once before the loop.", ruleID, kind)
 }
 
 // sliceConversionKind: если fun — это тип []byte или []rune (в форме

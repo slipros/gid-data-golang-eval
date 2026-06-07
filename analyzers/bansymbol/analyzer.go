@@ -31,7 +31,7 @@ var defaultSymbols = []Symbol{
 	{
 		Pkg:  "gitlab.gid.team/gid-data/tech/golang/libs/postgres.git",
 		Name: "TQuery",
-		Msg:  "используй прямые методы conn: Select, ScanRow, NamedStruct, Transaction (repo.md)",
+		Msg:  "gdpostgres.TQuery is banned. Fix: use conn methods directly: Select, ScanRow, NamedStruct or Transaction (repo.md)",
 	},
 }
 
@@ -66,7 +66,7 @@ func NewAnalyzer(cfg Settings) *analysis.Analyzer {
 	}
 	return &analysis.Analyzer{
 		Name: "gidbansymbol",
-		Doc:  ruleID + ": настраиваемый бан конкретных символов библиотек",
+		Doc:  ruleID + ": ban specific library symbols (configurable). Fix: replace the banned symbol with the project-approved alternative.",
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, symbols)
 		},
@@ -122,6 +122,7 @@ func report(pass *analysis.Pass, pos token.Pos, s Symbol, pkgName, name string) 
 		return
 	}
 	pass.Reportf(pos,
-		"%s: символ %s.%s запрещён настройками gidbansymbol",
+		"%s: symbol %s.%s is banned by gidbansymbol. "+
+			"Fix: replace it with the project-approved alternative.",
 		ruleID, pkgName, name)
 }

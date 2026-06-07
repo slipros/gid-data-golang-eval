@@ -18,7 +18,7 @@ const ruleID = "GID-004"
 // Analyzer — правило GID-004: итерация по слайсу структур — через gdhelper.AllPtr.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidallptr",
-	Doc:  ruleID + ": итерация по слайсу структур — только через gdhelper.AllPtr",
+	Doc:  ruleID + ": iterate over a slice of structs via gdhelper.AllPtr. Fix: range over gdhelper.AllPtr(items) to get pointers instead of copies.",
 	Run:  run,
 }
 
@@ -35,7 +35,8 @@ func run(pass *analysis.Pass) (any, error) {
 			}
 			if isStructSlice(pass.TypesInfo.TypeOf(rng.X)) {
 				pass.Reportf(rng.X.Pos(),
-					"%s: итерация по слайсу структур — используйте gdhelper.AllPtr (%s)",
+					"%s: ranging over a slice of structs copies each element. "+
+						"Fix: range over gdhelper.AllPtr(items) (%s) to iterate pointers.",
 					ruleID, helperPkg)
 			}
 			return true
