@@ -63,6 +63,7 @@ linters:
     # --- слой 3, добавлено к базе (GID-208, обоснование — STYLEGUIDE_COVERAGE.md) ---
     - musttag        # GID-208: теги у marshaled-структур
     - perfsprint     # GID-208: strconv vs fmt, конкатенация vs Sprintf
+    - depguard       # GID-137: баны библиотек по import-пути (uuid-форки, см. settings)
     # --- Слой 2: собственные go/analysis правила ---
     - gidnogetprefix   # GID-101
     - gidnobatch       # GID-102
@@ -151,7 +152,6 @@ linters:
     - containedctx    # GID-208: context не хранится в структуре
     - cyclop
     - decorder
-    - depguard
     - dogsled
     - exhaustive
     - exhaustruct
@@ -202,6 +202,25 @@ linters:
     goconst:
       min-len: 2
       min-occurrences: 2
+    # depguard — только модуленезависимые баны библиотек (полный import-путь).
+    # Запреты между слоями здесь не выражаются: deny — префиксный матчинг,
+    # потребовал бы хардкода module path в каждом сервисе. Направление
+    # слоёв закрывает gidlayerimports (GID-132/170/172/224…229).
+    depguard:
+      rules:
+        uuid:
+          files: ["$all"]
+          deny:
+            - pkg: github.com/google/uuid
+              desc: 'GID-137: для UUID разрешена только github.com/gofrs/uuid'
+            - pkg: github.com/satori/go.uuid
+              desc: 'GID-137: для UUID разрешена только github.com/gofrs/uuid'
+            - pkg: github.com/pborman/uuid
+              desc: 'GID-137: для UUID разрешена только github.com/gofrs/uuid'
+            - pkg: github.com/hashicorp/go-uuid
+              desc: 'GID-137: для UUID разрешена только github.com/gofrs/uuid'
+            - pkg: github.com/twinj/uuid
+              desc: 'GID-137: для UUID разрешена только github.com/gofrs/uuid'
     staticcheck:
       # GID-206: включаем и стилевые ST-чеки, выключенные по умолчанию
       # (ST1003 initialisms, ST1016 ресивер). ST1000 гасится в exclusions.
@@ -286,8 +305,17 @@ linters:
         original-url: github.com/slipros/gid-data-golang-eval
       gidlayerimports:
         type: module
-        description: 'GID-132/170/172: направление зависимостей между слоями (dal/domain/event/client)'
+        description: 'GID-132/170/172/224…229: матрица изоляции слоёв (dal/domain/server/schedule/validate/event/client/metric/app)'
         original-url: github.com/slipros/gid-data-golang-eval
+        # Ослабление встроенной матрицы и свои правила:
+        # settings:
+        #   disable:           # GID-ID, которые проект осознанно отключает
+        #     - GID-224        #   (например, на переходный период)
+        #   rules:             # свои правила поверх матрицы
+        #     - id: SVC-1
+        #       scope: domain/service
+        #       banned: [legacy]
+        #       reason: 'пакет legacy выпиливается — новые зависимости запрещены'
       gidservicemodel:
         type: module
         description: 'GID-151: API сервиса принимает и возвращает model, не entity'
