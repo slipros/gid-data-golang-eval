@@ -35,8 +35,8 @@ const ruleID = "GID-212"
 // Analyzer — правило GID-212: контракт build-функций репозитория.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidbuildsig",
-	Doc: ruleID + ": build-функции возвращают (string, []any, error) или (*batch.Batch, error); " +
-		"squirrel только в /dal/repository/build",
+	Doc: ruleID + ": build functions return (string, []any, error) or (*batch.Batch, error); " +
+		"squirrel only in /dal/repository/build",
 	Run: run,
 }
 
@@ -65,7 +65,7 @@ func run(pass *analysis.Pass) (any, error) {
 func checkSquirrelImports(pass *analysis.Pass, file *ast.File) {
 	const (
 		squirrelPkg = "github.com/Masterminds/squirrel"
-		msgSquirrel = ruleID + ": squirrel используется только в build-пакетах репозитория (/dal/repository/build)"
+		msgSquirrel = ruleID + ": squirrel is allowed only in repository build packages (/dal/repository/build). Fix: move squirrel usage into /dal/repository/build"
 	)
 	for _, imp := range file.Imports {
 		path, err := strconv.Unquote(imp.Path.Value)
@@ -101,7 +101,7 @@ func checkBuildSignatures(pass *analysis.Pass, file *ast.File) {
 			continue
 		}
 		const msgSignature = ruleID +
-			": build-функция возвращает (sql string, args []any, err error) или (*batch.Batch, error)"
+			": a build function must return (sql string, args []any, err error) or (*batch.Batch, error). Fix: adjust the signature"
 		pass.Reportf(fn.Name.Pos(), msgSignature)
 	}
 }

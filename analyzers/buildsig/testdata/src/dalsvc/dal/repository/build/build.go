@@ -27,12 +27,12 @@ func buildSquirrel() (string, []any, error) {
 // --- Позитивный класс: нарушение контракта сигнатуры ловится ---
 
 // Возвращает (string, error) — не соответствует ни одному контракту.
-func BuildBad(status string) (string, error) { // want `GID-212: build-функция возвращает \(sql string, args \[\]any, err error\) или \(\*batch\.Batch, error\)`
+func BuildBad(status string) (string, error) { // want `GID-212: a build function must return \(sql string, args \[\]any, err error\) or \(\*batch\.Batch, error\)\. Fix: adjust the signature`
 	return "", nil
 }
 
 // Возвращает *squirrel.SelectBuilder — билдер не разрешён как результат.
-func BuildBuilder() *squirrel.SelectBuilder { // want `GID-212: build-функция возвращает \(sql string, args \[\]any, err error\) или \(\*batch\.Batch, error\)`
+func BuildBuilder() *squirrel.SelectBuilder { // want `GID-212: a build function must return \(sql string, args \[\]any, err error\) or \(\*batch\.Batch, error\)\. Fix: adjust the signature`
 	b := squirrel.Select("id")
 	return &b
 }
@@ -40,7 +40,7 @@ func BuildBuilder() *squirrel.SelectBuilder { // want `GID-212: build-функц
 // --- Граничный класс ---
 
 // Функция без результатов — нарушение (пустой список результатов).
-func BuildVoid() { // want `GID-212: build-функция возвращает \(sql string, args \[\]any, err error\) или \(\*batch\.Batch, error\)`
+func BuildVoid() { // want `GID-212: a build function must return \(sql string, args \[\]any, err error\) or \(\*batch\.Batch, error\)\. Fix: adjust the signature`
 }
 
 // Неэкспортируемый хелпер с другой сигнатурой — не флагается.

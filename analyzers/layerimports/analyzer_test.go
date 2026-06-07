@@ -31,7 +31,7 @@ func TestAnalyzerSettings(t *testing.T) {
 			ID:     "SVC-1",
 			Scope:  "domain/service",
 			Banned: []string{"legacy"},
-			Reason: "пакет legacy выпиливается",
+			Reason: "the legacy package is being removed",
 		}},
 	})
 	analysistest.Run(t, analysistest.TestData(), a, "custom/...")

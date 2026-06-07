@@ -2,10 +2,10 @@
 package notifier
 
 import (
-	"svc/app"               // want `GID-225: пакету "svc/domain/notifier" запрещён импорт "svc/app" — composition root и транспорт — листья: их никто не импортирует`
+	"svc/app"               // want `GID-225: package "svc/domain/notifier" must not import "svc/app"\. Fix: the composition root and transport are leaves; nobody imports them`
 	"svc/domain/model"
-	"svc/event/dto"         // want `GID-170: пакету "svc/domain/notifier" запрещён импорт "svc/event/dto" — domain не зависит от event-слоя: event конвертирует model <-> DTO, не наоборот`
-	"svc/server/middleware" // want `GID-225: пакету "svc/domain/notifier" запрещён импорт "svc/server/middleware" — composition root и транспорт — листья: их никто не импортирует`
+	"svc/event/dto"         // want `GID-170: package "svc/domain/notifier" must not import "svc/event/dto"\. Fix: domain does not depend on the event layer; event converts model <-> DTO, not the other way`
+	"svc/server/middleware" // want `GID-225: package "svc/domain/notifier" must not import "svc/server/middleware"\. Fix: the composition root and transport are leaves; nobody imports them`
 )
 
 type Snapshot struct{}

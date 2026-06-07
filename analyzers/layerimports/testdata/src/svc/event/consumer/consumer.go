@@ -3,9 +3,9 @@
 package consumer
 
 import (
-	"svc/dal/entity"     // want `GID-224: пакету "svc/event/consumer" запрещён импорт "svc/dal/entity" — транспорт работает только с domain/model: сервисы и зависимости инжектятся интерфейсами у потребителя`
+	"svc/dal/entity"     // want `GID-224: package "svc/event/consumer" must not import "svc/dal/entity"\. Fix: transport works only with domain/model; services and dependencies are injected as interfaces at the consumer`
 	"svc/domain/model"
-	"svc/domain/service" // want `GID-224: пакету "svc/event/consumer" запрещён импорт "svc/domain/service" — транспорт работает только с domain/model: сервисы и зависимости инжектятся интерфейсами у потребителя`
+	"svc/domain/service" // want `GID-224: package "svc/event/consumer" must not import "svc/domain/service"\. Fix: transport works only with domain/model; services and dependencies are injected as interfaces at the consumer`
 	"svc/event/dto"
 )
 

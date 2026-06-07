@@ -40,8 +40,8 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 	}
 	return &analysis.Analyzer{
 		Name: "gidutilpkg",
-		Doc: ruleID + ": запрет пакетов-свалок (util, utils, common, helper, …) — " +
-			"называйте пакет по тому, что он предоставляет",
+		Doc: ruleID + ": forbid junk-drawer packages (util, utils, common, helper, …). " +
+			"Fix: name the package after what it provides",
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, blacklist)
 		},
@@ -77,7 +77,7 @@ func run(pass *analysis.Pass, blacklist map[string]struct{}) (any, error) {
 			continue
 		}
 		pass.Reportf(file.Name.Pos(),
-			"%s: пакет %q — свалка без зоны ответственности; назовите пакет по тому, что он предоставляет",
+			"%s: package %q is a junk drawer with no responsibility. Fix: name the package after what it provides",
 			ruleID, pass.Pkg.Name())
 		return nil, nil
 	}

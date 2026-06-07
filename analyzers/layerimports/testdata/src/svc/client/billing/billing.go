@@ -5,7 +5,7 @@ package billing
 import (
 	"strconv"
 
-	"svc/domain/model" // want `GID-229: пакету "svc/client/billing" запрещён импорт "svc/domain/model" — у клиента свои типы: конвертация model <-> DTO клиента живёт у потребителя`
+	"svc/domain/model" // want `GID-229: package "svc/client/billing" must not import "svc/domain/model"\. Fix: the client has its own types; model <-> client DTO conversion lives at the consumer`
 )
 
 type Client struct{}

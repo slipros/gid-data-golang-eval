@@ -51,7 +51,7 @@ type Settings struct {
 func NewAnalyzer(cfg Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name: "gidvalidatorshape",
-		Doc:  ruleID + ": валидатор — struct с методом Validate(ctx context.Context, req *T) error",
+		Doc:  ruleID + ": a validator is a struct with a Validate(ctx context.Context, req *T) error method. Fix: add that method",
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, cfg)
 		},
@@ -112,7 +112,7 @@ func checkValidator(pass *analysis.Pass, ts *ast.TypeSpec) {
 		return
 	}
 	pass.Reportf(ts.Name.Pos(),
-		"%s: валидатор %q обязан иметь метод Validate(ctx context.Context, req *T) error",
+		"%s: validator %q must have a Validate(ctx context.Context, req *T) error method. Fix: add it",
 		ruleID, ts.Name.Name)
 }
 

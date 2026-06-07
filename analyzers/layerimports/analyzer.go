@@ -71,43 +71,43 @@ var layerRules = []layerRule{
 		id:     "GID-132",
 		scope:  []string{"dal"},
 		banned: [][]string{{"domain"}},
-		reason: "dal-слой работает только с entity, domain-типы ему недоступны",
+		reason: "the dal layer works only with entity, domain types are not available to it",
 	},
 	{
 		id:     "GID-132",
 		scope:  []string{"domain", "model"},
 		banned: [][]string{{"dal"}},
-		reason: "model не зависит от dal-слоя",
+		reason: "model does not depend on the dal layer",
 	},
 	{
 		id:     "GID-132",
 		scope:  []string{"domain", "usecase"},
 		banned: [][]string{{"dal"}},
-		reason: "usecase работает только с model, с DAL общается через сервисы",
+		reason: "usecase works only with model and talks to DAL through services",
 	},
 	{
 		id:     "GID-132",
 		scope:  []string{"domain", "service"},
 		banned: [][]string{{"dal", "repository"}},
-		reason: "сервис зависит от репозитория через интерфейс рядом с потребителем",
+		reason: "a service depends on the repository through an interface next to the consumer",
 	},
 	{
 		id:     "GID-170",
 		scope:  []string{"domain"},
 		banned: [][]string{{"event"}},
-		reason: "domain не зависит от event-слоя: event конвертирует model <-> DTO, не наоборот",
+		reason: "domain does not depend on the event layer; event converts model <-> DTO, not the other way",
 	},
 	{
 		id:     "GID-170",
 		scope:  []string{"dal"},
 		banned: [][]string{{"event"}},
-		reason: "dal не зависит от event-слоя: event конвертирует model <-> DTO, не наоборот",
+		reason: "dal does not depend on the event layer; event converts model <-> DTO, not the other way",
 	},
 	{
 		id:     "GID-172",
 		scope:  []string{"client"},
 		banned: [][]string{{"dal"}},
-		reason: "у клиента свои типы, он ничего не знает о entity/repository из dal-слоя",
+		reason: "the client has its own types and knows nothing about entity/repository from the dal layer",
 	},
 	// --- матрица изоляции слоёв (2026-06-07) ---
 	{
@@ -117,7 +117,7 @@ var layerRules = []layerRule{
 			{"domain", "service"}, {"domain", "usecase"},
 			{"client"}, {"metric"}, {"server"}, {"schedule"}, {"validate"},
 		},
-		reason: "domain/model — чистый словарь сервиса, слои в него не текут",
+		reason: "domain/model is the pure vocabulary of the service; layers do not flow into it",
 	},
 	{
 		id:    "GID-226",
@@ -126,7 +126,7 @@ var layerRules = []layerRule{
 			{"dal"}, {"domain"}, {"client"}, {"event"},
 			{"server"}, {"schedule"}, {"validate"},
 		},
-		reason: "пакет metric — самостоятельный агрегатор Prometheus, слои сервиса ему недоступны",
+		reason: "the metric package is a standalone Prometheus aggregator; service layers are not available to it",
 	},
 	{
 		id:    "GID-229",
@@ -135,7 +135,7 @@ var layerRules = []layerRule{
 			{"domain"}, {"event"}, {"metric"},
 			{"server"}, {"schedule"}, {"validate"},
 		},
-		reason: "у клиента свои типы: конвертация model <-> DTO клиента живёт у потребителя",
+		reason: "the client has its own types; model <-> client DTO conversion lives at the consumer",
 	},
 	{
 		id:    "GID-224",
@@ -144,7 +144,7 @@ var layerRules = []layerRule{
 			{"dal"}, {"domain", "service"}, {"domain", "usecase"},
 			{"client"}, {"metric"}, {"event"}, {"schedule"}, {"app"},
 		},
-		reason: "транспорт работает только с domain/model: сервисы и зависимости инжектятся интерфейсами у потребителя",
+		reason: "transport works only with domain/model; services and dependencies are injected as interfaces at the consumer",
 	},
 	{
 		id:    "GID-224",
@@ -153,7 +153,7 @@ var layerRules = []layerRule{
 			{"dal"}, {"domain", "service"}, {"domain", "usecase"},
 			{"client"}, {"metric"}, {"event"}, {"server"}, {"app"},
 		},
-		reason: "транспорт работает только с domain/model: сервисы и зависимости инжектятся интерфейсами у потребителя",
+		reason: "transport works only with domain/model; services and dependencies are injected as interfaces at the consumer",
 	},
 	{
 		id:    "GID-224",
@@ -162,7 +162,7 @@ var layerRules = []layerRule{
 			{"dal"}, {"domain", "service"}, {"domain", "usecase"},
 			{"client"}, {"metric"}, {"event"}, {"server"}, {"schedule"}, {"app"},
 		},
-		reason: "валидаторы работают только с domain/model и типами запросов",
+		reason: "validators work only with domain/model and request types",
 	},
 	{
 		id:    "GID-224",
@@ -171,55 +171,55 @@ var layerRules = []layerRule{
 			{"dal"}, {"domain", "service"}, {"domain", "usecase"},
 			{"client"}, {"metric"}, {"server"}, {"schedule"}, {"app"},
 		},
-		reason: "транспорт работает только с domain/model: сервисы и зависимости инжектятся интерфейсами у потребителя",
+		reason: "transport works only with domain/model; services and dependencies are injected as interfaces at the consumer",
 	},
 	{
 		id:     "GID-226",
 		scope:  []string{"domain"},
 		banned: [][]string{{"metric"}},
-		reason: "domain получает метрики интерфейсом — пакет metric wiring'ует app",
+		reason: "domain receives metrics through an interface; the metric package is wired in app",
 	},
 	{
 		id:     "GID-226",
 		scope:  []string{"dal"},
 		banned: [][]string{{"metric"}},
-		reason: "dal получает метрики интерфейсом — пакет metric wiring'ует app",
+		reason: "dal receives metrics through an interface; the metric package is wired in app",
 	},
 	{
 		id:     "GID-228",
 		scope:  []string{"domain"},
 		banned: [][]string{{"client"}},
-		reason: "service/usecase зависят от клиента через интерфейс в domain/model, см. GID-134",
+		reason: "service/usecase depend on the client through an interface in domain/model, see GID-134",
 	},
 	{
 		id:     "GID-228",
 		scope:  []string{"dal"},
 		banned: [][]string{{"client"}},
-		reason: "dal не вызывает внешние API напрямую — клиента wiring'ует app",
+		reason: "dal does not call external APIs directly; the client is wired in app",
 	},
 	{
 		id:     "GID-225",
 		scope:  []string{"domain"},
 		banned: [][]string{{"app"}, {"server"}, {"schedule"}, {"validate"}},
-		reason: "composition root и транспорт — листья: их никто не импортирует",
+		reason: "the composition root and transport are leaves; nobody imports them",
 	},
 	{
 		id:     "GID-225",
 		scope:  []string{"dal"},
 		banned: [][]string{{"app"}, {"server"}, {"schedule"}, {"validate"}},
-		reason: "composition root и транспорт — листья: их никто не импортирует",
+		reason: "the composition root and transport are leaves; nobody imports them",
 	},
 	{
 		id:     "GID-225",
 		scope:  []string{"client"},
 		banned: [][]string{{"app"}},
-		reason: "composition root и транспорт — листья: их никто не импортирует",
+		reason: "the composition root and transport are leaves; nobody imports them",
 	},
 	{
 		id:     "GID-225",
 		scope:  []string{"metric"},
 		banned: [][]string{{"app"}},
-		reason: "composition root и транспорт — листья: их никто не импортирует",
+		reason: "the composition root and transport are leaves; nobody imports them",
 	},
 }
 
@@ -250,8 +250,8 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 	rules := effectiveRules(s)
 	return &analysis.Analyzer{
 		Name: "gidlayerimports",
-		Doc: "GID-132/GID-170/GID-172/GID-224…229: направление зависимостей " +
-			"между слоями (матрица изоляции: dal/domain/server/schedule/" +
+		Doc: "GID-132/GID-170/GID-172/GID-224…229: dependency direction " +
+			"between layers (isolation matrix: dal/domain/server/schedule/" +
 			"validate/event/client/metric/app)",
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, rules)
@@ -358,7 +358,7 @@ func reportFirstMatch(pass *analysis.Pass, rules []layerRule, imp *ast.ImportSpe
 				continue
 			}
 			pass.Reportf(imp.Pos(),
-				"%s: пакету %q запрещён импорт %q — %s",
+				"%s: package %q must not import %q. Fix: %s",
 				rule.id, pass.Pkg.Path(), path, rule.reason)
 			return
 		}

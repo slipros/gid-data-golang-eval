@@ -3,7 +3,7 @@
 package validate
 
 import (
-	"svc/dal/entity" // want `GID-224: пакету "svc/validate" запрещён импорт "svc/dal/entity" — валидаторы работают только с domain/model и типами запросов`
+	"svc/dal/entity" // want `GID-224: package "svc/validate" must not import "svc/dal/entity"\. Fix: validators work only with domain/model and request types`
 
 	"svc/domain/model"
 )

@@ -3,7 +3,7 @@ package outbox
 
 import (
 	"svc/dal/entity"
-	"svc/event/dto" // want `GID-170: пакету "svc/dal/outbox" запрещён импорт "svc/event/dto" — dal не зависит от event-слоя: event конвертирует model <-> DTO, не наоборот`
+	"svc/event/dto" // want `GID-170: package "svc/dal/outbox" must not import "svc/event/dto"\. Fix: dal does not depend on the event layer; event converts model <-> DTO, not the other way`
 )
 
 type Snapshot struct{}

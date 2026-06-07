@@ -2,10 +2,10 @@
 package repository
 
 import (
-	"svc/client/billing" // want `GID-228: пакету "svc/dal/repository" запрещён импорт "svc/client/billing" — dal не вызывает внешние API напрямую — клиента wiring'ует app`
+	"svc/client/billing" // want `GID-228: package "svc/dal/repository" must not import "svc/client/billing"\. Fix: dal does not call external APIs directly; the client is wired in app`
 	"svc/dal/entity"
 
-	"svc/domain/model" // want `GID-132: пакету "svc/dal/repository" запрещён импорт "svc/domain/model" — dal-слой работает только с entity, domain-типы ему недоступны`
+	"svc/domain/model" // want `GID-132: package "svc/dal/repository" must not import "svc/domain/model"\. Fix: the dal layer works only with entity, domain types are not available to it`
 )
 
 type Snapshot struct{}

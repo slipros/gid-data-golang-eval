@@ -2,8 +2,8 @@
 package usecase
 
 import (
-	"svc/dal/entity"     // want `GID-132: пакету "svc/domain/usecase" запрещён импорт "svc/dal/entity" — usecase работает только с model, с DAL общается через сервисы`
-	"svc/dal/repository" // want `GID-132: пакету "svc/domain/usecase" запрещён импорт "svc/dal/repository" — usecase работает только с model, с DAL общается через сервисы`
+	"svc/dal/entity"     // want `GID-132: package "svc/domain/usecase" must not import "svc/dal/entity"\. Fix: usecase works only with model and talks to DAL through services`
+	"svc/dal/repository" // want `GID-132: package "svc/domain/usecase" must not import "svc/dal/repository"\. Fix: usecase works only with model and talks to DAL through services`
 
 	"svc/domain/model"
 	"svc/domain/model/filter"

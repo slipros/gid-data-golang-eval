@@ -4,7 +4,7 @@ package sync
 
 import (
 	"svc/domain/model"
-	"svc/domain/service" // want `GID-224: пакету "svc/schedule/sync" запрещён импорт "svc/domain/service" — транспорт работает только с domain/model: сервисы и зависимости инжектятся интерфейсами у потребителя`
+	"svc/domain/service" // want `GID-224: package "svc/schedule/sync" must not import "svc/domain/service"\. Fix: transport works only with domain/model; services and dependencies are injected as interfaces at the consumer`
 )
 
 type Job struct {

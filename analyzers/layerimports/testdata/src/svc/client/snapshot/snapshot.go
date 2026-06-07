@@ -2,10 +2,10 @@
 package snapshot
 
 import (
-	"svc/dal/entity"     // want `GID-172: пакету "svc/client/snapshot" запрещён импорт "svc/dal/entity" — у клиента свои типы, он ничего не знает о entity/repository из dal-слоя`
-	"svc/dal/repository" // want `GID-172: пакету "svc/client/snapshot" запрещён импорт "svc/dal/repository" — у клиента свои типы, он ничего не знает о entity/repository из dal-слоя`
+	"svc/dal/entity"     // want `GID-172: package "svc/client/snapshot" must not import "svc/dal/entity"\. Fix: the client has its own types and knows nothing about entity/repository from the dal layer`
+	"svc/dal/repository" // want `GID-172: package "svc/client/snapshot" must not import "svc/dal/repository"\. Fix: the client has its own types and knows nothing about entity/repository from the dal layer`
 
-	"svc/domain/model" // want `GID-229: пакету "svc/client/snapshot" запрещён импорт "svc/domain/model" — у клиента свои типы: конвертация model <-> DTO клиента живёт у потребителя`
+	"svc/domain/model" // want `GID-229: package "svc/client/snapshot" must not import "svc/domain/model"\. Fix: the client has its own types; model <-> client DTO conversion lives at the consumer`
 )
 
 type Client struct {

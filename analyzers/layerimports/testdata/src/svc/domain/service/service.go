@@ -3,10 +3,10 @@
 package service
 
 import (
-	"svc/client/billing" // want `GID-228: пакету "svc/domain/service" запрещён импорт "svc/client/billing" — service/usecase зависят от клиента через интерфейс в domain/model, см. GID-134`
+	"svc/client/billing" // want `GID-228: package "svc/domain/service" must not import "svc/client/billing"\. Fix: service/usecase depend on the client through an interface in domain/model, see GID-134`
 	"svc/dal/entity"
-	"svc/dal/repository" // want `GID-132: пакету "svc/domain/service" запрещён импорт "svc/dal/repository" — сервис зависит от репозитория через интерфейс рядом с потребителем`
-	"svc/metric"         // want `GID-226: пакету "svc/domain/service" запрещён импорт "svc/metric" — domain получает метрики интерфейсом — пакет metric wiring'ует app`
+	"svc/dal/repository" // want `GID-132: package "svc/domain/service" must not import "svc/dal/repository"\. Fix: a service depends on the repository through an interface next to the consumer`
+	"svc/metric"         // want `GID-226: package "svc/domain/service" must not import "svc/metric"\. Fix: domain receives metrics through an interface; the metric package is wired in app`
 
 	"svc/domain/model"
 )

@@ -49,7 +49,7 @@ type Settings struct {
 func NewAnalyzer(s Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name: "gidvalidator",
-		Doc:  ruleID + ": входящие данные валидируются через " + validatorLib,
+		Doc:  ruleID + ": incoming data is validated via " + validatorLib,
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, s)
 		},
@@ -78,7 +78,7 @@ func checkForeignValidators(pass *analysis.Pass) {
 			for _, lib := range foreignValidators {
 				if path == lib || strings.HasPrefix(path, lib+"/") {
 					pass.Reportf(imp.Pos(),
-						"%s: сторонняя валидационная библиотека %q запрещена — используйте %s",
+						"%s: third-party validation library %q is forbidden. Fix: use %s",
 						ruleID, path, validatorLib)
 				}
 			}
@@ -104,7 +104,7 @@ func checkValidatorUsed(pass *analysis.Pass) {
 			continue
 		}
 		pass.Reportf(file.Name.Pos(),
-			"%s: validate-пакет %q обязан использовать %s (исключения: nolint или settings.exclude)",
+			"%s: validate package %q must use %s. Fix: import it (exceptions: nolint or settings.exclude)",
 			ruleID, pass.Pkg.Path(), validatorLib)
 		return // одной диагностики на пакет достаточно
 	}

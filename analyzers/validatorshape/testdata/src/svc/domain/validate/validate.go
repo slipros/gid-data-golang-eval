@@ -12,15 +12,15 @@ type jobOpt struct{}
 // --- Позитивный класс: нарушения ---
 
 // Нет метода Validate вовсе.
-type CreateJob struct{} // want `GID-213: валидатор "CreateJob" обязан иметь метод Validate\(ctx context.Context, req \*T\) error`
+type CreateJob struct{} // want `GID-213: validator "CreateJob" must have a Validate\(ctx context.Context, req \*T\) error method\. Fix: add it`
 
 // Validate без ctx первым параметром.
-type UpdateJob struct{} // want `GID-213: валидатор "UpdateJob" обязан иметь метод Validate\(ctx context.Context, req \*T\) error`
+type UpdateJob struct{} // want `GID-213: validator "UpdateJob" must have a Validate\(ctx context.Context, req \*T\) error method\. Fix: add it`
 
 func (v *UpdateJob) Validate(req *jobReq) error { return nil }
 
 // Validate возвращает (bool, error), а не один error.
-type DeleteJob struct{} // want `GID-213: валидатор "DeleteJob" обязан иметь метод Validate\(ctx context.Context, req \*T\) error`
+type DeleteJob struct{} // want `GID-213: validator "DeleteJob" must have a Validate\(ctx context.Context, req \*T\) error method\. Fix: add it`
 
 func (v *DeleteJob) Validate(ctx context.Context, req *jobReq) (bool, error) { return false, nil }
 

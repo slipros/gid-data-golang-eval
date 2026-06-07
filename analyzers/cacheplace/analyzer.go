@@ -52,7 +52,7 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 	}
 	return &analysis.Analyzer{
 		Name: "gidcacheplace",
-		Doc:  ruleID + ": кэш живёт в repository-декораторе — domain-слой про кэш не знает",
+		Doc:  ruleID + ": caching lives in a repository decorator; the domain layer knows nothing about cache. Fix: wrap caching in /dal/repository",
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, pkgs)
 		},
@@ -76,8 +76,8 @@ func run(pass *analysis.Pass, cachePkgs []string) (any, error) {
 				continue
 			}
 			pass.Reportf(imp.Pos(),
-				"%s: импорт кэш-библиотеки %q в domain-слое запрещён — кэш оформляется "+
-					"кэширующим репозиторием в /dal/repository, оборачивающим основной",
+				"%s: importing the cache library %q in the domain layer is forbidden. Fix: implement caching "+
+					"as a caching repository in /dal/repository that wraps the main one",
 				ruleID, path)
 		}
 	}

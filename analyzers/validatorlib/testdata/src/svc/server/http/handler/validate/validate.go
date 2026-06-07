@@ -1,5 +1,5 @@
 // Позитив: validate-пакет с ручной валидацией без validator.go.
-package validate // want `GID-164: validate-пакет "svc/server/http/handler/validate" обязан использовать github\.com/raoptimus/validator\.go/v2 \(исключения: nolint или settings\.exclude\)`
+package validate // want `GID-164: validate package "svc/server/http/handler/validate" must use github\.com/raoptimus/validator\.go/v2\. Fix: import it \(exceptions: nolint or settings\.exclude\)`
 
 import "strings"
 

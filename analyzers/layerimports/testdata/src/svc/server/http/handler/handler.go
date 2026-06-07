@@ -3,9 +3,9 @@
 package handler
 
 import (
-	"svc/dal/repository" // want `GID-224: пакету "svc/server/http/handler" запрещён импорт "svc/dal/repository" — транспорт работает только с domain/model: сервисы и зависимости инжектятся интерфейсами у потребителя`
+	"svc/dal/repository" // want `GID-224: package "svc/server/http/handler" must not import "svc/dal/repository"\. Fix: transport works only with domain/model; services and dependencies are injected as interfaces at the consumer`
 	"svc/domain/model"
-	"svc/domain/service" // want `GID-224: пакету "svc/server/http/handler" запрещён импорт "svc/domain/service" — транспорт работает только с domain/model: сервисы и зависимости инжектятся интерфейсами у потребителя`
+	"svc/domain/service" // want `GID-224: package "svc/server/http/handler" must not import "svc/domain/service"\. Fix: transport works only with domain/model; services and dependencies are injected as interfaces at the consumer`
 	"svc/validate"
 )
 

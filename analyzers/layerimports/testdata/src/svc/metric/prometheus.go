@@ -2,7 +2,7 @@
 // агрегатор Prometheus самостоятелен.
 package metric
 
-import "svc/domain/model" // want `GID-226: пакету "svc/metric" запрещён импорт "svc/domain/model" — пакет metric — самостоятельный агрегатор Prometheus, слои сервиса ему недоступны`
+import "svc/domain/model" // want `GID-226: package "svc/metric" must not import "svc/domain/model"\. Fix: the metric package is a standalone Prometheus aggregator; service layers are not available to it`
 
 type Prometheus struct{}
 

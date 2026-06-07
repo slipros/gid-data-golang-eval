@@ -1,3 +1,3 @@
-package util // want `GID-187: пакет "util" — свалка без зоны ответственности; назовите пакет по тому, что он предоставляет`
+package util // want `GID-187: package "util" is a junk drawer with no responsibility\. Fix: name the package after what it provides`
 
 func Noop() {}

@@ -3,7 +3,7 @@
 package repository
 
 import (
-	"github.com/Masterminds/squirrel" // want `GID-212: squirrel используется только в build-пакетах репозитория \(/dal/repository/build\)`
+	"github.com/Masterminds/squirrel" // want `GID-212: squirrel is allowed only in repository build packages \(/dal/repository/build\)\. Fix: move squirrel usage into /dal/repository/build`
 )
 
 // --- Класс неприменимости: проверка сигнатуры не действует вне build ---

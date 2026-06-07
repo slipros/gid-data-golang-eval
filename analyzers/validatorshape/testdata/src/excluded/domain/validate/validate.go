@@ -15,4 +15,4 @@ func (v *Ping) Validate(ctx context.Context, req *jobReq) error { return nil }
 
 // Не в exclude и без корректного Validate — флагается, проверяет, что
 // исключение не глушит весь пакет.
-type Echo struct{} // want `GID-213: валидатор "Echo" обязан иметь метод Validate\(ctx context.Context, req \*T\) error`
+type Echo struct{} // want `GID-213: validator "Echo" must have a Validate\(ctx context.Context, req \*T\) error method\. Fix: add it`
