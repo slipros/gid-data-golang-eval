@@ -1,8 +1,16 @@
-.PHONY: build eval lint lint-fast install-hook clean
+.PHONY: build build-install install eval lint lint-fast install-hook clean
 
 ## build: собрать кастомный бинарь custom-gcl (требует golangci-lint v2.9.0)
 build:
 	golangci-lint custom
+
+## build-install: собрать бинарь напрямую через go build (без golangci-lint custom)
+build-install:
+	go build -o ./bin/custom-gcl ./cmd/custom-gcl
+
+## install: поставить custom-gcl в $GOBIN через go install (для всех проектов)
+install:
+	go install ./cmd/custom-gcl
 
 ## eval: прогнать eval всех правил (analysistest + testdata)
 eval:
