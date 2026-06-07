@@ -5,7 +5,7 @@ import "context"
 
 // --- Позитивный кейс: голая роль ---
 
-type Connection interface { // want `GID-173: интерфейс "Connection" именуется с префиксом сущности \(например, HelloRepository\)`
+type Connection interface { // want `GID-173: interface "Connection" must be named with an entity prefix\. Fix: e\.g\. HelloRepository`
 	Ping(ctx context.Context) error
 }
 

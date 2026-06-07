@@ -8,18 +8,18 @@ import (
 
 // Позитив: запуск горутины прямо в init.
 func init() {
-	go func() {} () // want `GID-180: goroutine в init\(\) запрещена`
+	go func() {} () // want `GID-180: a goroutine in init\(\) is forbidden`
 }
 
 // Позитив: I/O-вызов os.Open в init.
 func init() {
-	f, _ := os.Open("/etc/hosts") // want `GID-180: I/O-вызов os\.Open в init\(\) запрещён`
+	f, _ := os.Open("/etc/hosts") // want `GID-180: an I/O call os\.Open in init\(\) is forbidden`
 	_ = f
 }
 
 // Позитив: I/O-вызов sql.Open в init.
 func init() {
-	db, _ := sql.Open("postgres", "") // want `GID-180: I/O-вызов database/sql\.Open в init\(\) запрещён`
+	db, _ := sql.Open("postgres", "") // want `GID-180: an I/O call database/sql\.Open in init\(\) is forbidden`
 	_ = db
 }
 
@@ -27,7 +27,7 @@ func init() {
 // так как тело замыкания обходится как часть init.
 func init() {
 	fn := func() {
-		_, _ = os.Open("/tmp/x") // want `GID-180: I/O-вызов os\.Open в init\(\) запрещён`
+		_, _ = os.Open("/tmp/x") // want `GID-180: an I/O call os\.Open in init\(\) is forbidden`
 	}
 	fn()
 }
@@ -35,6 +35,6 @@ func init() {
 // Граничный: горутина во вложенном блоке init — матчится.
 func init() {
 	{
-		go func() {}() // want `GID-180: goroutine в init\(\) запрещена`
+		go func() {}() // want `GID-180: a goroutine in init\(\) is forbidden`
 	}
 }

@@ -13,10 +13,10 @@ import (
 
 const ruleID = "GID-154"
 
-// Analyzer — правило GID-154: конструктор сущности с logger обязан вызывать WithField.
+// Analyzer — правило GID-154: an entity constructor with a logger must call WithField. Fix: call logger.WithField(<entity>, <name>).
 var Analyzer = &analysis.Analyzer{
 	Name: "gidlogconstruct",
-	Doc:  ruleID + ": конструктор сущности с logger обязан вызывать WithField",
+	Doc:  ruleID + ": an entity constructor with a logger must call WithField. Fix: call logger.WithField(<entity>, <name>)",
 	Run:  run,
 }
 
@@ -40,7 +40,7 @@ func run(pass *analysis.Pass) (any, error) {
 			}
 			if !callsWithField(pass, fn.Body) {
 				pass.Reportf(fn.Name.Pos(),
-					"%s: сущность %q содержит logger — конструктор %q обязан вызвать logger.WithField(<entity>, <name>)",
+					"%s: entity %q has a logger. Fix: constructor %q must call logger.WithField(<entity>, <name>)",
 					ruleID, entity, fn.Name.Name)
 			}
 		}

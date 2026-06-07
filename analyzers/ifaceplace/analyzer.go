@@ -39,11 +39,11 @@ var layerSegments = []string{
 	"dal", "domain", "client", "server", "event", "app", "metric",
 }
 
-// Analyzer — правило GID-134: интерфейсы живут там, где используются — .
+// Analyzer — правило GID-134: interfaces live where they are used; .
 var Analyzer = &analysis.Analyzer{
 	Name: "gidifaceplace",
-	Doc: ruleID + ": интерфейсы живут там, где используются — " +
-		"определяйте интерфейс рядом с потребителем (исключения: библиотеки и /domain/model для service/usecase)",
+	Doc: ruleID + ": interfaces live where they are used; " +
+		"define the interface next to its consumer (exceptions: libraries and /domain/model for service/usecase)",
 	Run: run,
 }
 
@@ -142,8 +142,8 @@ func checkExpr(pass *analysis.Pass, consumer *types.Package, expr ast.Expr) {
 	}
 	// Чужой «свой» пакет (или model-слой у не service/usecase) — нарушение.
 	pass.Reportf(expr.Pos(),
-		"%s: интерфейс %s объявлен в %s — определите интерфейс рядом с потребителем "+
-			"(исключения: библиотеки и /domain/model для service/usecase)",
+		"%s: interface %s is declared in %s. Fix: define the interface next to its consumer "+
+			"(exceptions: libraries and /domain/model for service/usecase)",
 		ruleID, obj.Name(), declPath)
 }
 

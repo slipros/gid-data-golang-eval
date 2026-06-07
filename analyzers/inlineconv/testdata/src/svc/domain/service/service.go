@@ -10,19 +10,19 @@ import (
 // --- Класс 1: позитивный (инлайн-заполнение entity запрещено) ---
 
 func createSnapshot(name string) entity.CreateSnapshot {
-	return entity.CreateSnapshot{Name: name} // want `GID-215: инлайн-заполнение entity-типа entity\.CreateSnapshot в domain-слое запрещено — конвертация живёт в convert-пакете \(<Dst><Type>From<Src>\)`
+	return entity.CreateSnapshot{Name: name} // want `GID-215: inline-filling the entity type entity\.CreateSnapshot in the domain layer is forbidden\. Fix: put conversion in a convert package \(<Dst><Type>From<Src>\)`
 }
 
 func snapshotPtr(id string) *entity.Snapshot {
-	return &entity.Snapshot{ID: id} // want `GID-215: инлайн-заполнение entity-типа entity\.Snapshot в domain-слое запрещено`
+	return &entity.Snapshot{ID: id} // want `GID-215: inline-filling the entity type entity\.Snapshot in the domain layer is forbidden`
 }
 
 func snapshotSlice() entity.Snapshots {
-	return entity.Snapshots{{ID: "a"}, {ID: "b"}} // want `GID-215: инлайн-заполнение entity-типа entity\.Snapshots в domain-слое запрещено`
+	return entity.Snapshots{{ID: "a"}, {ID: "b"}} // want `GID-215: inline-filling the entity type entity\.Snapshots in the domain layer is forbidden`
 }
 
 func snapshotsFilter(name string) filter.Snapshots {
-	return filter.Snapshots{Name: name, Limit: 10} // want `GID-215: инлайн-заполнение entity-типа filter\.Snapshots в domain-слое запрещено`
+	return filter.Snapshots{Name: name, Limit: 10} // want `GID-215: inline-filling the entity type filter\.Snapshots in the domain layer is forbidden`
 }
 
 // --- Класс 2: негативный (чистый код проходит) ---
@@ -43,7 +43,7 @@ func modelCreate(name string) model.CreateSnapshot {
 
 // Вложенный entity-литерал внутри зафлаганного внешнего — одна диагностика.
 func nestedSlice() entity.Snapshots {
-	return entity.Snapshots{ // want `GID-215: инлайн-заполнение entity-типа entity\.Snapshots в domain-слое запрещено`
+	return entity.Snapshots{ // want `GID-215: inline-filling the entity type entity\.Snapshots in the domain layer is forbidden`
 		entity.Snapshot{ID: "a"},
 		entity.Snapshot{ID: "b"},
 	}
@@ -54,12 +54,12 @@ func nestedSlice() entity.Snapshots {
 // ({ID: id}) тоже имеет тип entity.Snapshot и флагается как непустой литерал.
 func snapshotMap(id string) map[string]entity.Snapshot {
 	return map[string]entity.Snapshot{
-		id: {ID: id}, // want `GID-215: инлайн-заполнение entity-типа entity\.Snapshot в domain-слое запрещено`
+		id: {ID: id}, // want `GID-215: inline-filling the entity type entity\.Snapshot in the domain layer is forbidden`
 	}
 }
 
 func snapshotMapExplicit(id string) map[string]entity.Snapshot {
 	return map[string]entity.Snapshot{
-		id: entity.Snapshot{ID: id}, // want `GID-215: инлайн-заполнение entity-типа entity\.Snapshot в domain-слое запрещено`
+		id: entity.Snapshot{ID: id}, // want `GID-215: inline-filling the entity type entity\.Snapshot in the domain layer is forbidden`
 	}
 }

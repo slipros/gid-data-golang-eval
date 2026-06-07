@@ -15,7 +15,7 @@ type JobUsecase struct {
 
 // --- Проверка 3 (позитив): анонимная generic-tx-сигнатура в параметре функции ---
 
-func WithTx(run func(ctx context.Context, fn func(ctx context.Context) (string, error)) (string, error)) { // want `GID-175: используйте именованный тип model.InTransactionFunc`
+func WithTx(run func(ctx context.Context, fn func(ctx context.Context) (string, error)) (string, error)) { // want `GID-175: use the named type model.InTransactionFunc\. Fix: replace the anonymous signature`
 	_ = run
 }
 

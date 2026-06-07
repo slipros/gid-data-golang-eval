@@ -39,7 +39,7 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 	}
 	return &analysis.Analyzer{
 		Name: "gidifacenaming",
-		Doc:  ruleID + ": интерфейсы зависимостей именуются с префиксом сущности (например, HelloRepository)",
+		Doc:  ruleID + ": dependency interfaces are named with an entity prefix (e.g. HelloRepository). Fix: prefix the interface with the entity name",
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, roles)
 		},
@@ -88,7 +88,7 @@ func run(pass *analysis.Pass, roles map[string]struct{}) (any, error) {
 					continue // имя не совпадает с голой ролью точно
 				}
 				pass.Reportf(ts.Name.Pos(),
-					"%s: интерфейс %q именуется с префиксом сущности (например, HelloRepository)",
+					"%s: interface %q must be named with an entity prefix. Fix: e.g. HelloRepository",
 					ruleID, ts.Name.Name)
 			}
 		}

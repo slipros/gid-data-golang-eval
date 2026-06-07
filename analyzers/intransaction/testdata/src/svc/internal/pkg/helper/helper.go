@@ -7,11 +7,11 @@ import "context"
 
 // --- Проверка 1 (позитив): именованный tx-тип объявлен вне /domain/model ---
 
-type Tx func(ctx context.Context, fn func(ctx context.Context) error) error // want `GID-175: тип транзакции живёт в /domain/model \(InTransactionFunc\)`
+type Tx func(ctx context.Context, fn func(ctx context.Context) error) error // want `GID-175: the transaction type must live in /domain/model \(InTransactionFunc\)\. Fix: move it there`
 
 // --- Проверка 1 (позитив): generic-вариант вне model ---
 
-type TxR[T any] func(ctx context.Context, fn func(ctx context.Context) (T, error)) (T, error) // want `GID-175: тип транзакции живёт в /domain/model \(InTransactionFunc\)`
+type TxR[T any] func(ctx context.Context, fn func(ctx context.Context) (T, error)) (T, error) // want `GID-175: the transaction type must live in /domain/model \(InTransactionFunc\)\. Fix: move it there`
 
 // Граничный кейс: похожая, но другая сигнатура (без ctx) — не флагуем.
 type NotTx func(fn func(ctx context.Context) error) error

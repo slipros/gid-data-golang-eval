@@ -5,7 +5,7 @@ import "context"
 
 // --- Позитивный кейс: голая роль ---
 
-type Repository interface { // want `GID-173: интерфейс "Repository" именуется с префиксом сущности \(например, HelloRepository\)`
+type Repository interface { // want `GID-173: interface "Repository" must be named with an entity prefix\. Fix: e\.g\. HelloRepository`
 	Hello(ctx context.Context) error
 }
 

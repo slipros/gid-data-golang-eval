@@ -20,18 +20,18 @@ func NewJobService(tx model.InTransactionFunc) *JobService {
 // --- Проверка 3 (позитив): анонимная tx-сигнатура в поле структуры ---
 
 type BadService struct {
-	tx func(ctx context.Context, fn func(ctx context.Context) error) error // want `GID-175: используйте именованный тип model.InTransactionFunc`
+	tx func(ctx context.Context, fn func(ctx context.Context) error) error // want `GID-175: use the named type model.InTransactionFunc\. Fix: replace the anonymous signature`
 }
 
 // --- Проверка 3 (позитив): анонимная tx-сигнатура в параметре конструктора ---
 
-func NewBadService(tx func(ctx context.Context, fn func(ctx context.Context) error) error) *BadService { // want `GID-175: используйте именованный тип model.InTransactionFunc`
+func NewBadService(tx func(ctx context.Context, fn func(ctx context.Context) error) error) *BadService { // want `GID-175: use the named type model.InTransactionFunc\. Fix: replace the anonymous signature`
 	return &BadService{tx: tx}
 }
 
 // --- Проверка 4 (позитив): tx-метод на сервисе ---
 
-func (s *JobService) Transaction(ctx context.Context, fn func(ctx context.Context) error) error { // want `GID-175: репозиторий/сервис не оборачивает транзакцию методом`
+func (s *JobService) Transaction(ctx context.Context, fn func(ctx context.Context) error) error { // want `GID-175: a repository/service must not wrap a transaction in a method`
 	return s.tx(ctx, fn)
 }
 

@@ -46,7 +46,7 @@ const (
 // Analyzer — правило GID-175: типы транзакций (InTransactionFunc) живут в /domain/model.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidintransaction",
-	Doc:  ruleID + ": конвенция транзакций — InTransactionFunc живёт в /domain/model",
+	Doc:  ruleID + ": transaction convention; InTransactionFunc lives in /domain/model. Fix: declare it there",
 	Run:  run,
 }
 
@@ -110,7 +110,7 @@ func checkTypeDecls(pass *analysis.Pass, gd *ast.GenDecl, inModel bool) {
 		if !inModel {
 			// Проверка 1: tx-тип объявлен вне /domain/model.
 			pass.Reportf(ts.Name.Pos(),
-				"%s: тип транзакции живёт в /domain/model (InTransactionFunc)", ruleID)
+				"%s: the transaction type must live in /domain/model (InTransactionFunc). Fix: move it there", ruleID)
 			continue
 		}
 		// Проверка 2: в model имя обязано быть каноническим.
@@ -120,7 +120,7 @@ func checkTypeDecls(pass *analysis.Pass, gd *ast.GenDecl, inModel bool) {
 		}
 		if ts.Name.Name != want {
 			pass.Reportf(ts.Name.Pos(),
-				"%s: тип транзакции называется InTransactionFunc / InTransactionWithReturnFunc", ruleID)
+				"%s: the transaction type must be named InTransactionFunc / InTransactionWithReturnFunc. Fix: rename it", ruleID)
 		}
 	}
 }
@@ -140,8 +140,8 @@ func checkTxMethod(pass *analysis.Pass, fn *ast.FuncDecl) {
 		return
 	}
 	pass.Reportf(fn.Name.Pos(),
-		"%s: репозиторий/сервис не оборачивает транзакцию методом — "+
-			"InTransactionFunc передаётся в конструктор напрямую от connection", ruleID)
+		"%s: a repository/service must not wrap a transaction in a method. "+
+			"Fix: pass InTransactionFunc into the constructor directly from the connection", ruleID)
 }
 
 // --- Проверка 3: анонимная tx-сигнатура в параметрах функций/конструкторов ---
@@ -190,7 +190,7 @@ func reportIfAnonTxField(pass *analysis.Pass, expr ast.Expr) {
 		return
 	}
 	pass.Reportf(ftLit.Pos(),
-		"%s: используйте именованный тип model.InTransactionFunc", ruleID)
+		"%s: use the named type model.InTransactionFunc. Fix: replace the anonymous signature", ruleID)
 }
 
 // --- Структурное распознавание tx-сигнатуры ---

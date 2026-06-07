@@ -46,7 +46,7 @@ type Settings struct {
 func NewAnalyzer(s Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name: "gidinout",
-		Doc:  ruleID + ": входные model/entity-структуры по указателю, выходные по значению",
+		Doc:  ruleID + ": input model/entity structs by pointer, output by value. Fix: take *T for input, return T for output",
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, s)
 		},
@@ -80,7 +80,7 @@ func checkSignature(pass *analysis.Pass, fn *ast.FuncDecl) {
 		for _, field := range fn.Type.Params.List {
 			if name, ok := layerStructName(pass.TypesInfo.TypeOf(field.Type)); ok {
 				pass.Reportf(field.Pos(),
-					"%s: входные данные передаются по указателю — *%s", ruleID, name)
+					"%s: input data must be passed by pointer. Fix: use *%s", ruleID, name)
 			}
 		}
 	}
@@ -93,7 +93,7 @@ func checkSignature(pass *analysis.Pass, fn *ast.FuncDecl) {
 			}
 			if name, ok := layerStructName(ptr.Elem()); ok {
 				pass.Reportf(field.Pos(),
-					"%s: выходные данные возвращаются по значению — %s", ruleID, name)
+					"%s: output data must be returned by value. Fix: use %s", ruleID, name)
 			}
 		}
 	}

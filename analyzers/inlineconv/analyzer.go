@@ -43,7 +43,7 @@ const ruleID = "GID-215"
 // запрещено, конвертация живёт в convert-пакете.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidinlineconv",
-	Doc:  ruleID + ": инлайн-заполнение entity-типа в domain-слое запрещено — конвертация живёт в convert-пакете",
+	Doc:  ruleID + ": inline-filling an entity type in the domain layer is forbidden; conversion lives in a convert package. Fix: move it to a convert function",
 	Run:  run,
 }
 
@@ -70,8 +70,8 @@ func run(pass *analysis.Pass) (any, error) {
 				return true // спускаемся внутрь — нарушение может быть глубже.
 			}
 			pass.Reportf(lit.Pos(),
-				"%s: инлайн-заполнение entity-типа %s в domain-слое запрещено — "+
-					"конвертация живёт в convert-пакете (<Dst><Type>From<Src>)",
+				"%s: inline-filling the entity type %s in the domain layer is forbidden. "+
+					"Fix: put conversion in a convert package (<Dst><Type>From<Src>)",
 				ruleID, name)
 			// Внешний entity-литерал зафлаган — внутрь не спускаемся,
 			// чтобы не репортить вложенные entity-литералы повторно.

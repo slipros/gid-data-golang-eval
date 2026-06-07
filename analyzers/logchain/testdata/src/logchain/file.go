@@ -14,12 +14,12 @@ type Svc struct {
 // --- Позитивные кейсы ---
 
 func (s *Svc) badInline(ctx context.Context, err error) {
-	s.logger.WithContext(ctx).WithError(err).Error("failed") // want `GID-156: цепочка logrus оформляется по одному вызову на строке, включая первый`
+	s.logger.WithContext(ctx).WithError(err).Error("failed") // want `GID-156: a logrus chain must put one call per line, including the first\. Fix: break each call onto a new line`
 }
 
 // Граничный кейс: первый вызов прилип к ресиверу.
 func (s *Svc) badFirstInline(ctx context.Context, err error) {
-	s.logger.WithContext(ctx). // want `GID-156: цепочка logrus оформляется по одному вызову на строке, включая первый`
+	s.logger.WithContext(ctx). // want `GID-156: a logrus chain must put one call per line, including the first\. Fix: break each call onto a new line`
 					WithError(err).
 					Error("failed")
 }
@@ -27,7 +27,7 @@ func (s *Svc) badFirstInline(ctx context.Context, err error) {
 // Граничный кейс: два вызова на одной строке в середине цепочки.
 func (s *Svc) badMiddle(ctx context.Context, err error) {
 	s.logger.
-		WithContext(ctx).WithError(err). // want `GID-156: цепочка logrus оформляется по одному вызову на строке, включая первый`
+		WithContext(ctx).WithError(err). // want `GID-156: a logrus chain must put one call per line, including the first\. Fix: break each call onto a new line`
 		Error("failed")
 }
 

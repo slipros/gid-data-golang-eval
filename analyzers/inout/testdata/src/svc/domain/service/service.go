@@ -11,13 +11,13 @@ type Snapshot struct{}
 
 // --- Позитив: вход по значению ---
 
-func (s *Snapshot) Create(ctx context.Context, in model.CreateSnapshot) error { // want `GID-111: входные данные передаются по указателю — \*model\.CreateSnapshot`
+func (s *Snapshot) Create(ctx context.Context, in model.CreateSnapshot) error { // want `GID-111: input data must be passed by pointer\. Fix: use \*model\.CreateSnapshot`
 	return nil
 }
 
 // --- Позитив: выход по указателю ---
 
-func (s *Snapshot) Snapshot(ctx context.Context, id string) (*model.Snapshot, error) { // want `GID-111: выходные данные возвращаются по значению — model\.Snapshot`
+func (s *Snapshot) Snapshot(ctx context.Context, id string) (*model.Snapshot, error) { // want `GID-111: output data must be returned by value\. Fix: use model\.Snapshot`
 	return nil, nil
 }
 

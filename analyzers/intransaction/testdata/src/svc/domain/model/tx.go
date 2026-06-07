@@ -24,9 +24,9 @@ func NewInTransactionWithReturnFunc[T any](tx InTransactionFunc) InTransactionWi
 
 // --- Проверка 2 (позитив): неверное имя tx-типа в model ---
 
-type RunInTx func(ctx context.Context, fn func(ctx context.Context) error) error // want `GID-175: тип транзакции называется InTransactionFunc / InTransactionWithReturnFunc`
+type RunInTx func(ctx context.Context, fn func(ctx context.Context) error) error // want `GID-175: the transaction type must be named InTransactionFunc / InTransactionWithReturnFunc\. Fix: rename it`
 
-type WithTxResult[T any] func(ctx context.Context, fn func(ctx context.Context) (T, error)) (T, error) // want `GID-175: тип транзакции называется InTransactionFunc / InTransactionWithReturnFunc`
+type WithTxResult[T any] func(ctx context.Context, fn func(ctx context.Context) (T, error)) (T, error) // want `GID-175: the transaction type must be named InTransactionFunc / InTransactionWithReturnFunc\. Fix: rename it`
 
 // Граничный кейс в model: похожая, но другая сигнатура — не флагуем.
 // Callback с дополнительным аргументом.

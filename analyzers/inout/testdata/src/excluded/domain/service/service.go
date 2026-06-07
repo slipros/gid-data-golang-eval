@@ -15,6 +15,6 @@ func (s *Snapshot) SnapshotPtr(ctx context.Context, id string) (*model.Snapshot,
 }
 
 // Не исключён — репортится.
-func (s *Snapshot) Other(ctx context.Context, id string) (*model.Snapshot, error) { // want `GID-111: выходные данные возвращаются по значению — model\.Snapshot`
+func (s *Snapshot) Other(ctx context.Context, id string) (*model.Snapshot, error) { // want `GID-111: output data must be returned by value\. Fix: use model\.Snapshot`
 	return nil, nil
 }

@@ -9,7 +9,7 @@ type Snapshot struct {
 	logger *logrus.Entry
 }
 
-func NewSnapshot(logger *logrus.Entry) *Snapshot { // want `GID-154: сущность "Snapshot" содержит logger — конструктор "NewSnapshot" обязан вызвать logger\.WithField\(<entity>, <name>\)`
+func NewSnapshot(logger *logrus.Entry) *Snapshot { // want `GID-154: entity "Snapshot" has a logger\. Fix: constructor "NewSnapshot" must call logger\.WithField\(<entity>, <name>\)`
 	return &Snapshot{logger: logger}
 }
 

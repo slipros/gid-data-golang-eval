@@ -23,7 +23,7 @@ const ruleID = "GID-156"
 // Analyzer — правило GID-156: цепочка logrus из ≥2 вызовов — по вызову на строке.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidlogchain",
-	Doc:  ruleID + ": цепочка logrus — каждый вызов на отдельной строке, включая первый",
+	Doc:  ruleID + ": a logrus chain puts each call on its own line, including the first. Fix: break each call onto a new line",
 	Run:  run,
 }
 
@@ -58,7 +58,7 @@ func checkChain(pass *analysis.Pass, call *ast.CallExpr) {
 		line := pass.Fset.Position(sels[i].Sel.Pos()).Line
 		if line <= prevLine {
 			pass.Reportf(sels[i].Sel.Pos(),
-				"%s: цепочка logrus оформляется по одному вызову на строке, включая первый", ruleID)
+				"%s: a logrus chain must put one call per line, including the first. Fix: break each call onto a new line", ruleID)
 			return
 		}
 		prevLine = line

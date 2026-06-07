@@ -20,15 +20,15 @@ type LocalRepository interface {
 
 // Поле структуры: интерфейс из чужого server-пакета.
 type Service struct {
-	notifier grpc.Notifier // want `GID-134: интерфейс Notifier объявлен в svc/server/grpc — определите интерфейс рядом с потребителем \(исключения: библиотеки и /domain/model для service/usecase\)`
+	notifier grpc.Notifier // want `GID-134: interface Notifier is declared in svc/server/grpc\. Fix: define the interface next to its consumer \(exceptions: libraries and /domain/model for service/usecase\)`
 	local    LocalRepository
 }
 
 // Параметр функции: интерфейс из чужого server-пакета.
-func (s *Service) Register(n grpc.Notifier) {} // want `GID-134: интерфейс Notifier объявлен в svc/server/grpc`
+func (s *Service) Register(n grpc.Notifier) {} // want `GID-134: interface Notifier is declared in svc/server/grpc`
 
 // Результат функции: интерфейс из чужого server-пакета.
-func (s *Service) Notifier() grpc.Notifier { return nil } // want `GID-134: интерфейс Notifier объявлен в svc/server/grpc`
+func (s *Service) Notifier() grpc.Notifier { return nil } // want `GID-134: interface Notifier is declared in svc/server/grpc`
 
 // --- Негативный класс: чистый код ---
 

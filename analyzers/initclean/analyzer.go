@@ -61,7 +61,7 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 	}
 	return &analysis.Analyzer{
 		Name: "gidinitclean",
-		Doc:  ruleID + ": init() детерминированный — без goroutine и I/O-вызовов",
+		Doc:  ruleID + ": init() must be deterministic, without goroutines or I/O calls. Fix: move that work to main/constructor",
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, ioPkgs)
 		},
@@ -92,8 +92,8 @@ func checkInitBody(pass *analysis.Pass, body *ast.BlockStmt, ioPkgs map[string]b
 		switch node := n.(type) {
 		case *ast.GoStmt:
 			pass.Reportf(node.Pos(),
-				"%s: goroutine в init() запрещена — init детерминированный, "+
-					"фоновую работу запускайте из main/app", ruleID)
+				"%s: a goroutine in init() is forbidden; init must be deterministic. "+
+					"Fix: start background work from main/app", ruleID)
 		case *ast.CallExpr:
 			pkg, fn := selectorPkgFunc(pass, node)
 			if pkg == "" || !ioPkgs[pkg] {
@@ -103,8 +103,8 @@ func checkInitBody(pass *analysis.Pass, body *ast.BlockStmt, ioPkgs map[string]b
 				return true
 			}
 			pass.Reportf(node.Pos(),
-				"%s: I/O-вызов %s.%s в init() запрещён — "+
-					"выполняйте в main/конструкторе", ruleID, pkg, fn)
+				"%s: an I/O call %s.%s in init() is forbidden. "+
+					"Fix: do it in main/constructor", ruleID, pkg, fn)
 		}
 		return true
 	})

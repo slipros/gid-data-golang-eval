@@ -7,7 +7,7 @@ type JobRepository struct{}
 
 // --- Проверка 4 (позитив): tx-метод на репозитории (имя любое) ---
 
-func (r *JobRepository) InTx(ctx context.Context, fn func(ctx context.Context) error) error { // want `GID-175: репозиторий/сервис не оборачивает транзакцию методом`
+func (r *JobRepository) InTx(ctx context.Context, fn func(ctx context.Context) error) error { // want `GID-175: a repository/service must not wrap a transaction in a method`
 	return fn(ctx)
 }
 
