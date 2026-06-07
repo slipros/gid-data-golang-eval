@@ -9,6 +9,6 @@ func Health(w http.ResponseWriter, r *http.Request) {
 }
 
 // Не исключён — репортится.
-func Ready(w http.ResponseWriter, r *http.Request) { // want `GID-163: "Ready" — чистый golang handler запрещён`
+func Ready(w http.ResponseWriter, r *http.Request) { // want `GID-163: "Ready" is a plain golang handler, which is forbidden`
 	w.WriteHeader(http.StatusOK)
 }

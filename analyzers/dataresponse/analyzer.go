@@ -35,7 +35,7 @@ type Settings struct {
 func NewAnalyzer(s Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name: "giddataresponse",
-		Doc:  ruleID + ": http handler использует " + responseLib + ", не чистый golang handler",
+		Doc:  ruleID + ": an http handler must use " + responseLib + ", not a plain golang handler",
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, s)
 		},
@@ -62,7 +62,7 @@ func run(pass *analysis.Pass, s Settings) (any, error) {
 				continue
 			}
 			pass.Reportf(fn.Name.Pos(),
-				"%s: %q — чистый golang handler запрещён, используйте %s (исключения: nolint или settings.exclude)",
+				"%s: %q is a plain golang handler, which is forbidden. Fix: use %s (exceptions: nolint or settings.exclude)",
 				ruleID, fn.Name.Name, responseLib)
 		}
 	}

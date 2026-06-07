@@ -10,22 +10,22 @@ type Job struct{}
 // --- Класс 1: позитив (нарушение ловится) ---
 
 // Префикс List запрещён.
-func (j *Job) ListJobs(ctx context.Context) ([]Snapshot, error) { // want `GID-114: без префикса List — множественное число: Jobs вместо ListJobs`
+func (j *Job) ListJobs(ctx context.Context) ([]Snapshot, error) { // want `GID-114: drop the List prefix\. Fix: use the plural Jobs instead of ListJobs`
 	return nil, nil
 }
 
 // Точный суффикс ByID запрещён.
-func (j *Job) JobByID(ctx context.Context, id string) (Snapshot, error) { // want `GID-114: без суффикса ByID — Job\(ctx, id\) вместо JobByID`
+func (j *Job) JobByID(ctx context.Context, id string) (Snapshot, error) { // want `GID-114: drop the ByID suffix\. Fix: use Job\(ctx, id\) instead of JobByID`
 	return Snapshot{}, nil
 }
 
 // Имя метода не содержит имя сущности Job.
-func (j *Job) Fetch(ctx context.Context) (Snapshot, error) { // want `GID-114: имя метода "Fetch" должно содержать имя сущности "Job"`
+func (j *Job) Fetch(ctx context.Context) (Snapshot, error) { // want `GID-114: method name "Fetch" must contain the entity name "Job"`
 	return Snapshot{}, nil
 }
 
 // FP-зона: метод-глагол без сущности — легитимен редко, но ловится; гасится exclude/nolint.
-func (j *Job) Close() error { // want `GID-114: имя метода "Close" должно содержать имя сущности "Job"`
+func (j *Job) Close() error { // want `GID-114: method name "Close" must contain the entity name "Job"`
 	return nil
 }
 
@@ -67,6 +67,6 @@ func (j *Job) ListenJobEvents(ctx context.Context) error {
 // FP-зона: метод-глагол Ping; в проде гасится //nolint:gidentitymethod
 // (analysistest не обрабатывает nolint — фильтрация на стороне golangci-lint,
 // поэтому здесь диагностика ожидаема).
-func (j *Job) Ping(ctx context.Context) error { // want `GID-114: имя метода "Ping" должно содержать имя сущности "Job"`
+func (j *Job) Ping(ctx context.Context) error { // want `GID-114: method name "Ping" must contain the entity name "Job"`
 	return nil
 }

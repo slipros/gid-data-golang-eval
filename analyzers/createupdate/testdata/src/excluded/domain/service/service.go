@@ -18,6 +18,6 @@ func (j *Job) UpdateSession(ctx context.Context, id string) (Session, error) {
 }
 
 // Не исключён — репортится.
-func (j *Job) CreateSession(ctx context.Context) (Session, error) { // want `GID-112: метод "CreateSession" создаёт/обновляет состояние — возвращает только error`
+func (j *Job) CreateSession(ctx context.Context) (Session, error) { // want `GID-112: method "CreateSession" creates/updates state and must return only error`
 	return Session{}, nil
 }

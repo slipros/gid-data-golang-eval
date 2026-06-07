@@ -7,12 +7,12 @@ type Snapshot struct{}
 
 // --- Позитив: чистый golang handler ---
 
-func (h *Snapshot) Get(w http.ResponseWriter, r *http.Request) { // want `GID-163: "Get" — чистый golang handler запрещён, используйте github\.com/raoptimus/data-response\.go/v2 \(исключения: nolint или settings\.exclude\)`
+func (h *Snapshot) Get(w http.ResponseWriter, r *http.Request) { // want `GID-163: "Get" is a plain golang handler, which is forbidden\. Fix: use github\.com/raoptimus/data-response\.go/v2 \(exceptions: nolint or settings\.exclude\)`
 	w.WriteHeader(http.StatusOK)
 }
 
 // Граничный кейс: package-level чистый handler.
-func List(w http.ResponseWriter, r *http.Request) { // want `GID-163: "List" — чистый golang handler запрещён`
+func List(w http.ResponseWriter, r *http.Request) { // want `GID-163: "List" is a plain golang handler, which is forbidden`
 	w.WriteHeader(http.StatusOK)
 }
 

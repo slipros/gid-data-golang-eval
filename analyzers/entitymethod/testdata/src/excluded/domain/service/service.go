@@ -16,6 +16,6 @@ func (j *Job) Ping(ctx context.Context) error {
 }
 
 // Не исключён — ловится проверкой 3 (нет имени сущности Job).
-func (j *Job) Flush(ctx context.Context) error { // want `GID-114: имя метода "Flush" должно содержать имя сущности "Job"`
+func (j *Job) Flush(ctx context.Context) error { // want `GID-114: method name "Flush" must contain the entity name "Job"`
 	return nil
 }

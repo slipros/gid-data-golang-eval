@@ -44,7 +44,7 @@ type Settings struct {
 func NewAnalyzer(s Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name: "gidcreateupdate",
-		Doc:  ruleID + ": методы Create*/Update* в repo и service возвращают только error",
+		Doc:  ruleID + ": Create*/Update* methods in repo and service must return only error. Fix: drop the extra return and fetch the entity with a separate query",
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, s)
 		},
@@ -94,8 +94,8 @@ func checkResults(pass *analysis.Pass, fn *ast.FuncDecl) {
 			continue
 		}
 		pass.Reportf(fn.Name.Pos(),
-			"%s: метод %q создаёт/обновляет состояние — возвращает только error, данные получают отдельным запросом "+
-				"(исключения: nolint или settings.exclude)",
+			"%s: method %q creates/updates state and must return only error. "+
+				"Fix: fetch the entity with a separate query (exceptions: nolint or settings.exclude)",
 			ruleID, fn.Name.Name)
 		return
 	}

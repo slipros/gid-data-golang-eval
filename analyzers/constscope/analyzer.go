@@ -49,7 +49,7 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 	}
 	return &analysis.Analyzer{
 		Name: "gidconstscope",
-		Doc:  ruleID + ": константы объявляются там, где используются, — package-level const вне model/entity запрещены",
+		Doc:  ruleID + ": constants are declared where they are used; package-level const outside model/entity is forbidden. Fix: move it into the using function, or into /domain/model or /dal/entity if shared",
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, excluded)
 		},
@@ -110,8 +110,8 @@ func collectGroups(pass *analysis.Pass, excluded map[string]struct{}) []*constGr
 					case name.IsExported():
 						g.skipLocal = true
 						pass.Reportf(name.Pos(),
-							"%s: экспортируемая константа %q объявлена вне model/entity — общие константы "+
-								"живут в /domain/model или /dal/entity, локальные объявляются там, где используются",
+							"%s: exported constant %q is declared outside model/entity. "+
+								"Fix: keep shared constants in /domain/model or /dal/entity, and declare local ones where they are used",
 							ruleID, name.Name)
 					default:
 						g.names = append(g.names, name)
@@ -211,7 +211,7 @@ func reportGroup(pass *analysis.Pass, g *constGroup, usage map[types.Object]*use
 			continue
 		}
 		pass.Reportf(name.Pos(),
-			"%s: константа %q используется только в %q — объявите её внутри этой функции",
+			"%s: constant %q is used only in %q. Fix: declare it inside that function",
 			ruleID, name.Name, funcDisplayName(soleFunc(info.funcs)))
 	}
 }
@@ -241,7 +241,7 @@ func reportIotaGroup(pass *analysis.Pass, g *constGroup, usage map[types.Object]
 		return
 	}
 	pass.Reportf(g.decl.Pos(),
-		"%s: группа констант используется только в %q — объявите её внутри этой функции",
+		"%s: this constant group is used only in %q. Fix: declare it inside that function",
 		ruleID, funcDisplayName(soleFunc(funcs)))
 }
 

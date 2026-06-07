@@ -23,10 +23,10 @@ import (
 
 const ruleID = "GID-178"
 
-// Analyzer — правило GID-178: не встраивайте sync.Mutex/sync.RWMutex — храните именованным полем (mu sync.Mutex).
+// Analyzer — правило GID-178: do not embed sync.Mutex/sync.RWMutex; use a named field (mu sync.Mutex). Fix: give the mutex a name.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidembedmutex",
-	Doc:  ruleID + ": не встраивайте sync.Mutex/sync.RWMutex — храните именованным полем (mu sync.Mutex)",
+	Doc:  ruleID + ": do not embed sync.Mutex/sync.RWMutex; use a named field (mu sync.Mutex). Fix: give the mutex a name",
 	Run:  run,
 }
 
@@ -50,8 +50,8 @@ func run(pass *analysis.Pass) (any, error) {
 					continue
 				}
 				pass.Reportf(field.Pos(),
-					"%s: sync.%s встроен в структуру — храните мьютекс именованным полем (mu sync.Mutex), "+
-						"иначе Lock/Unlock попадают в API типа",
+					"%s: sync.%s is embedded in the struct. Fix: use a named mutex field (mu sync.Mutex), "+
+						"otherwise Lock/Unlock leak into the type's API",
 					ruleID, name)
 			}
 			return true

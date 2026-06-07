@@ -16,10 +16,10 @@ import (
 
 const ruleID = "GID-104"
 
-// Analyzer — правило GID-104: конструктор именуется New<Entity>, не голый New.
+// Analyzer — правило GID-104: a constructor must be named New<Entity>, not bare New. Fix: rename New to New<Entity>.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidctor",
-	Doc:  ruleID + ": конструктор именуется New<Entity>, не голый New",
+	Doc:  ruleID + ": a constructor must be named New<Entity>, not bare New. Fix: rename New to New<Entity>",
 	Run:  run,
 }
 
@@ -37,7 +37,7 @@ func run(pass *analysis.Pass) (any, error) {
 				continue
 			}
 			pass.Reportf(fn.Name.Pos(),
-				"%s: конструктор именуется New<Entity> — голый New конфликтует с другими сущностями пакета",
+				"%s: a constructor must be named New<Entity>, not bare New. Fix: rename it to New<Entity> (bare New clashes with other entities in the package)",
 				ruleID)
 		}
 	}

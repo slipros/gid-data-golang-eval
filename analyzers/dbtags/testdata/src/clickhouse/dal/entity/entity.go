@@ -9,5 +9,5 @@ type Event struct {
 
 // Позитив: нет ни одного допустимого тега.
 type Metric struct {
-	Value float64 `json:"value"` // want `GID-125: поле Metric\.Value без тега маппинга \(db/ch\) — соответствие entity колонкам БД явное`
+	Value float64 `json:"value"` // want `GID-125: field Metric\.Value has no mapping tag \(db/ch\)\. Fix: add a tag so entity-to-column mapping is explicit`
 }

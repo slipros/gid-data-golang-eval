@@ -9,12 +9,12 @@ type Job struct{}
 
 // --- Позитив: Create возвращает данные ---
 
-func (j *Job) CreateJob(ctx context.Context, name string) (Snapshot, error) { // want `GID-112: метод "CreateJob" создаёт/обновляет состояние — возвращает только error`
+func (j *Job) CreateJob(ctx context.Context, name string) (Snapshot, error) { // want `GID-112: method "CreateJob" creates/updates state and must return only error`
 	return Snapshot{}, nil
 }
 
 // Граничный кейс: Update без error вовсе.
-func (j *Job) UpdateJobStatus(ctx context.Context, status string) Snapshot { // want `GID-112: метод "UpdateJobStatus" создаёт/обновляет состояние — возвращает только error`
+func (j *Job) UpdateJobStatus(ctx context.Context, status string) Snapshot { // want `GID-112: method "UpdateJobStatus" creates/updates state and must return only error`
 	return Snapshot{}
 }
 

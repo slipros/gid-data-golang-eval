@@ -10,11 +10,11 @@ type S struct{}
 
 // --- Позитив ---
 
-func (s *Session) ListSessions(ctx context.Context) ([]Session, error) { // want `GID-114: без префикса List — множественное число: Jobs вместо ListJobs`
+func (s *Session) ListSessions(ctx context.Context) ([]Session, error) { // want `GID-114: drop the List prefix\. Fix: use the plural Jobs instead of ListJobs`
 	return nil, nil
 }
 
-func (s *Session) SessionByID(ctx context.Context, id string) (Session, error) { // want `GID-114: без суффикса ByID — Job\(ctx, id\) вместо JobByID`
+func (s *Session) SessionByID(ctx context.Context, id string) (Session, error) { // want `GID-114: drop the ByID suffix\. Fix: use Job\(ctx, id\) instead of JobByID`
 	return Session{}, nil
 }
 
@@ -36,6 +36,6 @@ func (x *S) Touch(ctx context.Context) error {
 }
 
 // Префикс List всё равно ловится — не зависит от длины имени сущности.
-func (x *S) ListAll(ctx context.Context) error { // want `GID-114: без префикса List — множественное число: Jobs вместо ListJobs`
+func (x *S) ListAll(ctx context.Context) error { // want `GID-114: drop the List prefix\. Fix: use the plural Jobs instead of ListJobs`
 	return nil
 }

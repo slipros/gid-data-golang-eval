@@ -57,8 +57,8 @@ type Settings struct {
 func NewAnalyzer(s Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name: "gidentitymethod",
-		Doc: ruleID + ": методы repo/service именуются от сущности — " +
-			"без префикса List, без суффикса ByID, с именем сущности",
+		Doc: ruleID + ": repo/service methods are named after the entity, " +
+			"without a List prefix, without a ByID suffix, including the entity name. Fix: rename accordingly",
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, s)
 		},
@@ -93,14 +93,14 @@ func checkName(pass *analysis.Pass, fn *ast.FuncDecl, recv, name string) {
 	// Проверка 1: префикс List запрещён.
 	if hasWordPrefix(name, "List") {
 		pass.Reportf(fn.Name.Pos(),
-			"%s: без префикса List — множественное число: Jobs вместо ListJobs",
+			"%s: drop the List prefix. Fix: use the plural Jobs instead of ListJobs",
 			ruleID)
 		return
 	}
 	// Проверка 2: точный суффикс ByID запрещён (ByStageID и прочие разрешены).
 	if hasExactByIDSuffix(name) {
 		pass.Reportf(fn.Name.Pos(),
-			"%s: без суффикса ByID — Job(ctx, id) вместо JobByID",
+			"%s: drop the ByID suffix. Fix: use Job(ctx, id) instead of JobByID",
 			ruleID)
 		return
 	}
@@ -113,8 +113,8 @@ func checkName(pass *analysis.Pass, fn *ast.FuncDecl, recv, name string) {
 	}
 	if !containsEntity(name, recv) {
 		pass.Reportf(fn.Name.Pos(),
-			"%s: имя метода %q должно содержать имя сущности %q "+
-				"(Job, Jobs, CreateJob, JobsByStageID; исключения: nolint или settings.exclude)",
+			"%s: method name %q must contain the entity name %q "+
+				"(Job, Jobs, CreateJob, JobsByStageID; exceptions: nolint or settings.exclude)",
 			ruleID, name, recv)
 	}
 }

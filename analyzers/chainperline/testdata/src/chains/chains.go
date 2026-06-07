@@ -12,13 +12,13 @@ import (
 // --- Позитив: цепочка из 2 вызовов в одну строку ---
 
 func bad() string {
-	return strings.NewReplacer("a", "b").Replace("aa") // want `GID-196: цепочка из 2 вызовов оформляется по одному вызову на строке, включая первый`
+	return strings.NewReplacer("a", "b").Replace("aa") // want `GID-196: a chain of 2 calls must put one call per line, including the first\. Fix: break each \.Method\(\) onto its own line\.`
 }
 
 // --- Позитив: первый вызов на строке базы ---
 
 func partial() string {
-	return strings.NewReplacer("a", "b"). // want `GID-196: цепочка из 2 вызовов оформляется по одному вызову на строке, включая первый`
+	return strings.NewReplacer("a", "b"). // want `GID-196: a chain of 2 calls must put one call per line, including the first\. Fix: break each \.Method\(\) onto its own line\.`
 						Replace("aa")
 }
 
@@ -35,14 +35,14 @@ func (r repo) job() job { return job{} }
 type svc struct{ r repo }
 
 func fieldHop(s svc) string {
-	return s.r.job().name() // want `GID-196: цепочка из 2 вызовов оформляется по одному вызову на строке, включая первый`
+	return s.r.job().name() // want `GID-196: a chain of 2 calls must put one call per line, including the first\. Fix: break each \.Method\(\) onto its own line\.`
 }
 
 // --- Позитив: два звена на одной строке внутри многострочной цепочки ---
 
 func twoOnOneLine(s svc) string {
 	return s.r.
-		job().name() // want `GID-196: цепочка из 2 вызовов оформляется по одному вызову на строке, включая первый`
+		job().name() // want `GID-196: a chain of 2 calls must put one call per line, including the first\. Fix: break each \.Method\(\) onto its own line\.`
 }
 
 // --- Негатив: каждый вызов на своей строке, включая первый ---
@@ -62,7 +62,7 @@ func single() string {
 // --- Граница: вложенный вызов — не цепочка, внутренняя цепочка ловится ---
 
 func nested() string {
-	return strings.ToUpper(strings.NewReplacer("a", "b").Replace("aa")) // want `GID-196: цепочка из 2 вызовов оформляется по одному вызову на строке, включая первый`
+	return strings.ToUpper(strings.NewReplacer("a", "b").Replace("aa")) // want `GID-196: a chain of 2 calls must put one call per line, including the first\. Fix: break each \.Method\(\) onto its own line\.`
 }
 
 // --- Граница: конверсия через селектор — не звено ---

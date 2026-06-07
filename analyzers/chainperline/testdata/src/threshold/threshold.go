@@ -19,5 +19,5 @@ func (b builder) build() string         { return "" }
 
 func builderChain() string {
 	b := builder{}
-	return b.sel("id").from("snapshots").build() // want `GID-196: цепочка из 3 вызовов оформляется по одному вызову на строке, включая первый`
+	return b.sel("id").from("snapshots").build() // want `GID-196: a chain of 3 calls must put one call per line, including the first\. Fix: break each \.Method\(\) onto its own line\.`
 }

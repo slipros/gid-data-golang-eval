@@ -19,18 +19,18 @@ var statusMap = map[EntityStatus]ModelStatus{
 
 // Одиночное присваивание (не comma-ok): отсутствующий ключ молча даёт zero-value.
 func ModelStatusFromEntity(s EntityStatus) ModelStatus {
-	v := statusMap[s] // want `GID-143: enum-конвертация через map без comma-ok — отсутствующий ключ должен давать gderror.NewUnhandledValueError`
+	v := statusMap[s] // want `GID-143: enum conversion via map without comma-ok\. Fix: a missing key must return gderror.NewUnhandledValueError`
 	return v
 }
 
 // Использование выражением (не comma-ok) — тоже без обработки.
 func ModelStatusExpr(s EntityStatus) ModelStatus {
-	return statusMap[s] // want `GID-143: enum-конвертация через map без comma-ok — отсутствующий ключ должен давать gderror.NewUnhandledValueError`
+	return statusMap[s] // want `GID-143: enum conversion via map without comma-ok\. Fix: a missing key must return gderror.NewUnhandledValueError`
 }
 
 // comma-ok есть, но в функции НЕТ вызова NewUnhandledValueError.
 func ModelStatusNoHandler(s EntityStatus) ModelStatus {
-	v, ok := statusMap[s] // want `GID-143: отсутствующий ключ enum-конвертации обрабатывается gderror.NewUnhandledValueError`
+	v, ok := statusMap[s] // want `GID-143: a missing enum-conversion key must be handled with gderror.NewUnhandledValueError`
 	if !ok {
 		return ""
 	}

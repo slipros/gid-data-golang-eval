@@ -7,8 +7,8 @@ import "time"
 
 type Snapshot struct {
 	ID        string    `db:"id"`
-	Name      string    // want `GID-125: поле Snapshot\.Name без тега маппинга \(db\) — соответствие entity колонкам БД явное`
-	CreatedAt time.Time `json:"created_at"` // want `GID-125: поле Snapshot\.CreatedAt без тега маппинга \(db\)`
+	Name      string    // want `GID-125: field Snapshot\.Name has no mapping tag \(db\)\. Fix: add a tag so entity-to-column mapping is explicit`
+	CreatedAt time.Time `json:"created_at"` // want `GID-125: field Snapshot\.CreatedAt has no mapping tag \(db\)`
 }
 
 // --- Негативные кейсы ---

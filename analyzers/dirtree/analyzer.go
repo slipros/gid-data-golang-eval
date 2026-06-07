@@ -1,7 +1,7 @@
 // Package dirtree реализует правило GID-158: контроль дерева папок.
 // Для каждой папки из настроек задаётся перечень разрешённых подпапок;
 // появление чужой папки — предупреждение (например, новая папка в
-// internal/ — возможно, это должен быть service или usecase).
+// internal/; perhaps it should be a service or usecase).
 //
 // Дерево настраивается в .golangci.yml (settings.tree), ключ — путь папки
 // (сегменты через /, матчится в любом месте import-пути), значение —
@@ -49,7 +49,7 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 	}
 	return &analysis.Analyzer{
 		Name: "giddirtree",
-		Doc:  ruleID + ": в папке могут находиться только разрешённые подпапки (settings.tree)",
+		Doc:  ruleID + ": a folder may contain only allowed subfolders (settings.tree). Fix: move the folder or add it to settings.tree",
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, tree)
 		},
@@ -87,14 +87,14 @@ func run(pass *analysis.Pass, tree map[string][]string) (any, error) {
 func report(pass *analysis.Pass, key, dir string, allowed []string) {
 	hint := ""
 	if key == "internal" {
-		hint = " — возможно, это должен быть service или usecase"
+		hint = "; perhaps it should be a service or usecase"
 	}
 	for _, file := range pass.Files {
 		if ast.IsGenerated(file) {
 			continue
 		}
 		pass.Reportf(file.Name.Pos(),
-			"%s: папка %q не разрешена в %s/ (разрешены: %s)%s; дерево настраивается через settings.tree",
+			"%s: folder %q is not allowed in %s/ (allowed: %s)%s; configure the tree via settings.tree",
 			ruleID, dir, key, strings.Join(allowed, ", "), hint)
 	}
 }

@@ -33,7 +33,7 @@ const ruleID = "GID-143"
 // отсутствующий ключ через gderror.NewUnhandledValueError.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidenumconvert",
-	Doc:  ruleID + ": map-конвертация enum обрабатывает отсутствующий ключ через gderror.NewUnhandledValueError",
+	Doc:  ruleID + ": enum map conversion must handle a missing key via gderror.NewUnhandledValueError. Fix: use comma-ok and return gderror.NewUnhandledValueError",
 	Run:  run,
 }
 
@@ -73,15 +73,15 @@ func checkFunc(pass *analysis.Pass, fn *ast.FuncDecl) {
 			// comma-ok форма есть — нужен явный вызов обработчика в этой же функции.
 			if !hasHandler {
 				pass.Reportf(idx.Pos(),
-					"%s: отсутствующий ключ enum-конвертации обрабатывается gderror.NewUnhandledValueError",
+					"%s: a missing enum-conversion key must be handled with gderror.NewUnhandledValueError",
 					ruleID)
 			}
 			return true
 		}
 		// Не comma-ok: отсутствующий ключ молча даёт zero-value.
 		pass.Reportf(idx.Pos(),
-			"%s: enum-конвертация через map без comma-ok — "+
-				"отсутствующий ключ должен давать gderror.NewUnhandledValueError",
+			"%s: enum conversion via map without comma-ok. "+
+				"Fix: a missing key must return gderror.NewUnhandledValueError",
 			ruleID)
 		return true
 	})

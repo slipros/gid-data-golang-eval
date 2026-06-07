@@ -8,7 +8,7 @@ type Snapshot struct{ Name string }
 type Row struct{ Name string }
 
 // Позитив: функция-конвертер в самом service-пакете.
-func ModelSnapshotFromRow(in *Row) Snapshot { // want `GID-135: конвертер "ModelSnapshotFromRow" живёт в convert/-подпакете своего слоя`
+func ModelSnapshotFromRow(in *Row) Snapshot { // want `GID-135: converter "ModelSnapshotFromRow" must live in a convert/ subpackage of its layer`
 	return Snapshot{Name: in.Name}
 }
 

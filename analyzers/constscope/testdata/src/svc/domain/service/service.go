@@ -3,11 +3,11 @@ package service
 
 // --- Позитив: экспортируемая константа вне model/entity ---
 
-const DefaultPageSize = 25 // want `GID-194: экспортируемая константа "DefaultPageSize" объявлена вне model/entity — общие константы живут в /domain/model или /dal/entity, локальные объявляются там, где используются`
+const DefaultPageSize = 25 // want `GID-194: exported constant "DefaultPageSize" is declared outside model/entity\. Fix: keep shared constants in /domain/model or /dal/entity, and declare local ones where they are used`
 
 // --- Позитив: константа используется только одним методом ---
 
-const snapshotPrefix = "snap-" // want `GID-194: константа "snapshotPrefix" используется только в "Snapshot.Render" — объявите её внутри этой функции`
+const snapshotPrefix = "snap-" // want `GID-194: constant "snapshotPrefix" is used only in "Snapshot\.Render"\. Fix: declare it inside that function`
 
 // --- Негатив: константа разделяется двумя методами — package-level легален ---
 

@@ -5,12 +5,12 @@ import "time"
 
 var Late = time.Second // объявлен до const — сам по себе не нарушение...
 
-const AfterVar = 1 // want `GID-130: const-блок размещается сверху файла — сразу после import, выше var, типов и функций`
+const AfterVar = 1 // want `GID-130: a const block must be at the top of the file, right after import and above var, types and functions\. Fix: move it up`
 
 type Svc struct{}
 
-const AfterType = 2 // want `GID-130: const-блок размещается сверху файла — сразу после import, выше var, типов и функций`
+const AfterType = 2 // want `GID-130: a const block must be at the top of the file, right after import and above var, types and functions\. Fix: move it up`
 
 func Do() {}
 
-var AfterFunc = 3 // want `GID-130: var-блок размещается сверху файла — после const, выше типов и функций`
+var AfterFunc = 3 // want `GID-130: a var block must be at the top of the file, after const and above types and functions\. Fix: move it up`

@@ -18,7 +18,7 @@ func JobFromContext(ctx context.Context) (Job, bool) {
 }
 
 // Позитив GID-166: helper сущности Token, объявленной в session.go.
-func TokenFromContext(ctx context.Context) (Token, bool) { // want `GID-166: helper "TokenFromContext" живёт в одном файле с сущностью "Token", которую складывает в ctx / достаёт из ctx`
+func TokenFromContext(ctx context.Context) (Token, bool) { // want `GID-166: helper "TokenFromContext" must live in the same file as the "Token" entity it stores into / reads from ctx`
 	t, ok := ctx.Value(TraceIDKey).(Token)
 	return t, ok
 }

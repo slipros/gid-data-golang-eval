@@ -2,7 +2,7 @@
 package entitygroup
 
 // Позитив: метод выше объявления типа и конструктора.
-func (s *Snapshot) Early() string { // want `GID-157: метод "Early" размещается под объявлением типа "Snapshot"` `GID-157: метод "Early" размещается под конструктором NewSnapshot`
+func (s *Snapshot) Early() string { // want `GID-157: method "Early" must be placed below the "Snapshot" type declaration` `GID-157: method "Early" must be placed below the NewSnapshot constructor`
 	return s.name
 }
 
@@ -21,6 +21,6 @@ type Job struct{}
 func (j *Job) Run() error { return nil }
 
 // Позитив: метод Snapshot после блока Job — перемешивание.
-func (s *Snapshot) Render() string { // want `GID-157: код сущности "Snapshot" перемешан с кодом других сущностей — блок сущности непрерывен`
+func (s *Snapshot) Render() string { // want `GID-157: entity "Snapshot" code is interleaved with other entities\. Fix: keep the entity block contiguous`
 	return "<" + s.name + ">"
 }

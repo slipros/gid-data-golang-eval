@@ -42,7 +42,7 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 	tags := resolveTags(s)
 	return &analysis.Analyzer{
 		Name: "giddbtags",
-		Doc:  ruleID + ": поля entity-структур имеют тег маппинга (" + strings.Join(tags, "/") + ")",
+		Doc:  ruleID + ": entity struct fields must have a mapping tag (" + strings.Join(tags, "/") + ")",
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, tags)
 		},
@@ -55,7 +55,7 @@ func NewModelAnalyzer(s Settings) *analysis.Analyzer {
 	tags := resolveTags(s)
 	return &analysis.Analyzer{
 		Name: "gidmodeltags",
-		Doc:  modelRuleID + ": в /domain/** запрещены теги маппинга на БД (" + strings.Join(tags, "/") + ")",
+		Doc:  modelRuleID + ": db mapping tags are forbidden in /domain/** (" + strings.Join(tags, "/") + ")",
 		Run: func(pass *analysis.Pass) (any, error) {
 			return runModel(pass, tags)
 		},
@@ -107,7 +107,7 @@ func checkStruct(pass *analysis.Pass, name string, st *ast.StructType, tags []st
 			continue
 		}
 		pass.Reportf(field.Pos(),
-			"%s: поле %s.%s без тега маппинга (%s) — соответствие entity колонкам БД явное",
+			"%s: field %s.%s has no mapping tag (%s). Fix: add a tag so entity-to-column mapping is explicit",
 			ruleID, name, field.Names[0].Name, strings.Join(tags, "/"))
 	}
 }
@@ -148,7 +148,7 @@ func checkModelStruct(pass *analysis.Pass, name string, st *ast.StructType, tags
 			continue // нет тега маппинга — поле не нарушает правило
 		}
 		pass.Reportf(field.Pos(),
-			"%s: поле %s.%s с тегом %q в domain-слое — маппинг на БД живёт в /dal/entity",
+			"%s: field %s.%s has a %q tag in the domain layer. Fix: keep db mapping in /dal/entity",
 			modelRuleID, name, fieldName(field), tag)
 	}
 }

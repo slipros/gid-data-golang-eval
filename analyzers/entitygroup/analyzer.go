@@ -22,7 +22,7 @@ const (
 // Analyzer — правило GID-157: код сущности — единый блок: type, конструктор, методы.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidentitygroup",
-	Doc:  ruleID + ": код сущности — единый блок: type, конструктор, методы; без перемешивания сущностей",
+	Doc:  ruleID + ": an entity's code must be one block (type, constructor, methods) without interleaving entities. Fix: keep the entity's declarations together",
 	Run:  run,
 }
 
@@ -70,7 +70,7 @@ func checkFile(pass *analysis.Pass, file *ast.File, typeFile map[string]*ast.Fil
 		declFile, ok := typeFile[d.entity]
 		if ok && declFile != file {
 			pass.Reportf(d.name.Pos(),
-				"%s: %q принадлежит сущности %q — код сущности живёт в файле её объявления",
+				"%s: %q belongs to entity %q. Fix: keep the entity's code in the file where it is declared",
 				ruleID, d.name.Name, d.entity)
 		}
 	}
@@ -83,16 +83,16 @@ func checkFile(pass *analysis.Pass, file *ast.File, typeFile map[string]*ast.Fil
 		case kindCtor:
 			if hasType && i < ti {
 				pass.Reportf(d.name.Pos(),
-					"%s: конструктор %q размещается под объявлением типа %q", ruleID, d.name.Name, d.entity)
+					"%s: constructor %q must be placed right below the %q type declaration", ruleID, d.name.Name, d.entity)
 			}
 		case kindMethod:
 			if hasType && i < ti {
 				pass.Reportf(d.name.Pos(),
-					"%s: метод %q размещается под объявлением типа %q", ruleID, d.name.Name, d.entity)
+					"%s: method %q must be placed below the %q type declaration", ruleID, d.name.Name, d.entity)
 			}
 			if ci, hasCtor := ctorIdx[d.entity]; hasCtor && i < ci {
 				pass.Reportf(d.name.Pos(),
-					"%s: метод %q размещается под конструктором New%s", ruleID, d.name.Name, d.entity)
+					"%s: method %q must be placed below the New%s constructor", ruleID, d.name.Name, d.entity)
 			}
 		}
 	}
@@ -107,7 +107,7 @@ func checkFile(pass *analysis.Pass, file *ast.File, typeFile map[string]*ast.Fil
 		}
 		if _, ok := seen[d.entity]; ok {
 			pass.Reportf(d.name.Pos(),
-				"%s: код сущности %q перемешан с кодом других сущностей — блок сущности непрерывен",
+				"%s: entity %q code is interleaved with other entities. Fix: keep the entity block contiguous",
 				ruleID, d.entity)
 		}
 		seen[last] = struct{}{}

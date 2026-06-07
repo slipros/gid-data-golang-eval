@@ -14,7 +14,7 @@ type contextKey string
 
 func Auth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := context.WithValue(r.Context(), contextKey("user"), "id") // want `GID-165: context\.WithValue вне /domain/model запрещён — ключи контекста и helper'ы живут в model, чтобы бизнес-слои не зависели от middleware`
+		ctx := context.WithValue(r.Context(), contextKey("user"), "id") // want `GID-165: context\.WithValue outside /domain/model is forbidden\. Fix: keep context keys and helpers in /domain/model so business layers do not depend on middleware`
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

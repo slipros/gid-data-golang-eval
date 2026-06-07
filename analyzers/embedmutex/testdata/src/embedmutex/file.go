@@ -11,19 +11,19 @@ import (
 
 // Встроенный sync.Mutex.
 type Cache struct {
-	sync.Mutex // want `GID-178: sync\.Mutex встроен в структуру — храните мьютекс именованным полем \(mu sync\.Mutex\), иначе Lock/Unlock попадают в API типа`
+	sync.Mutex // want `GID-178: sync\.Mutex is embedded in the struct\. Fix: use a named mutex field \(mu sync\.Mutex\), otherwise Lock/Unlock leak into the type's API`
 	data       map[string]string
 }
 
 // Встроенный указатель *sync.RWMutex.
 type Registry struct {
-	*sync.RWMutex // want `GID-178: sync\.RWMutex встроен в структуру — храните мьютекс именованным полем \(mu sync\.Mutex\), иначе Lock/Unlock попадают в API типа`
+	*sync.RWMutex // want `GID-178: sync\.RWMutex is embedded in the struct\. Fix: use a named mutex field \(mu sync\.Mutex\), otherwise Lock/Unlock leak into the type's API`
 	items         []int
 }
 
 // Встраивание через алиас импорта пакета sync — детект по типу, не по тексту.
 type Aliased struct {
-	syncalias.Mutex // want `GID-178: sync\.Mutex встроен в структуру — храните мьютекс именованным полем \(mu sync\.Mutex\), иначе Lock/Unlock попадают в API типа`
+	syncalias.Mutex // want `GID-178: sync\.Mutex is embedded in the struct\. Fix: use a named mutex field \(mu sync\.Mutex\), otherwise Lock/Unlock leak into the type's API`
 	n               int
 }
 

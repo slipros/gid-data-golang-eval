@@ -37,7 +37,7 @@ var scopes = [][]string{
 // Analyzer — правило GID: см. Doc.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidconvnaming",
-	Doc:  ruleNaming + "/" + rulePlace + ": конвертеры — <Dst><Type>From<Src> в convert/-пакетах",
+	Doc:  ruleNaming + "/" + rulePlace + ": converters are named <Dst><Type>From<Src> and live in convert/ packages. Fix: rename to <Dst><Type>From<Src> and move into a convert/ subpackage",
 	Run:  run,
 }
 
@@ -69,7 +69,7 @@ func checkConverterName(pass *analysis.Pass, fn *ast.FuncDecl) {
 		return
 	}
 	pass.Reportf(fn.Name.Pos(),
-		"%s: конвертер %q именуется <Dst><Type>From<Src> (например, EntityCreateSnapshotFromModel)",
+		"%s: converter %q must be named <Dst><Type>From<Src>. Fix: rename it, e.g. EntityCreateSnapshotFromModel",
 		ruleNaming, fn.Name.Name)
 }
 
@@ -83,7 +83,7 @@ func checkConverterPlace(pass *analysis.Pass, fn *ast.FuncDecl) {
 		return
 	}
 	pass.Reportf(fn.Name.Pos(),
-		"%s: конвертер %q живёт в convert/-подпакете своего слоя", rulePlace, name)
+		"%s: converter %q must live in a convert/ subpackage of its layer. Fix: move it into convert/", rulePlace, name)
 }
 
 func inScope(pkgPath string) bool {

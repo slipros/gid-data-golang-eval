@@ -7,11 +7,11 @@ type entity struct{ Name string }
 
 // --- Позитив: имя не по паттерну ---
 
-func ConvertSnapshot(in *model) entity { // want `GID-105: конвертер "ConvertSnapshot" именуется <Dst><Type>From<Src> \(например, EntityCreateSnapshotFromModel\)`
+func ConvertSnapshot(in *model) entity { // want `GID-105: converter "ConvertSnapshot" must be named <Dst><Type>From<Src>\. Fix: rename it, e\.g\. EntityCreateSnapshotFromModel`
 	return entity{Name: in.Name}
 }
 
-func ToEntity(in *model) entity { // want `GID-105: конвертер "ToEntity" именуется <Dst><Type>From<Src>`
+func ToEntity(in *model) entity { // want `GID-105: converter "ToEntity" must be named <Dst><Type>From<Src>`
 	return entity{Name: in.Name}
 }
 

@@ -4,7 +4,7 @@ package service
 type Snapshot struct{}
 
 // Позитив: голый New.
-func New() *Snapshot { // want `GID-104: конструктор именуется New<Entity> — голый New конфликтует с другими сущностями пакета`
+func New() *Snapshot { // want `GID-104: a constructor must be named New<Entity>, not bare New\. Fix: rename it to New<Entity> \(bare New clashes with other entities in the package\)`
 	return &Snapshot{}
 }
 

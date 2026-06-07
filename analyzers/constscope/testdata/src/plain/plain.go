@@ -5,7 +5,7 @@ import "fmt"
 
 // --- Граница: iota-группа целиком используется одной функцией ---
 
-const ( // want `GID-194: группа констант используется только в "stateName" — объявите её внутри этой функции`
+const ( // want `GID-194: this constant group is used only in "stateName"\. Fix: declare it inside that function`
 	stateIdle = iota
 	stateBusy
 )
@@ -35,7 +35,7 @@ func isBlue(c int) bool { return c == colorBlue }
 // не предлагаем, диагностика только об экспорте ---
 
 const (
-	ModePrimary = iota // want `GID-194: экспортируемая константа "ModePrimary" объявлена вне model/entity — общие константы живут в /domain/model или /dal/entity, локальные объявляются там, где используются`
+	ModePrimary = iota // want `GID-194: exported constant "ModePrimary" is declared outside model/entity\. Fix: keep shared constants in /domain/model or /dal/entity, and declare local ones where they are used`
 	modeSecondary
 )
 

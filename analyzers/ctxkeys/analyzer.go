@@ -39,7 +39,7 @@ var snakeCase = regexp.MustCompile(`^[a-z0-9]+(_[a-z0-9]+)*$`)
 var Analyzer = &analysis.Analyzer{
 	Name: "gidctxkeys",
 	Doc: rulePlace + "/" + ruleNaming + "/" + ruleKey +
-		": ключи контекста в /domain/model; ContextWith<Name> / <Name>FromContext; type ContextKey string",
+		": context keys live in /domain/model; ContextWith<Name> / <Name>FromContext; type ContextKey string. Fix: move keys and helpers into /domain/model",
 	Run: run,
 }
 
@@ -62,8 +62,8 @@ func checkNoWithValue(pass *analysis.Pass) {
 			call, ok := n.(*ast.CallExpr)
 			if ok && isWithValue(pass, call) {
 				pass.Reportf(call.Pos(),
-					"%s: context.WithValue вне /domain/model запрещён — ключи контекста и helper'ы "+
-						"живут в model, чтобы бизнес-слои не зависели от middleware",
+					"%s: context.WithValue outside /domain/model is forbidden. Fix: keep context keys and helpers "+
+						"in /domain/model so business layers do not depend on middleware",
 					rulePlace)
 			}
 			return true
@@ -123,7 +123,7 @@ func checkKeyTypes(pass *analysis.Pass, file *ast.File) {
 		named, ok := keyType.(*types.Named)
 		if !ok {
 			pass.Reportf(call.Args[1].Pos(),
-				"%s: ключ контекста — публичный тип %s (type %s string), не сырое значение",
+				"%s: context key must be the public type %s (type %s string), not a raw value",
 				ruleKey, keyTypeName, keyTypeName)
 			return true
 		}
@@ -131,13 +131,13 @@ func checkKeyTypes(pass *analysis.Pass, file *ast.File) {
 		gotName := namedObj.Name()
 		if gotName != keyTypeName {
 			pass.Reportf(call.Args[1].Pos(),
-				"%s: ключ контекста — публичный тип %s (type %s string), не %q",
+				"%s: context key must be the public type %s (type %s string), not %q",
 				ruleKey, keyTypeName, keyTypeName, gotName)
 			return true
 		}
 		if basic, ok := named.Underlying().(*types.Basic); !ok || basic.Kind() != types.String {
 			pass.Reportf(call.Args[1].Pos(),
-				"%s: %s — типизированный string", ruleKey, keyTypeName)
+				"%s: %s must be a named string type", ruleKey, keyTypeName)
 		}
 		return true
 	})
@@ -169,7 +169,7 @@ func checkKeyConsts(pass *analysis.Pass, gd *ast.GenDecl, file, keyTypeFile *ast
 			}
 			if keyTypeFile != nil && file != keyTypeFile {
 				pass.Reportf(name.Pos(),
-					"%s: значения %s находятся рядом с объявлением типа %s (в одном файле)",
+					"%s: %s values must be declared next to the %s type declaration (same file)",
 					ruleKey, keyTypeName, keyTypeName)
 			}
 			objVal := obj.Val()
@@ -178,7 +178,7 @@ func checkKeyConsts(pass *analysis.Pass, gd *ast.GenDecl, file, keyTypeFile *ast
 			}
 			if val := constant.StringVal(objVal); !snakeCase.MatchString(val) {
 				pass.Reportf(name.Pos(),
-					"%s: значение %s — string в snake_case, получено %q", ruleKey, keyTypeName, val)
+					"%s: %s value must be a snake_case string, got %q", ruleKey, keyTypeName, val)
 			}
 		}
 	}
@@ -188,13 +188,13 @@ func checkHelper(pass *analysis.Pass, file *ast.File, fn *ast.FuncDecl, structFi
 	name := fn.Name.Name
 	if usesWithValue(pass, fn.Body) && !strings.HasPrefix(name, "ContextWith") {
 		pass.Reportf(fn.Name.Pos(),
-			"%s: функция %q складывает данные в ctx — она публична и именуется ContextWith<Name>",
+			"%s: function %q stores data in ctx. Fix: make it public and name it ContextWith<Name>",
 			ruleNaming, name)
 	}
 	if usesCtxValue(pass, fn.Body) &&
 		(!fn.Name.IsExported() || !strings.HasSuffix(name, "FromContext")) {
 		pass.Reportf(fn.Name.Pos(),
-			"%s: функция %q достаёт данные из ctx — она публична и именуется <Name>FromContext",
+			"%s: function %q reads data from ctx. Fix: make it public and name it <Name>FromContext",
 			ruleNaming, name)
 	}
 	checkHelperFile(pass, file, fn, structFile)
@@ -214,7 +214,7 @@ func checkHelperFile(pass *analysis.Pass, file *ast.File, fn *ast.FuncDecl, stru
 	declFile, declared := structFile[entity]
 	if declared && declFile != file {
 		pass.Reportf(fn.Name.Pos(),
-			"%s: helper %q живёт в одном файле с сущностью %q, которую складывает в ctx / достаёт из ctx",
+			"%s: helper %q must live in the same file as the %q entity it stores into / reads from ctx",
 			ruleNaming, fn.Name.Name, entity)
 	}
 }

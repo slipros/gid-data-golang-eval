@@ -45,7 +45,7 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 	}
 	return &analysis.Analyzer{
 		Name: "gidchainperline",
-		Doc:  ruleID + ": цепочка вызовов — каждый вызов на своей строке, включая первый",
+		Doc:  ruleID + ": a call chain must put each call on its own line, including the first. Fix: break the chain so every .Method() starts a new line.",
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, minCalls)
 		},
@@ -145,7 +145,8 @@ func checkLines(pass *analysis.Pass, sels []*ast.SelectorExpr, base ast.Expr) {
 		line := pass.Fset.Position(sels[i].Sel.Pos()).Line
 		if line <= prevLine {
 			pass.Reportf(sels[i].Sel.Pos(),
-				"%s: цепочка из %d вызовов оформляется по одному вызову на строке, включая первый",
+				"%s: a chain of %d calls must put one call per line, including the first. "+
+					"Fix: break each .Method() onto its own line.",
 				ruleID, len(sels))
 			return
 		}
