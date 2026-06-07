@@ -4,11 +4,11 @@ package libparse
 import "flag"
 
 func init() {
-	flag.Parse() // want `GID-192: регистрация флага вне пакета main запрещена — флаги объявляет бинарь, библиотека принимает параметры`
+	flag.Parse() // want `GID-192: registering a flag outside package main is forbidden\. Fix: declare flags in the binary, let libraries take parameters`
 }
 
 // Метод *flag.FlagSet вне main тоже запрещён.
 func custom() {
-	fs := flag.NewFlagSet("svc", flag.ContinueOnError) // want `GID-192: регистрация флага вне пакета main запрещена — флаги объявляет бинарь, библиотека принимает параметры`
-	fs.String("addr", "", "addr")                      // want `GID-192: регистрация флага вне пакета main запрещена — флаги объявляет бинарь, библиотека принимает параметры`
+	fs := flag.NewFlagSet("svc", flag.ContinueOnError) // want `GID-192: registering a flag outside package main is forbidden\. Fix: declare flags in the binary, let libraries take parameters`
+	fs.String("addr", "", "addr")                      // want `GID-192: registering a flag outside package main is forbidden\. Fix: declare flags in the binary, let libraries take parameters`
 }

@@ -21,10 +21,10 @@ var layerRoots = []layerRoot{
 	{seq: []string{"domain", "service"}, allowed: map[string]struct{}{"convert": {}}},
 }
 
-// Analyzer — правило GID-138: репозитории и сервисы живут в корне /dal/repository и /domain/service, без подпапок.
+// Analyzer — правило GID-138: repositories and services live at the root of /dal/repository and /domain/service, without subfolders. Fix: move the entity to the layer root.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidflatlayout",
-	Doc:  ruleID + ": репозитории и сервисы живут в корне /dal/repository и /domain/service, без подпапок",
+	Doc:  ruleID + ": repositories and services live at the root of /dal/repository and /domain/service, without subfolders. Fix: move the entity to the layer root",
 	Run:  run,
 }
 
@@ -53,7 +53,7 @@ func run(pass *analysis.Pass) (any, error) {
 		rootPath := strings.Join(root.seq, "/")
 		for _, file := range pass.Files {
 			pass.Reportf(file.Name.Pos(),
-				"%s: пакет %q — группирующие подпакеты в /%s запрещены, сущности слоя живут в его корне",
+				"%s: package %q. Fix: grouping subpackages in /%s are forbidden, keep layer entities at its root",
 				ruleID, pkgPath, rootPath)
 		}
 	}

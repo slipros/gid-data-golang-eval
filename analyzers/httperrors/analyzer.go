@@ -21,7 +21,7 @@ const ruleID = "GID-162"
 // Analyzer — правило GID-162: http handler обрабатывает свои ошибки внутри себя.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidhttperrors",
-	Doc:  ruleID + ": http handler обрабатывает свои ошибки внутри себя, без супер-методов",
+	Doc:  ruleID + ": an http handler handles its own errors inline, without super-methods. Fix: handle errors inside the handler",
 	Run:  run,
 }
 
@@ -57,7 +57,7 @@ func checkFunc(pass *analysis.Pass, fn *ast.FuncDecl) {
 	}
 	if hasRW && hasErrParam {
 		pass.Reportf(fn.Name.Pos(),
-			"%s: %q — супер-метод обработки ошибок запрещён, http handler обрабатывает ошибки внутри себя",
+			"%s: %q is a forbidden error-handling super-method. Fix: handle errors inside each http handler",
 			ruleID, fn.Name.Name)
 		return
 	}
@@ -65,7 +65,7 @@ func checkFunc(pass *analysis.Pass, fn *ast.FuncDecl) {
 		for _, field := range fn.Type.Results.List {
 			if isErrorType(pass.TypesInfo.TypeOf(field.Type)) {
 				pass.Reportf(fn.Name.Pos(),
-					"%s: http handler %q не возвращает error — ошибка обрабатывается на месте",
+					"%s: http handler %q must not return error. Fix: handle the error in place",
 					ruleID, fn.Name.Name)
 				return
 			}

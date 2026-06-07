@@ -41,7 +41,7 @@ const (
 // Analyzer — GID-186 (gidfmtconst).
 var Analyzer = &analysis.Analyzer{
 	Name: "gidfmtconst",
-	Doc:  ruleID + ": format-строка printf-функций — литерал или const, не переменная",
+	Doc:  ruleID + ": the format string of printf-like functions must be a literal or const, not a variable. Fix: declare a const format string",
 	Run:  run,
 }
 
@@ -101,7 +101,7 @@ func checkCall(pass *analysis.Pass, call *ast.CallExpr) {
 		return
 	}
 	pass.Reportf(arg.Pos(),
-		"%s: format-строка — переменная; объявите const, иначе vet не проверит аргументы", ruleID)
+		"%s: the format string is a variable. Fix: declare a const, otherwise vet cannot check the arguments", ruleID)
 }
 
 // formatArgIndex возвращает индекс аргумента-format, если call — вызов

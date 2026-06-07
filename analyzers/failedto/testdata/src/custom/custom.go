@@ -6,7 +6,7 @@ import "github.com/pkg/errors"
 // дефолтный "failed to" больше не ловится, ловится только "oops".
 
 func wrapOops(err error) error {
-	return errors.Wrap(err, "oops broken") // want `GID-184: сообщение ошибки начинается с "oops"`
+	return errors.Wrap(err, "oops broken") // want `GID-184: error message starts with "oops"`
 }
 
 // "failed to" не из кастомного списка — не матчится.

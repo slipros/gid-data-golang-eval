@@ -72,7 +72,7 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 	}
 	return &analysis.Analyzer{
 		Name: "gidfailedto",
-		Doc:  ruleID + ": сообщение об ошибке описывает операцию, а не факт провала",
+		Doc:  ruleID + ": an error message describes the operation, not the fact of failure. Fix: drop prefixes like 'failed to'",
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, lower)
 		},
@@ -103,7 +103,7 @@ func run(pass *analysis.Pass, prefixes []string) (any, error) {
 			}
 			if prefix, hit := matchPrefix(msg, prefixes); hit {
 				pass.Reportf(call.Args[idx].Pos(),
-					"%s: сообщение ошибки начинается с %q — опишите операцию: вместо \"failed to select user\" → \"select user\"",
+					"%s: error message starts with %q. Fix: describe the operation, e.g. \"failed to select user\" → \"select user\"",
 					ruleID, prefix)
 			}
 			return true

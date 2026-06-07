@@ -4,12 +4,12 @@ package repository
 // --- Позитивный класс: нарушение ловится ---
 
 // Суффикс *Filter — фильтр в repository, должен жить в /dal/entity/filter.
-type JobsFilter struct { // want `GID-171: фильтр "JobsFilter" живёт в /dal/entity/filter`
+type JobsFilter struct { // want `GID-171: filter "JobsFilter" must live in /dal/entity/filter\. Fix: move it there`
 	Status string
 }
 
 // Префикс Filter* — тоже фильтр.
-type FilterStages struct { // want `GID-171: фильтр "FilterStages" живёт в /dal/entity/filter`
+type FilterStages struct { // want `GID-171: filter "FilterStages" must live in /dal/entity/filter\. Fix: move it there`
 	StageID string
 }
 

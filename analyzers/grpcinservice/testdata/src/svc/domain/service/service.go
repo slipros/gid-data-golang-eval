@@ -2,9 +2,9 @@
 package service
 
 import (
-	"google.golang.org/grpc" // want `GID-160: прямой импорт google\.golang\.org/grpc в domain-слое запрещён — gRPC вызывается через repository \(исключения: nolint или settings\.exclude\)`
+	"google.golang.org/grpc" // want `GID-160: direct import of google\.golang\.org/grpc in the domain layer is forbidden\. Fix: call gRPC through a repository \(exceptions: nolint or settings\.exclude\)`
 
-	"svc/pkg/api/orderpb" // want `GID-160: импорт gRPC-пакета "svc/pkg/api/orderpb" в domain-слое запрещён — gRPC вызывается через repository`
+	"svc/pkg/api/orderpb" // want `GID-160: importing the gRPC package "svc/pkg/api/orderpb" in the domain layer is forbidden\. Fix: call gRPC through a repository`
 )
 
 type Order struct {

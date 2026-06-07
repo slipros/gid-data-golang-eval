@@ -2,7 +2,7 @@
 //
 //   - Регистрация флагов через пакет stdlib "flag" (функции flag.String/Int/
 //     Bool/.../flag.Parse/flag.Var и методы flag.FlagSet) разрешена только
-//     в пакете main: флаги объявляет бинарь, библиотека принимает параметры.
+//     в пакете main: Fix: declare flags in the binary, let libraries take parameters.
 //   - В пакете main имя флага (первый строковый константный аргумент
 //     flag.String/Int/Bool/Duration/Float64/Var и т.п.) должно быть в
 //     snake_case: заглавные буквы и дефисы запрещены, цифры и `_` допустимы.
@@ -36,7 +36,7 @@ const flagPkgPath = "flag"
 // Analyzer — правило GID-192: flag.* только в пакете main; имена флагов snake_case.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidflagmain",
-	Doc:  ruleID + ": регистрация флагов только в пакете main, имя флага в snake_case",
+	Doc:  ruleID + ": flags are registered only in package main, flag names in snake_case. Fix: register flags in main and use snake_case names",
 	Run:  run,
 }
 
@@ -67,8 +67,8 @@ func run(pass *analysis.Pass) (any, error) {
 
 			if !isMain {
 				pass.Reportf(call.Pos(),
-					"%s: регистрация флага вне пакета main запрещена — "+
-						"флаги объявляет бинарь, библиотека принимает параметры", ruleID)
+					"%s: registering a flag outside package main is forbidden. "+
+						"Fix: declare flags in the binary, let libraries take parameters", ruleID)
 				return true
 			}
 
@@ -78,7 +78,7 @@ func run(pass *analysis.Pass) (any, error) {
 				return true
 			}
 			if !isSnakeCase(name) {
-				pass.Reportf(pos, "%s: имя флага %q — используйте snake_case", ruleID, name)
+				pass.Reportf(pos, "%s: flag name %q. Fix: use snake_case", ruleID, name)
 			}
 			return true
 		})

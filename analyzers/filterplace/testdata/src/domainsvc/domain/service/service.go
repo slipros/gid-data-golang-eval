@@ -4,12 +4,12 @@ package service
 // --- Позитивный класс: нарушение ловится ---
 
 // Префикс Filter* в service — должен жить в /domain/model.
-type FilterJobs struct { // want `GID-171: фильтр "FilterJobs" живёт в /domain/model`
+type FilterJobs struct { // want `GID-171: filter "FilterJobs" must live in /domain/model\. Fix: move it there`
 	Status string
 }
 
 // Суффикс *Filter — тоже фильтр.
-type JobsFilter struct { // want `GID-171: фильтр "JobsFilter" живёт в /domain/model`
+type JobsFilter struct { // want `GID-171: filter "JobsFilter" must live in /domain/model\. Fix: move it there`
 	Limit int
 }
 

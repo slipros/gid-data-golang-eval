@@ -3,7 +3,7 @@
 package service
 
 import (
-	"google.golang.org/grpc" // want `GID-160: прямой импорт google\.golang\.org/grpc в domain-слое запрещён`
+	"google.golang.org/grpc" // want `GID-160: direct import of google\.golang\.org/grpc in the domain layer is forbidden`
 
 	"excluded/pkg/api/orderpb" // исключён через settings.exclude — не флагуется
 )

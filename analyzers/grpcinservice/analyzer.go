@@ -47,7 +47,7 @@ type Settings struct {
 func NewAnalyzer(s Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name: "gidgrpcinservice",
-		Doc:  ruleID + ": service вызывает gRPC через repository, не напрямую",
+		Doc:  ruleID + ": a service calls gRPC through a repository, not directly. Fix: move the gRPC call into a repository",
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, s)
 		},
@@ -71,13 +71,13 @@ func run(pass *analysis.Pass, s Settings) (any, error) {
 			switch {
 			case path == grpcPkg:
 				pass.Reportf(imp.Pos(),
-					"%s: прямой импорт %s в domain-слое запрещён — gRPC вызывается через repository "+
-						"(исключения: nolint или settings.exclude)",
+					"%s: direct import of %s in the domain layer is forbidden. Fix: call gRPC through a repository "+
+						"(exceptions: nolint or settings.exclude)",
 					ruleID, grpcPkg)
 			case grpcBacked[path]:
 				pass.Reportf(imp.Pos(),
-					"%s: импорт gRPC-пакета %q в domain-слое запрещён — gRPC вызывается через repository "+
-						"(исключения: nolint или settings.exclude)",
+					"%s: importing the gRPC package %q in the domain layer is forbidden. Fix: call gRPC through a repository "+
+						"(exceptions: nolint or settings.exclude)",
 					ruleID, path)
 			}
 		}

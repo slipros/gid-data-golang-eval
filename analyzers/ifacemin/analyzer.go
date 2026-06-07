@@ -42,7 +42,7 @@ type Settings struct {
 func NewAnalyzer(s Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name: "gidifacemin",
-		Doc:  ruleID + ": интерфейс-зависимость содержит только используемые потребителем методы",
+		Doc:  ruleID + ": a dependency interface contains only the methods the consumer uses. Fix: remove unused methods from the interface",
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, s)
 		},
@@ -80,8 +80,8 @@ func run(pass *analysis.Pass, s Settings) (any, error) {
 				continue
 			}
 			pass.Reportf(m.ident.Pos(),
-				"%s: метод %q интерфейса %q не используется в пакете-потребителе — "+
-					"интерфейс минимален: уберите метод из интерфейса",
+				"%s: method %q of interface %q is not used in the consumer package. "+
+					"Fix: keep the interface minimal, remove the method",
 				ruleID, m.ident.Name, d.name)
 		}
 	}

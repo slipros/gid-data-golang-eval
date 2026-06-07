@@ -1,4 +1,4 @@
 // Позитив (граница): build/ разрешён только у репозитория, у сервиса — нет.
-package build // want `GID-138: пакет "svc/domain/service/build" — группирующие подпакеты в /domain/service запрещены, сущности слоя живут в его корне`
+package build // want `GID-138: package "svc/domain/service/build"\. Fix: grouping subpackages in /domain/service are forbidden, keep layer entities at its root`
 
 func Helper() {}

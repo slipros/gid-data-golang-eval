@@ -30,10 +30,10 @@ const ruleID = "GID-171"
 // Filter идёт строчная буква.
 var filterName = regexp.MustCompile(`(^Filter([A-Z0-9].*)?$)|([a-z0-9]Filter$)`)
 
-// Analyzer — правило GID-171: фильтры list-операций живут в /dal/entity/filter (entity) или /domain/model (model).
+// Analyzer — правило GID-171: list-operation filters live in /dal/entity/filter (entity) or /domain/model (model). Fix: move the filter there.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidfilterplace",
-	Doc:  ruleID + ": фильтры list-операций живут в /dal/entity/filter (entity) или /domain/model (model)",
+	Doc:  ruleID + ": list-operation filters live in /dal/entity/filter (entity) or /domain/model (model). Fix: move the filter there",
 	Run:  run,
 }
 
@@ -75,10 +75,10 @@ func run(pass *analysis.Pass) (any, error) {
 				}
 				if dalViolating {
 					pass.Reportf(ts.Name.Pos(),
-						"%s: фильтр %q живёт в /dal/entity/filter", ruleID, ts.Name.Name)
+						"%s: filter %q must live in /dal/entity/filter. Fix: move it there", ruleID, ts.Name.Name)
 				} else {
 					pass.Reportf(ts.Name.Pos(),
-						"%s: фильтр %q живёт в /domain/model", ruleID, ts.Name.Name)
+						"%s: filter %q must live in /domain/model. Fix: move it there", ruleID, ts.Name.Name)
 				}
 			}
 		}

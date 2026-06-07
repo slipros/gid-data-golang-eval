@@ -10,26 +10,26 @@ import (
 // --- Класс 1: позитивный (нарушение ловится) ---
 
 // var с New + префикс "Failed" (регистронезависимо).
-var ErrSelect = errors.New("Failed: x") // want `GID-184: сообщение ошибки начинается с "failed"`
+var ErrSelect = errors.New("Failed: x") // want `GID-184: error message starts with "failed"`
 
 func wrapFailed(err error) error {
-	return errors.Wrap(err, "failed to select") // want `GID-184: сообщение ошибки начинается с "failed to"`
+	return errors.Wrap(err, "failed to select") // want `GID-184: error message starts with "failed to"`
 }
 
 func withMessageUnable(err error) error {
-	return errors.WithMessage(err, "unable to parse") // want `GID-184: сообщение ошибки начинается с "unable to"`
+	return errors.WithMessage(err, "unable to parse") // want `GID-184: error message starts with "unable to"`
 }
 
 func errorfError(id int) error {
-	return errors.Errorf("error while loading %d", id) // want `GID-184: сообщение ошибки начинается с "error"`
+	return errors.Errorf("error while loading %d", id) // want `GID-184: error message starts with "error"`
 }
 
 func wrapfCannot(err error, id int) error {
-	return errors.Wrapf(err, "cannot save %d", id) // want `GID-184: сообщение ошибки начинается с "cannot"`
+	return errors.Wrapf(err, "cannot save %d", id) // want `GID-184: error message starts with "cannot"`
 }
 
 func withMessagefCouldNot(err error, id int) error {
-	return errors.WithMessagef(err, "could not commit %d", id) // want `GID-184: сообщение ошибки начинается с "could not"`
+	return errors.WithMessagef(err, "could not commit %d", id) // want `GID-184: error message starts with "could not"`
 }
 
 // --- Класс 2: негативный (чистый код проходит) ---

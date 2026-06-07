@@ -22,39 +22,39 @@ func printf(format string, args ...any) {}
 // --- Класс 1: позитивный (переменная в позиции format) ---
 
 func positiveSprintf(s string, x int) string {
-	return fmt.Sprintf(s, x) // want `GID-186: format-строка — переменная; объявите const, иначе vet не проверит аргументы`
+	return fmt.Sprintf(s, x) // want `GID-186: the format string is a variable\. Fix: declare a const, otherwise vet cannot check the arguments`
 }
 
 func positiveFprintf(w io.Writer, s string, x int) {
-	fmt.Fprintf(w, s, x) // want `GID-186: format-строка — переменная; объявите const, иначе vet не проверит аргументы`
+	fmt.Fprintf(w, s, x) // want `GID-186: the format string is a variable\. Fix: declare a const, otherwise vet cannot check the arguments`
 }
 
 func positiveWrapf(s string, x int) error {
-	return errors.Wrapf(errExternal, s, x) // want `GID-186: format-строка — переменная; объявите const, иначе vet не проверит аргументы`
+	return errors.Wrapf(errExternal, s, x) // want `GID-186: the format string is a variable\. Fix: declare a const, otherwise vet cannot check the arguments`
 }
 
 func positivePrintf(s string, x int) {
-	fmt.Printf(s, x) // want `GID-186: format-строка — переменная; объявите const, иначе vet не проверит аргументы`
+	fmt.Printf(s, x) // want `GID-186: the format string is a variable\. Fix: declare a const, otherwise vet cannot check the arguments`
 }
 
 func positiveErrorf(s string, x int) error {
-	return fmt.Errorf(s, x) // want `GID-186: format-строка — переменная; объявите const, иначе vet не проверит аргументы`
+	return fmt.Errorf(s, x) // want `GID-186: the format string is a variable\. Fix: declare a const, otherwise vet cannot check the arguments`
 }
 
 func positivePkgErrorsErrorf(s string, x int) error {
-	return errors.Errorf(s, x) // want `GID-186: format-строка — переменная; объявите const, иначе vet не проверит аргументы`
+	return errors.Errorf(s, x) // want `GID-186: the format string is a variable\. Fix: declare a const, otherwise vet cannot check the arguments`
 }
 
 func positiveWithMessagef(s string, x int) error {
-	return errors.WithMessagef(errExternal, s, x) // want `GID-186: format-строка — переменная; объявите const, иначе vet не проверит аргументы`
+	return errors.WithMessagef(errExternal, s, x) // want `GID-186: the format string is a variable\. Fix: declare a const, otherwise vet cannot check the arguments`
 }
 
 func positiveLogPrintf(s string, x int) {
-	log.Printf(s, x) // want `GID-186: format-строка — переменная; объявите const, иначе vet не проверит аргументы`
+	log.Printf(s, x) // want `GID-186: the format string is a variable\. Fix: declare a const, otherwise vet cannot check the arguments`
 }
 
 func positiveLogFatalf(s string, x int) {
-	log.Fatalf(s, x) // want `GID-186: format-строка — переменная; объявите const, иначе vet не проверит аргументы`
+	log.Fatalf(s, x) // want `GID-186: the format string is a variable\. Fix: declare a const, otherwise vet cannot check the arguments`
 }
 
 // --- Класс 2: негативный (литерал / const / конкатенация констант) ---

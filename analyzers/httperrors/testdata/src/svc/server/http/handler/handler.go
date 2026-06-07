@@ -7,18 +7,18 @@ type Snapshot struct{}
 
 // --- Позитив: супер-метод обработки ошибок ---
 
-func (h *Snapshot) handleError(w http.ResponseWriter, err error) { // want `GID-162: "handleError" — супер-метод обработки ошибок запрещён, http handler обрабатывает ошибки внутри себя`
+func (h *Snapshot) handleError(w http.ResponseWriter, err error) { // want `GID-162: "handleError" is a forbidden error-handling super-method\. Fix: handle errors inside each http handler`
 	http.Error(w, err.Error(), http.StatusInternalServerError)
 }
 
 // Граничный кейс: package-level супер-функция.
-func writeError(w http.ResponseWriter, status int, err error) { // want `GID-162: "writeError" — супер-метод обработки ошибок запрещён`
+func writeError(w http.ResponseWriter, status int, err error) { // want `GID-162: "writeError" is a forbidden error-handling super-method`
 	http.Error(w, err.Error(), status)
 }
 
 // --- Позитив: handler возвращает error наружу ---
 
-func (h *Snapshot) Get(w http.ResponseWriter, r *http.Request) error { // want `GID-162: http handler "Get" не возвращает error — ошибка обрабатывается на месте`
+func (h *Snapshot) Get(w http.ResponseWriter, r *http.Request) error { // want `GID-162: http handler "Get" must not return error\. Fix: handle the error in place`
 	return nil
 }
 

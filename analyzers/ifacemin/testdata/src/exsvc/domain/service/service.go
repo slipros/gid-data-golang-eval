@@ -6,6 +6,6 @@ type LegacyGateway interface {
 }
 
 type AlertSink interface {
-	Alert(msg string) // want `GID-197: метод "Alert" интерфейса "AlertSink" не используется в пакете-потребителе — интерфейс минимален: уберите метод из интерфейса`
+	Alert(msg string) // want `GID-197: method "Alert" of interface "AlertSink" is not used in the consumer package\. Fix: keep the interface minimal, remove the method`
 	Flush() error     // исключён как AlertSink.Flush
 }

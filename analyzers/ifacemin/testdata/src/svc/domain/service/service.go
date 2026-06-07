@@ -11,7 +11,7 @@ import (
 type SnapshotRepository interface {
 	Snapshot(ctx context.Context, id string) (string, error)
 	CreateSnapshot(ctx context.Context, name string) error
-	DeleteSnapshot(ctx context.Context, id string) error // want `GID-197: метод "DeleteSnapshot" интерфейса "SnapshotRepository" не используется в пакете-потребителе — интерфейс минимален: уберите метод из интерфейса`
+	DeleteSnapshot(ctx context.Context, id string) error // want `GID-197: method "DeleteSnapshot" of interface "SnapshotRepository" is not used in the consumer package\. Fix: keep the interface minimal, remove the method`
 }
 
 type SnapshotService struct {
@@ -95,7 +95,7 @@ func useSource(src SnapshotSource) error {
 // --- Граница: использование только из *_test.go — нарушение ---
 
 type SnapshotProbe interface {
-	Ping() error // want `GID-197: метод "Ping" интерфейса "SnapshotProbe" не используется в пакете-потребителе — интерфейс минимален: уберите метод из интерфейса`
+	Ping() error // want `GID-197: method "Ping" of interface "SnapshotProbe" is not used in the consumer package\. Fix: keep the interface minimal, remove the method`
 }
 
 type prober struct {
