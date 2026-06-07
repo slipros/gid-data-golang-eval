@@ -91,6 +91,12 @@
 | GID-212 | build-signature | Экспортируемые функции `/dal/repository/build` возвращают `(string, []any, error)` (одиночный запрос) или `(*batch.Batch, error)` (batch-операции); импорт `github.com/Masterminds/squirrel` разрешён только в build-пакетах (линтер `gidbuildsig`) | repository.md, example_build.md | ✅ | ✅ |
 | GID-215 | no-inline-entity-literal | В `/domain/**` (вне convert-пакетов) запрещён непустой composite literal entity-типа — конвертация model ↔ entity живёт в convert (`<Dst><Type>From<Src>`); пустой литерал (zero value) разрешён; флагается внешний литерал, вложенные не дублируются (линтер `gidinlineconv`) | service.md | ✅ | ✅ |
 | GID-217 | ban-symbol | Настраиваемый бан символов библиотек (`settings.symbols`: pkg + name + msg; pkg матчится точно или по суффиксу сегментов); дефолт — `gdpostgres.TQuery` → «используй прямые методы conn: Select, ScanRow, NamedStruct, Transaction» (линтер `gidbansymbol`) | repository.md | ✅ | ✅ |
+| GID-224 | transport-imports | Транспорт (`/server`, `/schedule`, `/validate`, `/event`) из слоёв сервиса видит только `/domain/model` (и `/validate`) — конкретные service/usecase инжектятся интерфейсами у потребителя; `/dal`, `/client`, `/metric`, `/app` и чужие транспорт-слои запрещены. Баны действуют внутри одного модуля (граница — сегмент `/internal/`). **Исключения**: `//nolint:gidlayerimports` или `settings.disable: [GID-224]` (линтер `gidlayerimports`) | решение 2026-06-07 (обсуждение depguard): строгая версия — в backend-go 25 импортов transport → service станут нарушениями | ✅ | ✅ |
+| GID-225 | root-and-leaves | `/internal/app` (composition root) и транспорт-листья (`/server`, `/schedule`, `/validate`) никем не импортируются — wiring живёт в app, в транспорт никто не смотрит (линтер `gidlayerimports`) | решение 2026-06-07 | ✅ | ✅ |
+| GID-226 | metric-standalone | `/metric` не импортирует слои сервиса (самостоятельный агрегатор Prometheus, ср. GID-174); `/domain` и `/dal` не импортируют `/metric` — метрики приходят интерфейсом, wiring в app (линтер `gidlayerimports`) | решение 2026-06-07; в backend-go 0 нарушений (кроме неканоничных event-collector/event-enricher) | ✅ | ✅ |
+| GID-227 | model-pure | `/domain/model` не импортирует ни один слой сервиса — чистый словарь; подпакеты `/domain/model/*` — полноправный model-слой (дополняет GID-132/170) (линтер `gidlayerimports`) | решение 2026-06-07; в backend-go 0 нарушений | ✅ | ✅ |
+| GID-228 | no-direct-client | `/domain/**` и `/dal/**` не импортируют `/client/**` — зависимость от клиента описывается интерфейсом в `/domain/model` (GID-134), конвертация model ↔ DTO клиента у потребителя/в app (линтер `gidlayerimports`) | решение 2026-06-07 | ✅ | ✅ |
+| GID-229 | client-isolated | `/client/**` не импортирует слои сервиса, включая `/domain` целиком — у клиента свои типы (расширение GID-172). **Исключения**: `settings.disable: [GID-229]` на переходный период — в backend-go 11 импортов client → domain (линтер `gidlayerimports`) | решение 2026-06-07: строгое прочтение client.md | ✅ | ✅ |
 
 ### Обработка ошибок по слоям
 
@@ -166,14 +172,21 @@
 | GID-201 | Ширина строки ≤ 120 (осознанное отклонение от Google) | `lll` (`line-length: 120`) | ✅ конфиг |
 | GID-202 | Запрет `_ = err`; обязательный comma-ok у type assertion | `errcheck` (`check-blank`, `check-type-assertions`) | ✅ конфиг |
 | GID-203 | Форматирование goimports | formatters: `goimports` | ✅ конфиг |
-| GID-204 | Динамические ошибки в рантайме | ⛔ `err113` не включаем — конфликт с GID-146 (pkg/errors); закрыто GID-144/145/146 | ⛔ |
+| GID-204 | Динамические ошибки в рантайме | `err113` включён базой consent-api, его dynamic-errors-чек погашен exclusion'ом (конфликт с GID-146 pkg/errors); закрыто GID-136/144/145/146 | ✅ конфиг |
 | GID-205 | Корректность: copylocks, composites, printf, lostcancel, SA-чеки, unused, ineffassign | стандартная пятёрка: `govet`, `staticcheck`, `unused`, `ineffassign` (+`errcheck`) | ✅ конфиг |
 | GID-206 | Стиль staticcheck: mixed caps/initialisms (ST1003), package comment (ST1000), консистентный ресивер (ST1016), error strings (ST1005), error naming (ST1012) | `staticcheck` `checks: [all]` | ✅ конфиг |
 | GID-207 | Doc-comments экспортируемых, indent-error-flow, early-return, superfluous-else, deep-exit, dot/blank imports, `any` вместо `interface{}` | `revive` (точечные rules) | ✅ конфиг |
 | GID-208 | Builtin-шейдинг, запрет init, naked return, slice capacity, strconv vs fmt, теги marshaled-структур, вложенность, когнитивная сложность, ctx в структуре, размер интерфейса, return concrete types, группировка объявлений, proto-алиасы | `predeclared`, `gochecknoinits`, `nakedret`, `prealloc`, `perfsprint`, `musttag`, `nestif`, `gocognit`, `containedctx`, `interfacebloat`, `ireturn`, `grouper`, `importas` | ✅ конфиг |
 | GID-209 | Тесты: `t.Helper()`, `_test`-пакеты, корректность параллельных тестов | `thelper`, `testpackage`, `tparallel`, `paralleltest` (`ignore-missing`) | ✅ конфиг |
 
-Не включаем (конфликт со стайлгайдом): `errorlint`/`err113` (std `%w`-wrapping vs GID-146/176/177), `gochecknoglobals` (ломается об `Default*Options` и `var ErrX`), `depguard` (наши GID-137/146 дают лучшие диагностики), `wrapcheck` (заменён собственным `giderrwrap` — GID-176/177), `forcetypeassert` (дубль `errcheck.check-type-assertions`).
+С переходом на базу consent-api (2026-06-07): `errorlint`, `err113`, `forcetypeassert` включены
+базой (dynamic-errors-чек err113 погашен exclusion'ом — конфликт с GID-146; forcetypeassert
+дублирует `errcheck.check-type-assertions` — вреда нет). `depguard` включён для
+модуленезависимых банов библиотек (uuid-форки — GID-137 на уровне импорта); запреты слоёв
+в depguard не выражаются (deny — префиксный матчинг полного import-пути, требует хардкода
+module path в каждом сервисе) — их закрывает `gidlayerimports` (GID-132/170/172/224…229).
+Не включаем: `gochecknoglobals` (ломается об `Default*Options` и `var ErrX`), `wrapcheck`
+(заменён собственным `giderrwrap` — GID-176/177).
 
 ## Не переносим (остаётся на code review) ⛔
 

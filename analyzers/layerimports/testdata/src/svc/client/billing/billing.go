@@ -1,11 +1,11 @@
-// Негатив (GID-172) + неприменимость: client импортирует domain/model
-// (ок) и сторонний пакет (правило не применяется).
+// Позитив (GID-229): клиент изолирован — domain ему недоступен;
+// сторонний пакет (strconv) — правило не применяется.
 package billing
 
 import (
 	"strconv"
 
-	"svc/domain/model"
+	"svc/domain/model" // want `GID-229: пакету "svc/client/billing" запрещён импорт "svc/domain/model" — у клиента свои типы: конвертация model <-> DTO клиента живёт у потребителя`
 )
 
 type Client struct{}

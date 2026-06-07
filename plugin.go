@@ -96,7 +96,7 @@ func init() {
 	register.Plugin("giddalerrors", newSingleAnalyzerPlugin(errplace.DALAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidservicesingle", newSingleAnalyzerPlugin(servicesingle.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidonlypkgerrors", newSingleAnalyzerPlugin(onlypkgerrors.Analyzer, register.LoadModeTypesInfo))
-	register.Plugin("gidlayerimports", newSingleAnalyzerPlugin(layerimports.Analyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidlayerimports", newConfigurablePlugin(layerimports.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidservicemodel", newSingleAnalyzerPlugin(servicemodel.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidparamorder", newSingleAnalyzerPlugin(paramorder.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidoptsstyle", newSingleAnalyzerPlugin(optsstyle.Analyzer, register.LoadModeTypesInfo))

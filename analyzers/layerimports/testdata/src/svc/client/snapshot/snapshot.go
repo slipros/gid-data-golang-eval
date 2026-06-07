@@ -5,14 +5,14 @@ import (
 	"svc/dal/entity"     // want `GID-172: пакету "svc/client/snapshot" запрещён импорт "svc/dal/entity" — у клиента свои типы, он ничего не знает о entity/repository из dal-слоя`
 	"svc/dal/repository" // want `GID-172: пакету "svc/client/snapshot" запрещён импорт "svc/dal/repository" — у клиента свои типы, он ничего не знает о entity/repository из dal-слоя`
 
-	"svc/domain/model"
+	"svc/domain/model" // want `GID-229: пакету "svc/client/snapshot" запрещён импорт "svc/domain/model" — у клиента свои типы: конвертация model <-> DTO клиента живёт у потребителя`
 )
 
 type Client struct {
 	repo *repository.Snapshot
 }
 
-// Негатив: model клиенту разрешён (он отдаёт наружу свои/доменные типы).
+// Позитив (GID-229): domain клиенту недоступен — у него свои типы.
 func (c *Client) Snapshot() model.Snapshot {
 	return model.Snapshot{}
 }
