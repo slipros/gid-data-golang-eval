@@ -23,4 +23,4 @@ var DefaultGRPCOptions = GRPCOptions{Addr: ":50051"}
 
 // --- Позитив: дефолт без префикса Default проверяется и в app-слое ---
 
-var kafkaOpts = KafkaOptions{Brokers: []string{"localhost:9092"}} // want `GID-126: дефолты Options — переменная Default<X>Options`
+var kafkaOpts = KafkaOptions{Brokers: []string{"localhost:9092"}} // want `GID-126: option defaults must be a Default<X>Options variable\. Fix: rename it`

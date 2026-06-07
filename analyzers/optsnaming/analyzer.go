@@ -26,7 +26,7 @@ const ruleID = "GID-126"
 // дефолты — переменная Default<X>Options.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidoptsnaming",
-	Doc:  ruleID + ": тип настроек — с префиксом сущности; дефолты — переменная Default<X>Options",
+	Doc:  ruleID + ": an options type has an entity prefix; defaults are a Default<X>Options variable. Fix: rename accordingly",
 	Run:  run,
 }
 
@@ -72,7 +72,7 @@ func checkTypeNames(pass *analysis.Pass, gd *ast.GenDecl) {
 			continue // только struct-типы
 		}
 		pass.Reportf(ts.Name.Pos(),
-			"%s: тип настроек — с префиксом сущности: JobOptions, не голый Options", ruleID)
+			"%s: an options type must have an entity prefix. Fix: use JobOptions, not bare Options", ruleID)
 	}
 }
 
@@ -100,7 +100,7 @@ func checkDefaultNames(pass *analysis.Pass, gd *ast.GenDecl) {
 				continue
 			}
 			pass.Reportf(name.Pos(),
-				"%s: дефолты Options — переменная Default<X>Options", ruleID)
+				"%s: option defaults must be a Default<X>Options variable. Fix: rename it", ruleID)
 		}
 	}
 }

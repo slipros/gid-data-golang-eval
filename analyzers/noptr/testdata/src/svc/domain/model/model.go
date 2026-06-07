@@ -12,14 +12,14 @@ type SnapshotStatus string
 // --- Позитивные кейсы ---
 
 type Snapshot struct {
-	ParentID    *uuid.UUID     // want `GID-120: \*uuid\.UUID запрещён — пустой UUID проверяется через IsNil\(\)`
-	CompletedAt *time.Time     // want `GID-121: \*time\.Time в model не нужен — отсутствие проверяется t\.IsZero\(\)`
-	Description *string        // want `GID-121: указатель на string-тип в model не нужен — пустота проверяется len\(s\) == 0`
-	Status      *SnapshotStatus // want `GID-121: указатель на string-тип в model не нужен`
+	ParentID    *uuid.UUID     // want `GID-120: \*uuid\.UUID is forbidden\. Fix: use uuid\.UUID and check emptiness with IsNil\(\)`
+	CompletedAt *time.Time     // want `GID-121: \*time\.Time is unnecessary in model\. Fix: use time\.Time and check absence with t\.IsZero\(\)`
+	Description *string        // want `GID-121: a pointer to a string type is unnecessary in model\. Fix: use the value and check len\(s\) == 0`
+	Status      *SnapshotStatus // want `GID-121: a pointer to a string type is unnecessary in model`
 }
 
 // Граничный кейс: *uuid.UUID в сигнатуре — тоже нарушение GID-120.
-func Lookup(id *uuid.UUID) bool { // want `GID-120: \*uuid\.UUID запрещён — пустой UUID проверяется через IsNil\(\)`
+func Lookup(id *uuid.UUID) bool { // want `GID-120: \*uuid\.UUID is forbidden\. Fix: use uuid\.UUID and check emptiness with IsNil\(\)`
 	return id != nil
 }
 

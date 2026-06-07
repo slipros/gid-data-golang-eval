@@ -18,7 +18,7 @@ const ruleID = "GID-152"
 // Analyzer — правило GID-152: opts указателем в параметрах, embedded в структуре.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidoptsstyle",
-	Doc:  ruleID + ": opts передаётся указателем и встраивается в структуру",
+	Doc:  ruleID + ": opts is passed by pointer and embedded in the struct. Fix: take *Options and embed it",
 	Run:  run,
 }
 
@@ -48,7 +48,7 @@ func checkParams(pass *analysis.Pass, fn *ast.FuncDecl) {
 		t := pass.TypesInfo.TypeOf(field.Type)
 		if name, ok := optionsName(t); ok {
 			pass.Reportf(field.Pos(),
-				"%s: opts передаётся указателем — используйте *%s", ruleID, name)
+				"%s: opts must be passed by pointer. Fix: use *%s", ruleID, name)
 		}
 	}
 }
@@ -74,7 +74,7 @@ func checkStructs(pass *analysis.Pass, gd *ast.GenDecl) {
 			}
 			if name, ok := optionsName(t); ok {
 				pass.Reportf(field.Pos(),
-					"%s: opts встраивается в тело сущности (embedded %s), а не хранится именованным полем",
+					"%s: opts must be embedded in the entity body (embedded %s), not stored as a named field. Fix: embed it",
 					ruleID, name)
 			}
 		}

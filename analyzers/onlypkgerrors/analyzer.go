@@ -25,10 +25,10 @@ var forbidden = map[string]map[string]struct{}{
 	"fmt":    {"Errorf": {}},
 }
 
-// Analyzer — правило GID: ошибки создаются только через .
+// Analyzer — правило GID: errors are created only via .
 var Analyzer = &analysis.Analyzer{
 	Name: "gidonlypkgerrors",
-	Doc:  ruleID + ": ошибки создаются только через " + allowedPkg,
+	Doc:  ruleID + ": errors are created only via " + allowedPkg,
 	Run:  run,
 }
 
@@ -55,7 +55,7 @@ func run(pass *analysis.Pass) (any, error) {
 				return true
 			}
 			pass.Reportf(call.Pos(),
-				"%s: %s.%s запрещён — для работы с ошибками используется только %s",
+				"%s: %s.%s is forbidden. Fix: use only %s for errors",
 				ruleID, fPkg.Name(), f.Name(), allowedPkg)
 			return true
 		})

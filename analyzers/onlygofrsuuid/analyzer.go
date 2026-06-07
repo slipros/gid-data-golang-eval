@@ -27,7 +27,7 @@ var deniedPkgs = map[string]struct{}{
 // Analyzer — правило GID-137: для UUID разрешена только github.com/gofrs/uuid.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidonlygofrsuuid",
-	Doc:  ruleID + ": для UUID разрешена только библиотека " + allowedPkg,
+	Doc:  ruleID + ": for UUID only this library is allowed: " + allowedPkg,
 	Run:  run,
 }
 
@@ -43,7 +43,7 @@ func run(pass *analysis.Pass) (any, error) {
 			}
 			if _, denied := deniedPkgs[path]; denied {
 				pass.Reportf(imp.Pos(),
-					"%s: импорт %q запрещён — для UUID используйте %s",
+					"%s: importing %q is forbidden. Fix: use %s for UUID",
 					ruleID, path, allowedPkg)
 			}
 		}

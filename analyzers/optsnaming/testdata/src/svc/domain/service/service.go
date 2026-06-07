@@ -5,7 +5,7 @@ import "context"
 
 // --- Позитив: struct-тип с именем ровно Options вне app-слоя ---
 
-type Options struct { // want `GID-126: тип настроек — с префиксом сущности: JobOptions, не голый Options`
+type Options struct { // want `GID-126: an options type must have an entity prefix\. Fix: use JobOptions, not bare Options`
 	Retries int
 }
 
@@ -16,11 +16,11 @@ type JobOptions struct {
 
 // --- Позитив: package-level var типа <X>Options без префикса Default ---
 
-var Opts = JobOptions{Retries: 3} // want `GID-126: дефолты Options — переменная Default<X>Options`
+var Opts = JobOptions{Retries: 3} // want `GID-126: option defaults must be a Default<X>Options variable\. Fix: rename it`
 
 // --- Позитив: package-level var-объявление (тип явно указан) без Default ---
 
-var defaults JobOptions // want `GID-126: дефолты Options — переменная Default<X>Options`
+var defaults JobOptions // want `GID-126: option defaults must be a Default<X>Options variable\. Fix: rename it`
 
 // --- Негатив: дефолты в переменной Default<X>Options ---
 

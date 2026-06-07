@@ -6,12 +6,12 @@ import "errors"
 // --- Позитивные кейсы ---
 
 func bad() {
-	panic("boom") // want `GID-161: panic используется только в пакете main — верните error`
+	panic("boom") // want `GID-161: panic is allowed only in package main\. Fix: return an error instead`
 }
 
 // Граничный кейс: panic с error-аргументом.
 func badErr(err error) {
-	panic(err) // want `GID-161: panic используется только в пакете main — верните error`
+	panic(err) // want `GID-161: panic is allowed only in package main\. Fix: return an error instead`
 }
 
 // --- Негативные кейсы ---

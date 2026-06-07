@@ -27,7 +27,7 @@ const (
 // Analyzer — правило GID: см. Doc.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidparamorder",
-	Doc:  "GID-110/113/153: порядок параметров — ctx, opts, logger, остальные",
+	Doc:  "GID-110/113/153: parameter order is ctx, opts, logger, then the rest. Fix: reorder parameters",
 	Run:  run,
 }
 
@@ -81,7 +81,7 @@ func checkParams(pass *analysis.Pass, params []param) {
 	}
 	if ctxIdx > 0 {
 		pass.Reportf(params[ctxIdx].pos.Pos(),
-			"GID-110: context.Context должен быть первым параметром")
+			"GID-110: context.Context must be the first parameter. Fix: move ctx first")
 	}
 	if optsIdx >= 0 {
 		want := 0
@@ -90,12 +90,12 @@ func checkParams(pass *analysis.Pass, params []param) {
 		}
 		if optsIdx != want {
 			pass.Reportf(params[optsIdx].pos.Pos(),
-				"GID-113: opts идёт первым параметром после ctx, не последним")
+				"GID-113: opts must come right after ctx, not last. Fix: move opts after ctx")
 		}
 	}
 	if loggerIdx >= 0 && optsIdx >= 0 && loggerIdx < optsIdx {
 		pass.Reportf(params[loggerIdx].pos.Pos(),
-			"GID-153: logger идёт после opts сущности")
+			"GID-153: logger must come after the entity opts. Fix: move logger after opts")
 	}
 }
 

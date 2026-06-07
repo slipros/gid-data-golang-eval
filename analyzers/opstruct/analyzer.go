@@ -14,7 +14,7 @@
 //     service/convert (источник: model.md «модельные Create-структуры не
 //     содержат ID и CreatedAt»).
 //   - entity-слой (/dal/entity и подпакеты): Create-структура НЕ содержит поля
-//     UpdatedAt — Create содержит только поля INSERT. При этом entity-Create
+//     UpdatedAt — Create holds only INSERT fields. При этом entity-Create
 //     ЛЕГИТИМНО содержит ID и CreatedAt, поэтому они не флагаются.
 //
 // Embedded-поля не проверяются. Сгенерированные файлы пропускаются.
@@ -40,21 +40,21 @@ var createName = regexp.MustCompile(`^Create[A-Z]`)
 
 // model-слой запрещает эти поля в Create-структуре.
 var modelForbidden = map[string]string{
-	"ID":        "генерируется на уровне convert/БД",
-	"CreatedAt": "проставляется на уровне service/convert",
-	"UpdatedAt": "проставляется на уровне service/convert",
+	"ID":        "generated at the convert/DB level",
+	"CreatedAt": "set at the service/convert level",
+	"UpdatedAt": "set at the service/convert level",
 }
 
 // entity-слой запрещает только UpdatedAt (ID и CreatedAt в entity-Create легитимны).
 var entityForbidden = map[string]string{
-	"UpdatedAt": "Create содержит только поля INSERT",
+	"UpdatedAt": "Create holds only INSERT fields",
 }
 
 // Analyzer — правило GID-210: операционные Create-структуры содержат минимальный набор полей.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidopstruct",
-	Doc: ruleID + ": операционные Create-структуры содержат минимальный набор полей " +
-		"(model: без ID/CreatedAt/UpdatedAt; entity: без UpdatedAt)",
+	Doc: ruleID + ": operational Create structs hold a minimal set of fields " +
+		"(model: no ID/CreatedAt/UpdatedAt; entity: no UpdatedAt). Fix: drop those fields",
 	Run: run,
 }
 
@@ -115,7 +115,7 @@ func checkStruct(pass *analysis.Pass, typeName string, st *ast.StructType, forbi
 				continue
 			}
 			pass.Reportf(name.Pos(),
-				"%s: операционная структура %q не должна содержать поле %q (%s) — убери его из Create",
+				"%s: operational struct %q must not contain field %q (%s). Fix: remove it from Create",
 				ruleID, typeName, name.Name, reason)
 		}
 	}

@@ -4,9 +4,9 @@ package onlygofrsuuid
 import (
 	"github.com/gofrs/uuid"
 
-	googleuuid "github.com/google/uuid" // want `GID-137: импорт "github.com/google/uuid" запрещён — для UUID используйте github.com/gofrs/uuid`
+	googleuuid "github.com/google/uuid" // want `GID-137: importing "github.com/google/uuid" is forbidden\. Fix: use github.com/gofrs/uuid for UUID`
 
-	satori "github.com/satori/go.uuid" // want `GID-137: импорт "github.com/satori/go.uuid" запрещён — для UUID используйте github.com/gofrs/uuid`
+	satori "github.com/satori/go.uuid" // want `GID-137: importing "github.com/satori/go.uuid" is forbidden\. Fix: use github.com/gofrs/uuid for UUID`
 
 	"example.com/uuidutil"
 )

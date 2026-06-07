@@ -10,15 +10,15 @@ import (
 
 // --- Позитивные кейсы: std-конструкторы пойманы ---
 
-var ErrStd = stderrors.New("std") // want `GID-146: errors\.New запрещён — для работы с ошибками используется только github\.com/pkg/errors`
+var ErrStd = stderrors.New("std") // want `GID-146: errors\.New is forbidden\. Fix: use only github\.com/pkg/errors for errors`
 
 func badErrorf(id string) error {
-	return fmt.Errorf("job %s failed", id) // want `GID-146: fmt\.Errorf запрещён — для работы с ошибками используется только github\.com/pkg/errors`
+	return fmt.Errorf("job %s failed", id) // want `GID-146: fmt\.Errorf is forbidden\. Fix: use only github\.com/pkg/errors for errors`
 }
 
 // Граничный кейс: errors.Join — тоже создание ошибки.
 func badJoin(a, b error) error {
-	return stderrors.Join(a, b) // want `GID-146: errors\.Join запрещён — для работы с ошибками используется только github\.com/pkg/errors`
+	return stderrors.Join(a, b) // want `GID-146: errors\.Join is forbidden\. Fix: use only github\.com/pkg/errors for errors`
 }
 
 // --- Негативные кейсы: pkg/errors проходит ---

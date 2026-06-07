@@ -12,10 +12,10 @@ import (
 
 const ruleID = "GID-161"
 
-// Analyzer — правило GID-161: panic используется только в пакете main.
+// Analyzer — правило GID-161: panic is used only in package main. Fix: return an error instead.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidnopanic",
-	Doc:  ruleID + ": panic используется только в пакете main",
+	Doc:  ruleID + ": panic is used only in package main. Fix: return an error instead",
 	Run:  run,
 }
 
@@ -40,7 +40,7 @@ func run(pass *analysis.Pass) (any, error) {
 				return true // локальная функция panic — не встроенный panic
 			}
 			pass.Reportf(call.Pos(),
-				"%s: panic используется только в пакете main — верните error", ruleID)
+				"%s: panic is allowed only in package main. Fix: return an error instead", ruleID)
 			return true
 		})
 	}

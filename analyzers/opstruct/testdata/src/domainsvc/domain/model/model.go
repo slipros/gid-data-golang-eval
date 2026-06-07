@@ -8,14 +8,14 @@ import "time"
 // model-Create с генерируемыми полями — флагается каждое.
 type CreateJob struct {
 	Title     string
-	ID        int       // want `GID-210: операционная структура "CreateJob" не должна содержать поле "ID" .* — убери его из Create`
-	CreatedAt time.Time // want `GID-210: операционная структура "CreateJob" не должна содержать поле "CreatedAt" .* — убери его из Create`
-	UpdatedAt time.Time // want `GID-210: операционная структура "CreateJob" не должна содержать поле "UpdatedAt" .* — убери его из Create`
+	ID        int       // want `GID-210: operational struct "CreateJob" must not contain field "ID" .* Fix: remove it from Create`
+	CreatedAt time.Time // want `GID-210: operational struct "CreateJob" must not contain field "CreatedAt" .* Fix: remove it from Create`
+	UpdatedAt time.Time // want `GID-210: operational struct "CreateJob" must not contain field "UpdatedAt" .* Fix: remove it from Create`
 }
 
 // Несколько имён в одном поле — проверяется каждое.
 type CreateStageInput struct {
-	ID, UpdatedAt int // want `GID-210: операционная структура "CreateStageInput" не должна содержать поле "ID"` `GID-210: операционная структура "CreateStageInput" не должна содержать поле "UpdatedAt"`
+	ID, UpdatedAt int // want `GID-210: operational struct "CreateStageInput" must not contain field "ID"` `GID-210: operational struct "CreateStageInput" must not contain field "UpdatedAt"`
 }
 
 // --- Негативный класс: чистый код проходит ---

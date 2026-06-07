@@ -15,16 +15,16 @@ type Hello struct{}
 
 // --- Позитивные кейсы ---
 
-func (h *Hello) BadCtx(id int, ctx context.Context) error { // want `GID-110: context\.Context должен быть первым параметром`
+func (h *Hello) BadCtx(id int, ctx context.Context) error { // want `GID-110: context\.Context must be the first parameter\. Fix: move ctx first`
 	return nil
 }
 
-func (h *Hello) BadOpts(ctx context.Context, id int, opts *HelloOptions) error { // want `GID-113: opts идёт первым параметром после ctx, не последним`
+func (h *Hello) BadOpts(ctx context.Context, id int, opts *HelloOptions) error { // want `GID-113: opts must come right after ctx, not last\. Fix: move opts after ctx`
 	return nil
 }
 
 // Граничный кейс: без ctx opts всё равно идёт первым.
-func NewBad(logger *logrus.Entry, opts *HelloOptions) *Hello { // want `GID-113: opts идёт первым параметром после ctx, не последним` `GID-153: logger идёт после opts сущности`
+func NewBad(logger *logrus.Entry, opts *HelloOptions) *Hello { // want `GID-113: opts must come right after ctx, not last\. Fix: move opts after ctx` `GID-153: logger must come after the entity opts\. Fix: move logger after opts`
 	return &Hello{}
 }
 

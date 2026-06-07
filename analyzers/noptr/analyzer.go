@@ -24,7 +24,7 @@ const (
 // Analyzer — правило GID: см. Doc.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidnoptr",
-	Doc:  ruleUUID + "/" + ruleZero + ": запрет указателей там, где тип проверяет пустоту сам (uuid, time, string)",
+	Doc:  ruleUUID + "/" + ruleZero + ": forbid pointers where the type checks emptiness itself (uuid, time, string). Fix: use the value type",
 	Run:  run,
 }
 
@@ -59,7 +59,7 @@ func checkUUIDPointers(pass *analysis.Pass, file *ast.File) {
 		}
 		if isUUID(ptr.Elem()) {
 			pass.Reportf(star.Pos(),
-				"%s: *uuid.UUID запрещён — пустой UUID проверяется через IsNil()", ruleUUID)
+				"%s: *uuid.UUID is forbidden. Fix: use uuid.UUID and check emptiness with IsNil()", ruleUUID)
 		}
 		return true
 	})
@@ -97,10 +97,10 @@ func checkModelField(pass *analysis.Pass, field *ast.Field) {
 	switch {
 	case isTime(elem):
 		pass.Reportf(field.Pos(),
-			"%s: *time.Time в model не нужен — отсутствие проверяется t.IsZero()", ruleZero)
+			"%s: *time.Time is unnecessary in model. Fix: use time.Time and check absence with t.IsZero()", ruleZero)
 	case isStringBased(elem):
 		pass.Reportf(field.Pos(),
-			"%s: указатель на string-тип в model не нужен — пустота проверяется len(s) == 0", ruleZero)
+			"%s: a pointer to a string type is unnecessary in model. Fix: use the value and check len(s) == 0", ruleZero)
 	}
 }
 

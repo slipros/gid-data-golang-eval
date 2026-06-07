@@ -9,19 +9,19 @@ var DefaultHelloOptions = HelloOptions{Retries: 3}
 
 // --- Позитив: opts по значению в параметре ---
 
-func NewBad(opts HelloOptions) int { // want `GID-152: opts передаётся указателем — используйте \*HelloOptions`
+func NewBad(opts HelloOptions) int { // want `GID-152: opts must be passed by pointer\. Fix: use \*HelloOptions`
 	return opts.Retries
 }
 
 // --- Позитив: именованное поле вместо встраивания ---
 
 type BadHello struct {
-	opts HelloOptions // want `GID-152: opts встраивается в тело сущности \(embedded HelloOptions\), а не хранится именованным полем`
+	opts HelloOptions // want `GID-152: opts must be embedded in the entity body \(embedded HelloOptions\), not stored as a named field\. Fix: embed it`
 }
 
 // Граничный кейс: именованное поле-указатель — тоже нарушение.
 type BadPtrHello struct {
-	opts *HelloOptions // want `GID-152: opts встраивается в тело сущности \(embedded HelloOptions\), а не хранится именованным полем`
+	opts *HelloOptions // want `GID-152: opts must be embedded in the entity body \(embedded HelloOptions\), not stored as a named field\. Fix: embed it`
 }
 
 // --- Негатив: указатель в параметре, embedded в структуре ---

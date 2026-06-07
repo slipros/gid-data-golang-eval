@@ -10,7 +10,7 @@ type CreateJob struct {
 	ID        int
 	CreatedAt time.Time
 	Title     string
-	UpdatedAt time.Time // want `GID-210: операционная структура "CreateJob" не должна содержать поле "UpdatedAt" .* — убери его из Create`
+	UpdatedAt time.Time // want `GID-210: operational struct "CreateJob" must not contain field "UpdatedAt" .* Fix: remove it from Create`
 }
 
 // --- Негативный класс: чистый код проходит ---
