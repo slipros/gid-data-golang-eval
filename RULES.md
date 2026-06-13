@@ -1,207 +1,212 @@
-# Реестр правил линтера
+# Linter rule registry
 
-Источник правил: skill `go-styleguide` (внутренний стайлгайд gid.team).
-Связанные документы: [PRD.md](PRD.md), [FINDINGS.md](FINDINGS.md) (аудит backend-go: исключения и упущенные правила), [FINDINGS_DDD.md](FINDINGS_DDD.md) (обратный аудит: конвенции из кода backend-go, кандидаты GID-218…223), [linter_framework.feature](linter_framework.feature), [rule_template.feature](rule_template.feature).
+Source of the rules: skill `go-styleguide` (internal gid.team styleguide).
+Related documents: [FINDINGS.md](FINDINGS.md) (backend-go audit: exceptions and missed rules), [FINDINGS_DDD.md](FINDINGS_DDD.md) (reverse audit: conventions extracted from backend-go code, candidates GID-218…223), [linter_framework.feature](linter_framework.feature), [rule_template.feature](rule_template.feature).
 
-**Обязательное требование: каждое правило содержит eval.**
-Правило не считается перенесённым, пока у него нет исполняемого eval:
+**Mandatory requirement: every rule has an eval.**
+A rule is not considered ported until it has an executable eval:
 
-- **go/analysis-правила** — `analysistest` + `testdata/src/...` с комментариями `// want`;
-- **ruleguard-правила** — `analysistest` поверх анализатора `go-ruleguard` с нашим `rules.go` и тем же форматом `// want`;
-- eval покрывает 4 класса кейсов: позитивный (нарушение ловится), негативный (чистый код проходит), граничный, неприменимость (см. чек-лист в `rule_template.feature`).
+- **go/analysis rules** — `analysistest` + `testdata/src/...` with `// want` comments;
+- **pattern rules** (package `analyzers/patterns`) — the same `analysistest` + `// want`;
+- the eval covers 4 case classes: positive (the violation is caught), negative (clean code passes), boundary, non-applicability (see the checklist in `rule_template.feature`).
 
-Статусы: ✅ готово · 🛠 в работе · 🔜 todo · ⛔ не переносим (остаётся на review)
+Statuses: ✅ done · 🛠 in progress · 🔜 todo · ⛔ not portable (stays on review)
 
 ---
 
-## Слой 1: ruleguard (простые паттерны)
+## Layer 1: simple patterns (`analyzers/patterns`)
 
-| ID | Слаг | Правило | Источник | Статус | Eval |
+| ID | Slug | Rule | Source | Status | Eval |
 |---|---|---|---|---|---|
-| GID-001 | no-time-now | Запрет `time.Now()` → `gdhelper.StdTime.Now()` | styleguide.md#временные-метки | ✅ | ✅ |
-| GID-002 | no-uuid-empty-compare | Запрет `== uuid.UUID{}` / `!= uuid.UUID{}` → `IsNil()` | styleguide.md#идентификаторы | ✅ | ✅ |
-| GID-003 | uuid-only-v7 | Генерация UUID только `uuid.Must(uuid.NewV7())`, запрет `NewV1/V3/V4/V5/V6` | styleguide.md#идентификаторы | ✅ | ✅ |
-| GID-004 | allptr | `for range` по слайсу структур — через `gdhelper.AllPtr` (реализовано как go/analysis: нужны типы, чтобы отличить слайс структур от `[]*T`/`[]string`) | styleguide.md#итерация-по-слайсам | ✅ | ✅ |
-| GID-005 | new-deref | `new(T)` для структур → `&T{}` | uber-guide + STYLEGUIDE_COVERAGE.md | ✅ | ✅ |
-| GID-006 | yoda-conditions | Литерал слева в сравнении (`"foo" == x`) запрещён — переменная слева | google-decisions + STYLEGUIDE_COVERAGE.md | ✅ | ✅ |
-| GID-007 | quote-verb | Ручное экранирование `\"%s\"` в format-строках → `%q` | google-decisions + STYLEGUIDE_COVERAGE.md | ✅ | ✅ |
-| GID-008 | no-deepequal | `reflect.DeepEqual` запрещён — `cmp`/`require` в тестах, явное сравнение в коде | google-tests + STYLEGUIDE_COVERAGE.md | ✅ | ✅ |
+| GID-001 | no-time-now | Ban `time.Now()` → `gdhelper.StdTime.Now()` | styleguide.md#временные-метки | ✅ | ✅ |
+| GID-002 | no-uuid-empty-compare | Ban `== uuid.UUID{}` / `!= uuid.UUID{}` → `IsNil()` | styleguide.md#идентификаторы | ✅ | ✅ |
+| GID-003 | uuid-only-v7 | UUID generation only via `uuid.Must(uuid.NewV7())`; `NewV1/V3/V4/V5/V6` banned | styleguide.md#идентификаторы | ✅ | ✅ |
+| GID-004 | allptr | `for range` over a slice of structs — via `gdhelper.AllPtr` (implemented as go/analysis: type info is needed to distinguish a slice of structs from `[]*T`/`[]string`) | styleguide.md#итерация-по-слайсам | ✅ | ✅ |
+| GID-005 | new-deref | `new(T)` for structs → `&T{}` | uber-guide + STYLEGUIDE_COVERAGE.md | ✅ | ✅ |
+| GID-006 | yoda-conditions | Literal on the left side of a comparison (`"foo" == x`) is banned — the variable goes on the left | google-decisions + STYLEGUIDE_COVERAGE.md | ✅ | ✅ |
+| GID-007 | quote-verb | Manual escaping `\"%s\"` in format strings → `%q` | google-decisions + STYLEGUIDE_COVERAGE.md | ✅ | ✅ |
+| GID-008 | no-deepequal | `reflect.DeepEqual` is banned — `cmp`/`require` in tests, explicit comparison in code | google-tests + STYLEGUIDE_COVERAGE.md | ✅ | ✅ |
 
-## Слой 2: go/analysis (типы, имена, структура)
+## Layer 2: go/analysis (types, names, structure)
 
-### Именование
+### Naming
 
-| ID | Слаг | Правило | Источник | Статус | Eval |
+| ID | Slug | Rule | Source | Status | Eval |
 |---|---|---|---|---|---|
-| GID-101 | no-get-prefix | Запрет префикса `Get` в именах методов (искл.: сгенерированный код) | styleguide.md#именование-методов | ✅ | ✅ |
-| GID-102 | no-batch-word | Запрет слова `Batch` в именах методов — множественное число вместо него | styleguide.md#именование-методов | ✅ | ✅ |
-| GID-103 | receiver-naming | Ресивер — первая буква типа в нижнем регистре, две буквы для слайс-типов (искл.: `v` в validate-пакетах, `h` в handler-пакетах) | styleguide.md#именование-ресиверов | ✅ | ✅ |
-| GID-104 | constructor-naming | Конструктор — `New<Entity>`, не голый `New` (искл.: composition root `internal/app/...`) | styleguide.md#структура-пакетов | ✅ | ✅ |
-| GID-105 | converter-naming | Экспортируемые функции convert-пакетов именуются `<Dst><Type>From<Src>` (`ModelHelloOutFromEntity`) — линтер `gidconvnaming`. Покрывает и транспортные конвертеры (`ModelHelloFromGRPC`): scope включает `server` и `event` | converter.md#именование | ✅ | ✅ |
-| GID-173 | iface-entity-prefix | Интерфейсы зависимостей — с префиксом сущности (`HelloRepository`); голые роли (`Repository`, `Service`, `Client`, `Connection`, `Producer`, `Consumer`, `Validator`, `Storage`, `Cache`) запрещены в service/usecase/repository/server/event; словарь настраивается `settings.names` (линтер `gidifacenaming`) | styleguide.md#интерфейсы + FINDINGS.md §2.1 | ✅ | ✅ |
+| GID-101 | no-get-prefix | Ban the `Get` prefix in method names (exception: generated code) | styleguide.md#именование-методов | ✅ | ✅ |
+| GID-102 | no-batch-word | Ban the word `Batch` in method names — use the plural form instead | styleguide.md#именование-методов | ✅ | ✅ |
+| GID-103 | receiver-naming | Receiver — the first letter of the type in lowercase, two letters for slice types (exceptions: `v` in validate packages, `h` in handler packages) | styleguide.md#именование-ресиверов | ✅ | ✅ |
+| GID-104 | constructor-naming | Constructor — `New<Entity>`, not a bare `New` (exception: composition root `internal/app/...`) | styleguide.md#структура-пакетов | ✅ | ✅ |
+| GID-105 | converter-naming | Exported functions of convert packages are named `<Dst><Type>From<Src>` (`ModelHelloOutFromEntity`) — linter `gidconvnaming`. Also covers transport converters (`ModelHelloFromGRPC`): the scope includes `server` and `event` | converter.md#именование | ✅ | ✅ |
+| GID-173 | iface-entity-prefix | Dependency interfaces carry an entity prefix (`HelloRepository`); bare roles (`Repository`, `Service`, `Client`, `Connection`, `Producer`, `Consumer`, `Validator`, `Storage`, `Cache`) are banned in service/usecase/repository/server/event; the dictionary is configurable via `settings.names` (linter `gidifacenaming`) | styleguide.md#интерфейсы + FINDINGS.md §2.1 | ✅ | ✅ |
 
-### Сигнатуры
+### Signatures
 
-| ID | Слаг | Правило | Источник | Статус | Eval |
+| ID | Slug | Rule | Source | Status | Eval |
 |---|---|---|---|---|---|
-| GID-110 | ctx-first-param | `context.Context` — всегда первый параметр (линтер `gidparamorder`) | styleguide.md#сигнатуры-методов | ✅ | ✅ |
-| GID-111 | input-ptr-output-value | Экспортируемые методы repo/service/usecase/handler: входные model/entity-структуры по указателю, выходные по значению. **Исключения**: `//nolint:gidinout` или `settings.exclude` (`Метод` \| `Тип.Метод`) | styleguide.md#сигнатуры-методов | ✅ | ✅ |
-| GID-112 | create-update-no-return | Методы `Create*`/`Update*` в repo/service возвращают только `error`; данные получают отдельным запросом. **Исключения** (удобно сразу получить сущность): `//nolint:gidcreateupdate` или `settings.exclude` | styleguide.md#методы-создания + требование 2026-06-07 | ✅ | ✅ |
-| GID-113 | opts-after-ctx | Параметр `opts` — первым после `ctx` (первым вообще, если ctx нет), не последним (линтер `gidparamorder`) | styleguide.md#options-паттерн | ✅ | ✅ |
-| GID-114 | entity-method-naming | Методы repo/service содержат имя сущности: `Job`, `Jobs`, `JobsByStageID`, `CreateJob`; без суффикса `ByID` у одиночного получения (уточнения `By<Field>ID` разрешены), без префикса `List`. **Исключения** (Close, Ping, …): `//nolint:gidentitymethod` или `settings.exclude` (линтер `gidentitymethod`) | styleguide.md#именование-методов | ✅ | ✅ |
+| GID-110 | ctx-first-param | `context.Context` is always the first parameter (linter `gidparamorder`) | styleguide.md#сигнатуры-методов | ✅ | ✅ |
+| GID-111 | input-ptr-output-value | Exported methods of repo/service/usecase/handler: input model/entity structs by pointer, output ones by value. **Exceptions**: `//nolint:gidinout` or `settings.exclude` (`Method` \| `Type.Method`) | styleguide.md#сигнатуры-методов | ✅ | ✅ |
+| GID-112 | create-update-no-return | `Create*`/`Update*` methods in repo/service return only `error`; the data is fetched with a separate query. **Exceptions** (when it is convenient to get the entity right away): `//nolint:gidcreateupdate` or `settings.exclude` | styleguide.md#методы-создания + requirement 2026-06-07 | ✅ | ✅ |
+| GID-113 | opts-after-ctx | The `opts` parameter comes first after `ctx` (first overall when there is no ctx), not last (linter `gidparamorder`) | styleguide.md#options-паттерн | ✅ | ✅ |
+| GID-114 | entity-method-naming | Repo/service methods contain the entity name: `Job`, `Jobs`, `JobsByStageID`, `CreateJob`; no `ByID` suffix on single-item fetch (qualifiers `By<Field>ID` are allowed), no `List` prefix. **Exceptions** (Close, Ping, …): `//nolint:gidentitymethod` or `settings.exclude` (linter `gidentitymethod`) | styleguide.md#именование-методов | ✅ | ✅ |
 
-### Типы и поля
+### Types and fields
 
-| ID | Слаг | Правило | Источник | Статус | Eval |
+| ID | Slug | Rule | Source | Status | Eval |
 |---|---|---|---|---|---|
-| GID-120 | no-ptr-uuid | Запрет `*uuid.UUID` в любой типовой позиции — проверка через `IsNil()` (линтер `gidnoptr`) | styleguide.md#nullable-поля | ✅ | ✅ |
-| GID-121 | no-ptr-zero-checkable | В `/domain/model` поля структур без `*time.Time` и указателей на string-типы — zero-value выражает отсутствие (`IsZero()`, `len == 0`); `*bool` и вложенные структуры — допустимы (линтер `gidnoptr`) | styleguide.md#nullable-поля | ✅ | ✅ |
-| GID-122 | entity-sql-null | В `/dal/entity` nullable-поля — `sql.NullString/NullTime/NullInt32/NullInt64` или `sql.Null[T]`, не указатели; фильтры (подпакет) не задеваются | styleguide.md#nullable-поля, entity.md | ✅ | ✅ |
-| GID-123 | enum-string-based | Enum — именованный тип на основе `string`: в model/entity запрещены alias (`type X = string`), int-enum (именованный int-тип с ≥2 const) и группы из ≥2 нетипизированных string-const (линтер `gidenumbased`) | styleguide.md#enum + FINDINGS.md §1.7 | ✅ | ✅ |
-| GID-124 | enum-string-method | Каждый enum (string-тип с const-значениями) реализует `String() string` | styleguide.md#enum | ✅ | ✅ |
-| GID-125 | entity-db-tags | Экспортируемые поля entity-структур имеют тег маппинга на колонки БД — по умолчанию `db:`; список тегов настраивается `settings.tags` (например, `ch` у ClickHouse-библиотеки) | entity.md + требование 2026-06-07 | ✅ | ✅ |
-| GID-126 | options-pattern | Тип настроек: постфикс `Options`, префикс сущности (голый `Options` запрещён вне app-слоя); package-level дефолты — `Default*` переменная. Композиция Options в app-слое (`Options` агрегирует `GRPCOptions`, `KafkaOptions`) — норма, не нарушение (FINDINGS.md §2.3) (линтер `gidoptsnaming`) | styleguide.md#options-паттерн | ✅ | ✅ |
-| GID-168 | no-db-tags-in-model | В `/domain/**` запрещены теги маппинга на БД (`db:` по умолчанию, список — `settings.tags`) у полей структур — model чистый бизнес-объект, маппинг живёт в entity (линтер `gidmodeltags`) | model.md + FINDINGS.md §2.1 | ✅ | ✅ |
-| GID-175 | in-transaction | Типы транзакций живут в `/domain/model` и называются `InTransactionFunc` / `InTransactionWithReturnFunc[T]`; в service/usecase анонимная tx-сигнатура запрещена — используется именованный тип из model; repo/service не оборачивают транзакцию методами — connection с tx-сигнатурой передаётся в конструктор напрямую (линтер `gidintransaction`) | требование 2026-06-07 | ✅ | ✅ |
-| GID-210 | op-struct-fields | Операционные Create-структуры минимальны: в `/domain/model` `Create<X>` не содержит `ID`/`CreatedAt`/`UpdatedAt` (генерируются в service/convert); в `/dal/entity` `Create<X>` не содержит `UpdatedAt` — только поля INSERT (ID и CreatedAt в entity легитимны) (линтер `gidopstruct`) | model.md, entity.md | ✅ | ✅ |
-| GID-211 | enum-location | Enum DAL-слоя (именованный string-тип с const-значениями) живёт только в `/dal/entity/enum` — отдельный файл на сущность; в model enum живёт прямо в model-слое (см. GID-132); alias (`type X = string`) — зона GID-123 (линтер `gidenumplace`) | entity.md | ✅ | ✅ |
+| GID-120 | no-ptr-uuid | Ban `*uuid.UUID` in any type position — check via `IsNil()` (linter `gidnoptr`) | styleguide.md#nullable-поля | ✅ | ✅ |
+| GID-121 | no-ptr-zero-checkable | In `/domain/model`, struct fields go without `*time.Time` and pointers to string types — the zero value expresses absence (`IsZero()`, `len == 0`); `*bool` and nested structs are allowed (linter `gidnoptr`) | styleguide.md#nullable-поля | ✅ | ✅ |
+| GID-122 | entity-sql-null | In `/dal/entity`, nullable fields are `sql.NullString/NullTime/NullInt32/NullInt64` or `sql.Null[T]`, not pointers; filters (subpackage) are not affected | styleguide.md#nullable-поля, entity.md | ✅ | ✅ |
+| GID-123 | enum-string-based | Enum — a named type based on `string`: in model/entity, aliases (`type X = string`), int enums (a named int type with ≥2 consts) and groups of ≥2 untyped string consts are banned (linter `gidenumbased`) | styleguide.md#enum + FINDINGS.md §1.7 | ✅ | ✅ |
+| GID-124 | enum-string-method | Every enum (a string type with const values) implements `String() string` | styleguide.md#enum | ✅ | ✅ |
+| GID-125 | entity-db-tags | Exported fields of entity structs carry a DB column mapping tag — `db:` by default; the tag list is configurable via `settings.tags` (e.g. `ch` for the ClickHouse library) | entity.md + requirement 2026-06-07 | ✅ | ✅ |
+| GID-126 | options-pattern | Settings type: the `Options` postfix with an entity prefix (a bare `Options` is banned outside the app layer); package-level defaults — a `Default*` variable. Options composition in the app layer (`Options` aggregating `GRPCOptions`, `KafkaOptions`) is the norm, not a violation (FINDINGS.md §2.3) (linter `gidoptsnaming`) | styleguide.md#options-паттерн | ✅ | ✅ |
+| GID-168 | no-db-tags-in-model | In `/domain/**`, DB mapping tags (`db:` by default, list — `settings.tags`) on struct fields are banned — the model is a pure business object, mapping lives in entity (linter `gidmodeltags`) | model.md + FINDINGS.md §2.1 | ✅ | ✅ |
+| GID-175 | in-transaction | Transaction types live in `/domain/model` and are named `InTransactionFunc` / `InTransactionWithReturnFunc[T]`; in service/usecase an anonymous tx signature is banned — the named type from model is used; repo/service do not wrap the transaction in methods — a connection with a tx signature is passed into the constructor directly (linter `gidintransaction`) | requirement 2026-06-07 | ✅ | ✅ |
+| GID-210 | op-struct-fields | Operational Create structs are minimal: in `/domain/model`, `Create<X>` does not contain `ID`/`CreatedAt`/`UpdatedAt` (they are generated in service/convert); in `/dal/entity`, `Create<X>` does not contain `UpdatedAt` — INSERT fields only (ID and CreatedAt are legitimate in entity) (linter `gidopstruct`) | model.md, entity.md | ✅ | ✅ |
+| GID-211 | enum-location | A DAL-layer enum (a named string type with const values) lives only in `/dal/entity/enum` — a separate file per entity; in model, an enum lives directly in the model layer (see GID-132); aliases (`type X = string`) are GID-123's territory (linter `gidenumplace`) | entity.md | ✅ | ✅ |
+| GID-231 | fsm-map-unexported | An FSM transition map in `/domain/model` (`map[E][]E` / `map[E]map[E]struct{}` / `map[E]map[E]bool` over a local string enum) must be an unexported package-level var — consumers go through `CanTransitionTo` (linter `gidfsmmap`) | model.md#enum-и-state-machine-fsm | ✅ | ✅ |
 
-### Структура файла и пакетов
+### File and package structure
 
-| ID | Слаг | Правило | Источник | Статус | Eval |
+| ID | Slug | Rule | Source | Status | Eval |
 |---|---|---|---|---|---|
-| GID-130 | const-var-order | Порядок объявлений в файле: `import` → `const` → `var` → типы/функции; const всегда сверху, var под const | styleguide.md#порядок-объявлений + требование 2026-06-07 | ✅ | ✅ |
-| GID-131 | no-upward-import | Дочерний пакет не импортирует родительский — общее выносится вниз, родитель импортирует детей (линтер `gidupwardimport`) | styleguide.md#направление-зависимостей | ✅ | ✅ |
-| GID-132 | layer-imports | Направление слоёв: `/dal/**` не импортирует `/domain/**` (repo работает только с entity); `/domain/model` и `/domain/usecase` не импортируют `/dal/**` (usecase работает только с model, с DAL — через сервисы); `/domain/service` не импортирует `/dal/repository` (зависимость через интерфейс), импорт entity сервису разрешён. Слой матчится по сегментам пути: вложенные пакеты `/domain/model/*` (filter, enum, …) — полноправный model-слой, usecase может принимать/возвращать их типы | ARCHITECTURE.md + требование 2026-06-07 | ✅ | ✅ |
-| GID-133 | methods-not-pkg-funcs | В service/usecase/repository приватные функции пакета запрещены — функция обязана быть методом структуры. Исключение: функция, используемая методами/конструкторами ≥2 сущностей пакета (общий хелпер). `convert/`/`build/` вне scope (отдельные пакеты) | styleguide.md#структура-пакетов + требование 2026-06-07 | ✅ | ✅ |
-| GID-134 | interface-near-consumer | Интерфейсы живут там, где используются: интерфейс в полях/параметрах объявлен в том же пакете, использовать интерфейсы чужих пакетов нельзя. **Исключения**: интерфейсы библиотек (stdlib и внешние модули) и интерфейсы из `/domain/model` — для слоёв service/usecase (линтер `gidifaceplace`) | styleguide.md#интерфейсы + требование 2026-06-07 | ✅ | ✅ |
-| GID-135 | convert-location | Функции-конвертеры (паттерн `<Dst>From<Src>`, кроме `*FromContext`) в слоях dal/domain/server/event живут в `convert/`-подпакете (линтер `gidconvnaming`) | converter.md | ✅ | ✅ |
-| GID-136 | errors-new-static | `errors.New` (pkg/errors) только в package-level `var`, не в рантайме; `errors.Errorf` — не зона правила (линтер `giderrnew`; `err113` отклонён — конфликт с GID-146) | ARCHITECTURE.md | ✅ | ✅ |
-| GID-137 | only-gofrs-uuid | Для UUID разрешена только `github.com/gofrs/uuid` — импорт google/uuid, satori/go.uuid, pborman/uuid, hashicorp/go-uuid, twinj/uuid запрещён | styleguide.md#идентификаторы | ✅ | ✅ |
-| GID-138 | flat-layout | Репозитории и сервисы живут в корне `/dal/repository` и `/domain/service` — группирующие подпакеты (`/repository/redis`) запрещены; легитимные: `convert/`, `build/` (repo) и `convert/` (service) | требование 2026-06-07 | ✅ | ✅ |
-| GID-148 | service-single | Сервис посвящён одной сущности и не зависит от другого сервиса (поле-структура из того же пакета `/domain/service`, кроме `*Options`) — оркестрация в usecase. Usecase может использовать несколько сервисов | требование 2026-06-07 | ✅ | ✅ |
-| GID-170 | no-event-import | `/domain/**` и `/dal/**` не импортируют `/event/**` — event-слой зависит от domain/model и конвертирует model ↔ DTO, не наоборот (линтер `gidlayerimports`) | event.md, ARCHITECTURE.md + FINDINGS.md §2.1 | ✅ | ✅ |
-| GID-171 | filter-location | Filter-структуры живут в своём месте слоя: в `/dal/**` — только `/dal/entity/filter`; в `/domain/**` — только model-слой (`/domain/model`, включая подпакеты). Только struct-типы; `FilterFunc` и `Filterable` не задеваются (линтер `gidfilterplace`) | model.md, entity.md + FINDINGS.md §2.1 | ✅ | ✅ |
-| GID-172 | client-no-entity | `/client/**` не импортирует `/dal/**` — у клиента свои типы, он не знает о entity/repository (линтер `gidlayerimports`) | client.md + FINDINGS.md §2.1 | ✅ | ✅ |
-| GID-174 | metric-prometheus-struct | Пакет метрик: путь `/metric` (не `metrics`), агрегатор `Prometheus` живёт в `prometheus.go` (только wiring) с методом `Register`, вызывающим `Register` каждой группы-поля; группы метрик — функциональные структуры, по одной на файл (линтер `gidmetricstruct`) | конвенция backend-go + требование 2026-06-07 | ✅ | ✅ |
-| GID-194 | no-global-const | Константы объявляются там, где используются: package-level const вне `/domain/model/**` и `/dal/entity/**` запрещены — const, используемая одной функцией, объявляется внутри неё; неэкспортируемая, разделяемая ≥2 функциями пакета (или package-level объявлением, сигнатурой), остаётся package-level; экспортируемые — только в model/entity; iota-блок оценивается целиком. **Исключения**: `//nolint:gidconstscope` или `settings.exclude` (имена констант) (линтер `gidconstscope`) | требование 2026-06-07 | ✅ | ✅ |
-| GID-195 | belongs-to-model | Приватная функция в `/domain/service`/`/domain/usecase` со строго одним параметром model-типа (`T`/`*T`, struct или enum), не зависящая от своего пакета, — поведение модели: оформляется публичным методом этого типа в model. Приватный метод, не использующий ресивер, — тот же случай. Непереносимые (используют ресивер, package-level символы, типы пакета в результатах), интерфейсы, generics, slice/variadic — не задеваются. Дополняет GID-133. **Исключения**: `//nolint:gidmodelmethod` или `settings.exclude` (`Функция` \| `Тип.Метод`) (линтер `gidmodelmethod`) | требование 2026-06-07 | ✅ | ✅ |
-| GID-196 | chain-call-per-line | Цепочка вызовов из ≥`min-calls` звеньев (по умолчанию 2) — по одному вызову на строке, включая первый. Звено — вызов через селектор на результате другого вызова (включая промежуточные поля); конверсии — не звено; logrus-цепочки — зона GID-156; `_test.go` и сгенерированный код пропускаются (линтер `gidchainperline`) | перенос из «Частично проверяемые» + требование 2026-06-07 | ✅ | ✅ |
-| GID-197 | interface-minimal | Интерфейс в service/usecase/repository/server/event содержит только методы, используемые в пакете-потребителе (вызов или метод-значение вне `_test.go`; GID-134 гарантирует, что потребитель в том же пакете). Embedded-интерфейсы не проверяются; FP-safe escape — интерфейс, чьё значение уходит под другим типом (any, assertion, constraint, неизвестный контекст), пропускается целиком. **Исключения**: `//nolint:gidifacemin` или `settings.exclude` (`Интерфейс` \| `Интерфейс.Метод`) (линтер `gidifacemin`) | перенос из «Частично проверяемые» + требование 2026-06-07 | ✅ | ✅ |
-| GID-212 | build-signature | Экспортируемые функции `/dal/repository/build` возвращают `(string, []any, error)` (одиночный запрос) или `(*batch.Batch, error)` (batch-операции); импорт `github.com/Masterminds/squirrel` разрешён только в build-пакетах (линтер `gidbuildsig`) | repository.md, example_build.md | ✅ | ✅ |
-| GID-215 | no-inline-entity-literal | В `/domain/**` (вне convert-пакетов) запрещён непустой composite literal entity-типа — конвертация model ↔ entity живёт в convert (`<Dst><Type>From<Src>`); пустой литерал (zero value) разрешён; флагается внешний литерал, вложенные не дублируются (линтер `gidinlineconv`) | service.md | ✅ | ✅ |
-| GID-217 | ban-symbol | Настраиваемый бан символов библиотек (`settings.symbols`: pkg + name + msg; pkg матчится точно или по суффиксу сегментов); дефолт — `gdpostgres.TQuery` → «используй прямые методы conn: Select, ScanRow, NamedStruct, Transaction» (линтер `gidbansymbol`) | repository.md | ✅ | ✅ |
-| GID-224 | transport-imports | Транспорт (`/server`, `/schedule`, `/validate`, `/event`) из слоёв сервиса видит только `/domain/model` (и `/validate`) — конкретные service/usecase инжектятся интерфейсами у потребителя; `/dal`, `/client`, `/metric`, `/app` и чужие транспорт-слои запрещены. Баны действуют внутри одного модуля (граница — сегмент `/internal/`). **Исключения**: `//nolint:gidlayerimports` или `settings.disable: [GID-224]` (линтер `gidlayerimports`) | решение 2026-06-07 (обсуждение depguard): строгая версия — в backend-go 25 импортов transport → service станут нарушениями | ✅ | ✅ |
-| GID-225 | root-and-leaves | `/internal/app` (composition root) и транспорт-листья (`/server`, `/schedule`, `/validate`) никем не импортируются — wiring живёт в app, в транспорт никто не смотрит (линтер `gidlayerimports`) | решение 2026-06-07 | ✅ | ✅ |
-| GID-226 | metric-standalone | `/metric` не импортирует слои сервиса (самостоятельный агрегатор Prometheus, ср. GID-174); `/domain` и `/dal` не импортируют `/metric` — метрики приходят интерфейсом, wiring в app (линтер `gidlayerimports`) | решение 2026-06-07; в backend-go 0 нарушений (кроме неканоничных event-collector/event-enricher) | ✅ | ✅ |
-| GID-227 | model-pure | `/domain/model` не импортирует ни один слой сервиса — чистый словарь; подпакеты `/domain/model/*` — полноправный model-слой (дополняет GID-132/170) (линтер `gidlayerimports`) | решение 2026-06-07; в backend-go 0 нарушений | ✅ | ✅ |
-| GID-228 | no-direct-client | `/domain/**` и `/dal/**` не импортируют `/client/**` — зависимость от клиента описывается интерфейсом в `/domain/model` (GID-134), конвертация model ↔ DTO клиента у потребителя/в app (линтер `gidlayerimports`) | решение 2026-06-07 | ✅ | ✅ |
-| GID-229 | client-isolated | `/client/**` не импортирует слои сервиса, включая `/domain` целиком — у клиента свои типы (расширение GID-172). **Исключения**: `settings.disable: [GID-229]` на переходный период — в backend-go 11 импортов client → domain (линтер `gidlayerimports`) | решение 2026-06-07: строгое прочтение client.md | ✅ | ✅ |
+| GID-130 | const-var-order | Declaration order in a file: `import` → `const` → `var` → types/functions; const always at the top, var below const | styleguide.md#порядок-объявлений + requirement 2026-06-07 | ✅ | ✅ |
+| GID-131 | no-upward-import | A child package does not import its parent — shared code is moved down, the parent imports the children (linter `gidupwardimport`) | styleguide.md#направление-зависимостей | ✅ | ✅ |
+| GID-132 | layer-imports | Layer direction: `/dal/**` does not import `/domain/**` (repo works only with entity); `/domain/model` and `/domain/usecase` do not import `/dal/**` (usecase works only with model, reaching DAL through services); `/domain/service` does not import `/dal/repository` (the dependency goes through an interface), importing entity is allowed for a service. The layer is matched by path segments: nested packages `/domain/model/*` (filter, enum, …) are a full-fledged model layer; usecase may accept/return their types | ARCHITECTURE.md + requirement 2026-06-07 | ✅ | ✅ |
+| GID-133 | methods-not-pkg-funcs | In service/usecase/repository, private package-level functions are banned — a function must be a method of a struct. Exception: a function used by methods/constructors of ≥2 entities of the package (a shared helper). `convert/`/`build/` are out of scope (separate packages) | styleguide.md#структура-пакетов + requirement 2026-06-07 | ✅ | ✅ |
+| GID-134 | interface-near-consumer | Interfaces live where they are used: an interface appearing in fields/parameters is declared in the same package; using interfaces of other packages is not allowed. **Exceptions**: library interfaces (stdlib and external modules) and interfaces from `/domain/model` — for the service/usecase layers (linter `gidifaceplace`) | styleguide.md#интерфейсы + requirement 2026-06-07 | ✅ | ✅ |
+| GID-135 | convert-location | Converter functions (the `<Dst>From<Src>` pattern, except `*FromContext`) in the dal/domain/server/event layers live in a `convert/` subpackage (linter `gidconvnaming`) | converter.md | ✅ | ✅ |
+| GID-136 | errors-new-static | `errors.New` (pkg/errors) only in package-level `var`, not at runtime; `errors.Errorf` is outside the rule's scope (linter `giderrnew`; `err113` was rejected — it conflicts with GID-146) | ARCHITECTURE.md | ✅ | ✅ |
+| GID-137 | only-gofrs-uuid | Only `github.com/gofrs/uuid` is allowed for UUIDs — importing google/uuid, satori/go.uuid, pborman/uuid, hashicorp/go-uuid, twinj/uuid is banned | styleguide.md#идентификаторы | ✅ | ✅ |
+| GID-138 | flat-layout | Repositories and services live at the root of `/dal/repository` and `/domain/service` — grouping subpackages (`/repository/redis`) are banned; legitimate ones: `convert/`, `build/` (repo) and `convert/` (service) | requirement 2026-06-07 | ✅ | ✅ |
+| GID-148 | service-single | A service is dedicated to a single entity and does not depend on another service (a struct field from the same `/domain/service` package, except `*Options`) — orchestration belongs in usecase. A usecase may use multiple services | requirement 2026-06-07 | ✅ | ✅ |
+| GID-170 | no-event-import | `/domain/**` and `/dal/**` do not import `/event/**` — the event layer depends on domain/model and converts model ↔ DTO, not the other way around (linter `gidlayerimports`) | event.md, ARCHITECTURE.md + FINDINGS.md §2.1 | ✅ | ✅ |
+| GID-171 | filter-location | Filter structs live in their layer's designated place: in `/dal/**` — only `/dal/entity/filter`; in `/domain/**` — only the model layer (`/domain/model`, including subpackages). Struct types only; `FilterFunc` and `Filterable` are not affected (linter `gidfilterplace`) | model.md, entity.md + FINDINGS.md §2.1 | ✅ | ✅ |
+| GID-172 | client-no-entity | `/client/**` does not import `/dal/**` — the client has its own types and knows nothing about entity/repository (linter `gidlayerimports`) | client.md + FINDINGS.md §2.1 | ✅ | ✅ |
+| GID-174 | metric-prometheus-struct | Metrics package: the path is `/metric` (not `metrics`), the `Prometheus` aggregator lives in `prometheus.go` (wiring only) with a `Register` method calling `Register` of every group field; metric groups are functional structs, one per file (linter `gidmetricstruct`) | backend-go convention + requirement 2026-06-07 | ✅ | ✅ |
+| GID-194 | no-global-const | Constants are declared where they are used: package-level consts outside `/domain/model/**` and `/dal/entity/**` are banned — a const used by a single function is declared inside it; an unexported one shared by ≥2 functions of the package (or by a package-level declaration or a signature) stays package-level; exported ones — only in model/entity; an iota block is evaluated as a whole. **Exceptions**: `//nolint:gidconstscope` or `settings.exclude` (constant names) (linter `gidconstscope`) | requirement 2026-06-07 | ✅ | ✅ |
+| GID-195 | belongs-to-model | A private function in `/domain/service`/`/domain/usecase` with exactly one parameter of a model type (`T`/`*T`, struct or enum) that does not depend on its own package is model behavior: it should become a public method of that type in model. A private method that does not use its receiver is the same case. Non-movable ones (using the receiver, package-level symbols, or package types in results), interfaces, generics, slice/variadic are not affected. Complements GID-133. **Exceptions**: `//nolint:gidmodelmethod` or `settings.exclude` (`Function` \| `Type.Method`) (linter `gidmodelmethod`) | requirement 2026-06-07 | ✅ | ✅ |
+| GID-196 | chain-call-per-line | A call chain of ≥`min-calls` links (2 by default) — one call per line, including the first. A link is a call through a selector on the result of another call (including intermediate fields); conversions are not a link; logrus chains are GID-156's territory; `_test.go` and generated code are skipped (linter `gidchainperline`) | moved from "Partially checkable" + requirement 2026-06-07 | ✅ | ✅ |
+| GID-197 | interface-minimal | An interface in service/usecase/repository/server/event contains only the methods used in the consumer package (a call or a method value outside `_test.go`; GID-134 guarantees the consumer is in the same package). Embedded interfaces are not checked; FP-safe escape — an interface whose value escapes under another type (any, assertion, constraint, unknown context) is skipped entirely. **Exceptions**: `//nolint:gidifacemin` or `settings.exclude` (`Interface` \| `Interface.Method`) (linter `gidifacemin`) | moved from "Partially checkable" + requirement 2026-06-07 | ✅ | ✅ |
+| GID-212 | build-signature | Exported functions of `/dal/repository/build` return `(string, []any, error)` (a single query) or `(*batch.Batch, error)` (batch operations); importing `github.com/Masterminds/squirrel` is allowed only in build packages (linter `gidbuildsig`) | repository.md, example_build.md | ✅ | ✅ |
+| GID-215 | no-inline-entity-literal | In `/domain/**` (outside convert packages), a non-empty composite literal of an entity type is banned — model ↔ entity conversion lives in convert (`<Dst><Type>From<Src>`); an empty literal (zero value) is allowed; the outer literal is flagged, nested ones are not duplicated (linter `gidinlineconv`) | service.md | ✅ | ✅ |
+| GID-217 | ban-symbol | Configurable ban of library symbols (`settings.symbols`: pkg + name + msg; pkg is matched exactly or by segment suffix); default — `gdpostgres.TQuery` → "use conn methods directly: Select, ScanRow, NamedStruct, Transaction" (linter `gidbansymbol`) | repository.md | ✅ | ✅ |
+| GID-224 | transport-imports | Transport (`/server`, `/schedule`, `/validate`, `/event`) sees only `/domain/model` (and `/validate`) of the service layers — concrete service/usecase are injected as interfaces at the consumer; `/dal`, `/client`, `/metric`, `/app` and other transport layers are banned. The bans apply within a single module (the boundary is the `/internal/` segment). **Exceptions**: `//nolint:gidlayerimports` or `settings.disable: [GID-224]` (linter `gidlayerimports`) | decision 2026-06-07 (depguard discussion): the strict version — in backend-go, 25 transport → service imports would become violations | ✅ | ✅ |
+| GID-225 | root-and-leaves | `/internal/app` (composition root) and the transport leaves (`/server`, `/schedule`, `/validate`) are imported by no one — wiring lives in app, nobody looks into transport (linter `gidlayerimports`) | decision 2026-06-07 | ✅ | ✅ |
+| GID-226 | metric-standalone | `/metric` does not import the service layers (a standalone Prometheus aggregator, cf. GID-174); `/domain` and `/dal` do not import `/metric` — metrics arrive through an interface, wiring in app (linter `gidlayerimports`) | decision 2026-06-07; 0 violations in backend-go (except the non-canonical event-collector/event-enricher) | ✅ | ✅ |
+| GID-227 | model-pure | `/domain/model` does not import any service layer — a pure vocabulary; subpackages `/domain/model/*` are a full-fledged model layer (complements GID-132/170) (linter `gidlayerimports`) | decision 2026-06-07; 0 violations in backend-go | ✅ | ✅ |
+| GID-228 | no-direct-client | `/domain/**` and `/dal/**` do not import `/client/**` — the dependency on a client is described by an interface in `/domain/model` (GID-134), model ↔ client DTO conversion happens at the consumer/in app (linter `gidlayerimports`) | decision 2026-06-07 | ✅ | ✅ |
+| GID-229 | client-isolated | `/client/**` does not import the service layers, including `/domain` as a whole — the client has its own types (extends GID-172). **Exceptions**: `settings.disable: [GID-229]` for a transition period — in backend-go, 11 client → domain imports (linter `gidlayerimports`) | decision 2026-06-07: a strict reading of client.md | ✅ | ✅ |
 
-### Обработка ошибок по слоям
+### Error handling by layer
 
-| ID | Слаг | Правило | Источник | Статус | Eval |
+| ID | Slug | Rule | Source | Status | Eval |
 |---|---|---|---|---|---|
-| GID-176 | boundary-error-wrap | Ошибки, возникшие за пределами приложения (внешний вызов в `/client/**` и `/dal/repository`), всегда оборачиваются `errors.Wrap` — собирает стек и контекст. Внутри приложения (`/domain/**`) `errors.Wrap` для пришедшей нестатичной ошибки запрещён (стек уже собран на границе) — контекст добавляется `errors.WithMessage`, опционально. **Заменяет GID-140/141** (линтер `giderrwrap`) | repository.md, client.md + требование 2026-06-07 | ✅ | ✅ |
-| GID-177 | static-error-withstack | Статичные ошибки (`ErrSome`, именованные error-типы `BigError`) при возврате всегда оборачиваются `errors.WithStack`; исключение — уже обёрнуты `errors.Wrap` (Wrap сам собирает стек). **Заменяет GID-142** (линтер `giderrwrap`) | service.md + требование 2026-06-07 | ✅ | ✅ |
-| GID-143 | enum-convert-unhandled | Map-конвертация enum (в convert-пакетах: мапа с enum-ключом → именованный тип) обрабатывает отсутствующий ключ: comma-ok обязателен + в функции есть `gderror.NewUnhandledValueError` (линтер `gidenumconvert`) | converter.md#enum | ✅ | ✅ |
-| GID-144 | domain-errors-in-model | Все domain-ошибки живут в `/domain/model`: в `/domain/**` вне model запрещены объявления error-переменных и конструкторы (`errors.New`, `fmt.Errorf`, `errors.Errorf`); `Wrap`/`WithStack`/`gderror.*` — разрешены | требование 2026-06-07 | ✅ | ✅ |
-| GID-145 | dal-errors-in-entity | Все dal-ошибки живут в `/dal/entity` — симметрично GID-144 для `/dal/**` | требование 2026-06-07 | ✅ | ✅ |
-| GID-169 | errors-in-error-file | Уточнение GID-144/145: в корневых пакетах `/domain/model` и `/dal/entity` error-переменные объявляются только в `error.go`/`errors.go`/`err.go` (список — `settings.files`; `err.go` — каноничное имя из entity.md) (линтер `giderrfile`) | model.md, entity.md + FINDINGS.md §2.1 | ✅ | ✅ |
-| GID-146 | only-pkg-errors | Для работы с ошибками — только `github.com/pkg/errors`: std `errors.New`/`errors.Join`/`fmt.Errorf` запрещены везде; std `errors.Is/As/Unwrap` (проверка цепочки) — разрешены | требование 2026-06-07 | ✅ | ✅ |
-| GID-147 | repo-returns-entity-errors | Репозиторий возвращает только ошибки из `/dal/entity`, обменивая ошибки подключения; без обмена — pass-through исходной. Детерминированное ядро покрыто GID-145 (не может создавать) + GID-132 (не может импортировать model); полная проверка потока возврата — review | требование 2026-06-07 | 🟡 ядро ✅ | — |
-| GID-149 | service-returns-model-errors | service/usecase возвращают только ошибки из `/domain/model`. Ядро покрыто GID-144; полная проверка потока — review | требование 2026-06-07 | 🟡 ядро ✅ | — |
-| GID-151 | service-model-api | API сервиса: экспортируемые методы в `/domain/service` принимают и возвращают model — entity-типы в параметрах/результатах запрещены (рекурсивно через указатели/слайсы/мапы); entity внутри тела (конвертация) — норма | требование 2026-06-07 | ✅ | ✅ |
-| GID-157 | entity-group | Код сущности — единый блок: `type` → конструктор `New<Entity>` → методы, в файле объявления сущности; функции разных сущностей не перемешиваются | требование 2026-06-07 | ✅ | ✅ |
-| GID-158 | dir-tree | Контроль дерева папок: для каждой папки из `settings.tree` разрешён только заданный перечень подпапок (дефолт — каноничная структура `internal/` из ARCHITECTURE.md: app, client, dal, domain, event, metric, server и вложенные). Чужая папка в `internal/` → подсказка «возможно, это service или usecase». Дерево редактируется, работает на любом уровне | требование 2026-06-07 | ✅ | ✅ |
-| GID-159 | cache-in-repository | Кэш живёт в `/dal/repository`: кэширующий репозиторий оборачивает основной (прямой ссылкой, без интерфейса), вся магия с кэшом — в нём. Domain-слой про кэш не знает — импорт кэш-библиотек (redis, lru, ristretto, …) в `/domain/**` запрещён; список настраивается `settings.packages` | требование 2026-06-07 | ✅ | ✅ |
-| GID-160 | grpc-via-repository | Service вызывает gRPC через repository: в `/domain/service` и `/domain/usecase` запрещён импорт `google.golang.org/grpc` и пакетов, которые сами импортируют grpc (pb-стабы). **Исключения** (иногда gRPC прямо в service): `//nolint:gidgrpcinservice` или `settings.exclude` | требование 2026-06-07 | ✅ | ✅ |
-| GID-161 | no-panic | `panic` используется только в пакете `main` (bootstrap) — остальной код возвращает error. Это RULE-001 из PRD | PRD §5 + требование 2026-06-07 | ✅ | ✅ |
+| GID-176 | boundary-error-wrap | Errors that originate outside the application (an external call in `/client/**` and `/dal/repository`) are always wrapped with `errors.Wrap` — it collects the stack and context. Inside the application (`/domain/**`), `errors.Wrap` on an incoming non-static error is banned (the stack was already collected at the boundary) — context is added with `errors.WithMessage`, optionally. **Replaces GID-140/141** (linter `giderrwrap`) | repository.md, client.md + requirement 2026-06-07 | ✅ | ✅ |
+| GID-177 | static-error-withstack | Static errors (`ErrSome`, named error types `BigError`) are always wrapped with `errors.WithStack` when returned; exception — already wrapped with `errors.Wrap` (Wrap collects the stack itself). **Replaces GID-142** (linter `giderrwrap`) | service.md + requirement 2026-06-07 | ✅ | ✅ |
+| GID-143 | enum-convert-unhandled | Map-based enum conversion (in convert packages: a map with an enum key → a named type) handles a missing key: comma-ok is mandatory + the function contains `gderror.NewUnhandledValueError` (linter `gidenumconvert`) | converter.md#enum | ✅ | ✅ |
+| GID-233 | no-enum-direct-cast | A direct cast between string-based enums from different packages (`model.Status(e.Status)`) is forbidden — an enum crosses a layer boundary only via a map with comma-ok + `gderror.NewUnhandledValueError` (complements GID-143). **Exceptions**: `//nolint:gidenumcast` (linter `gidenumcast`) | converter.md#enum | ✅ | ✅ |
+| GID-144 | domain-errors-in-model | All domain errors live in `/domain/model`: in `/domain/**` outside model, declarations of error variables and constructors (`errors.New`, `fmt.Errorf`, `errors.Errorf`) are banned; `Wrap`/`WithStack`/`gderror.*` are allowed | requirement 2026-06-07 | ✅ | ✅ |
+| GID-145 | dal-errors-in-entity | All dal errors live in `/dal/entity` — symmetric to GID-144 for `/dal/**` | requirement 2026-06-07 | ✅ | ✅ |
+| GID-169 | errors-in-error-file | A refinement of GID-144/145: in the root packages `/domain/model` and `/dal/entity`, error variables are declared only in `error.go`/`errors.go`/`err.go` (the list — `settings.files`; `err.go` is the canonical name from entity.md) (linter `giderrfile`) | model.md, entity.md + FINDINGS.md §2.1 | ✅ | ✅ |
+| GID-234 | model-error-entity-name | Errors in `/domain/model` are concrete and bound to their entity (`ErrSnapshotNotFound`); generic names (`ErrNotFound`, `ErrAlreadyExists`, …) are forbidden — generic names are the `/dal/entity` convention. The banned list — `settings.names`. **Exceptions**: `//nolint:giderrname` or `settings.exclude` (variable names) (linter `giderrname`) | model.md#ошибки-слоя | ✅ | ✅ |
+| GID-146 | only-pkg-errors | Only `github.com/pkg/errors` for error handling: std `errors.New`/`errors.Join`/`fmt.Errorf` are banned everywhere; std `errors.Is/As/Unwrap` (chain inspection) are allowed | requirement 2026-06-07 | ✅ | ✅ |
+| GID-147 | repo-returns-entity-errors | The repository returns only errors from `/dal/entity`, exchanging connection errors; without an exchange — pass-through of the original. The deterministic core is covered by GID-145 (cannot create) + GID-132 (cannot import model); full checking of the return flow — review | requirement 2026-06-07 | 🟡 core ✅ | — |
+| GID-149 | service-returns-model-errors | service/usecase return only errors from `/domain/model`. The core is covered by GID-144; full flow checking — review | requirement 2026-06-07 | 🟡 core ✅ | — |
+| GID-151 | service-model-api | Service API: exported methods in `/domain/service` accept and return model — entity types in parameters/results are banned (recursively through pointers/slices/maps); entity inside the body (conversion) is the norm | requirement 2026-06-07 | ✅ | ✅ |
+| GID-157 | entity-group | An entity's code is a single block: `type` → constructor `New<Entity>` → methods, in the entity's declaration file; functions of different entities are not interleaved | requirement 2026-06-07 | ✅ | ✅ |
+| GID-158 | dir-tree | Directory tree control: for each directory from `settings.tree`, only the specified list of subdirectories is allowed (default — the canonical `internal/` structure from ARCHITECTURE.md: app, client, dal, domain, event, metric, server and nested ones). A foreign directory in `internal/` → hint "perhaps this is a service or usecase". The tree is editable and works at any level | requirement 2026-06-07 | ✅ | ✅ |
+| GID-159 | cache-in-repository | Cache lives in `/dal/repository`: a caching repository wraps the main one (by direct reference, without an interface), all the cache magic lives inside it. The domain layer knows nothing about the cache — importing cache libraries (redis, lru, ristretto, …) in `/domain/**` is banned; the list is configurable via `settings.packages` | requirement 2026-06-07 | ✅ | ✅ |
+| GID-160 | grpc-via-repository | A service calls gRPC through a repository: in `/domain/service` and `/domain/usecase`, importing `google.golang.org/grpc` and packages that themselves import grpc (pb stubs) is banned. **Exceptions** (sometimes gRPC directly in a service): `//nolint:gidgrpcinservice` or `settings.exclude` | requirement 2026-06-07 | ✅ | ✅ |
+| GID-161 | no-panic | `panic` is used only in the `main` package (bootstrap) — the rest of the code returns an error | requirement 2026-06-07 | ✅ | ✅ |
 
-### Транспорт и валидация
+### Transport and validation
 
-| ID | Слаг | Правило | Источник | Статус | Eval |
+| ID | Slug | Rule | Source | Status | Eval |
 |---|---|---|---|---|---|
-| GID-162 | http-handler-own-errors | HTTP handler обрабатывает свои ошибки внутри себя: запрещены «супер-методы» (параметры `http.ResponseWriter` + `error` вместе) и хендлеры, возвращающие `error` | требование 2026-06-07 | ✅ | ✅ |
-| GID-163 | http-data-response | HTTP handler строится на `github.com/raoptimus/data-response.go/v2` — чистый `func(w, r)` запрещён. **Исключения**: `//nolint:giddataresponse` или `settings.exclude` | требование 2026-06-07 | ✅ | ✅ |
-| GID-164 | validator-go | Любые входящие данные (http, grpc, kafka) валидируются через `github.com/raoptimus/validator.go/v2`: validate-пакеты обязаны его использовать, сторонние валидаторы (go-playground, ozzo, govalidator) запрещены везде. **Исключения**: `settings.exclude` | требование 2026-06-07 | ✅ | ✅ |
-| GID-165 | ctx-keys-in-model | Helper'ы, складывающие данные в context (`context.WithValue`), живут только в `/domain/model` — свой contextKey в middleware запрещён, иначе бизнес-слои зависят от middleware | требование 2026-06-07 | ✅ | ✅ |
-| GID-166 | ctx-helper-naming | Форма ctx-helper'ов в model: кладёт в ctx → публичная `ContextWith<Name>`; достаёт → публичная `<Name>FromContext`; helper живёт в одном файле с сущностью `<Name>` (линтер `gidctxkeys`) | требование 2026-06-07 | ✅ | ✅ |
-| GID-167 | context-key-type | Ключ контекста — публичный тип `ContextKey` (`type ContextKey string`), сырые/чужие типы ключей запрещены; все const-значения `ContextKey` — string в snake_case и находятся рядом с объявлением типа (в одном файле) (линтер `gidctxkeys`) | требование 2026-06-07 | ✅ | ✅ |
-| GID-213 | validator-shape | Экспортируемый struct в validate-пакете (кроме имён с суффиксом `Options`) обязан иметь метод `Validate`: первый параметр `context.Context`, единственный результат `error`. **Исключения**: `//nolint:gidvalidatorshape` или `settings.exclude` (имена типов) (линтер `gidvalidatorshape`) | validator.md | ✅ | ✅ |
-| GID-216 | event-ctor-deps | Конструктор kafka consumer принимает `*logrus.Logger`/`*logrus.Entry` (Entry собирается с полями broker/consumer — далее GID-154); конструктор producer logger не принимает — ошибки пробрасываются вызывающему коду. Подпакеты `validate`/`convert` не задеваются; schema-функции (`New<X>Schema`, тип чужого пакета) — не конструкторы. **Исключения**: `//nolint:gideventctor` или `settings.exclude` (имена конструкторов) (линтер `gideventctor`) | event.md + FINDINGS.md §2.4 | ✅ | ✅ |
+| GID-162 | http-handler-own-errors | An HTTP handler handles its errors within itself: "super methods" (parameters `http.ResponseWriter` + `error` together) and handlers returning `error` are banned | requirement 2026-06-07 | ✅ | ✅ |
+| GID-163 | http-data-response | An HTTP handler is built on `github.com/raoptimus/data-response.go/v2` — a bare `func(w, r)` is banned. **Exceptions**: `//nolint:giddataresponse` or `settings.exclude` | requirement 2026-06-07 | ✅ | ✅ |
+| GID-164 | validator-go | Any incoming data (http, grpc, kafka) is validated via `github.com/raoptimus/validator.go/v2`: validate packages must use it; third-party validators (go-playground, ozzo, govalidator) are banned everywhere. **Exceptions**: `settings.exclude` | requirement 2026-06-07 | ✅ | ✅ |
+| GID-165 | ctx-keys-in-model | Helpers that put data into the context (`context.WithValue`) live only in `/domain/model` — a custom contextKey in middleware is banned, otherwise business layers depend on the middleware | requirement 2026-06-07 | ✅ | ✅ |
+| GID-166 | ctx-helper-naming | The shape of ctx helpers in model: puts into ctx → public `ContextWith<Name>`; retrieves → public `<Name>FromContext`; the helper lives in the same file as the `<Name>` entity (linter `gidctxkeys`) | requirement 2026-06-07 | ✅ | ✅ |
+| GID-167 | context-key-type | The context key is a public `ContextKey` type (`type ContextKey string`); raw/foreign key types are banned; all const values of `ContextKey` are snake_case strings and sit next to the type declaration (in the same file) (linter `gidctxkeys`) | requirement 2026-06-07 | ✅ | ✅ |
+| GID-213 | validator-shape | An exported struct in a validate package (except names with the `Options` suffix) must have a `Validate` method: the first parameter `context.Context`, the only result `error`. **Exceptions**: `//nolint:gidvalidatorshape` or `settings.exclude` (type names) (linter `gidvalidatorshape`) | validator.md | ✅ | ✅ |
+| GID-216 | event-ctor-deps | A kafka consumer constructor accepts `*logrus.Logger`/`*logrus.Entry` (the Entry is assembled with broker/consumer fields — see GID-154); a producer constructor does not accept a logger — errors are propagated to the calling code. The `validate`/`convert` subpackages are not affected; schema functions (`New<X>Schema`, a foreign package's type) are not constructors. **Exceptions**: `//nolint:gideventctor` or `settings.exclude` (constructor names) (linter `gideventctor`) | event.md + FINDINGS.md §2.4 | ✅ | ✅ |
+| GID-230 | grpc-handler-shape | An exported struct in a handler package (segment `server`, path ends with `handler`; `Options` suffix skipped) must have a `Handle` method: first param `context.Context`, last result `error`; its named-interface fields must be called `<Handler>Validator`/`<Handler>Service`; a struct embedding `Unimplemented*Server` under `/server` exposes handlers only as exported fields with the `Handler` suffix. **Exceptions**: `//nolint:gidhandlershape` or `settings.exclude` (type names) (linter `gidhandlershape`) | server.md | ✅ | ✅ |
+| GID-232 | proto-enum-required | `validator.NewRequired()` is forbidden on proto3 enum fields — `*_UNSPECIFIED=0` is treated as empty, so required is wrong either way; use `validator.NewInRange(...)` with the allowed values. Nested rule sets are followed via `NewNested`/`NewEach`; pointer enum fields (proto3 optional) are skipped. **Exceptions**: `//nolint:gidprotorequired` or `settings.exclude` (`Field` \| `RequestType.Field`) (linter `gidprotorequired`) | validator.md#proto3-enum | ✅ | ✅ |
 
-### Options и логирование (logrus)
+### Options and logging (logrus)
 
-| ID | Слаг | Правило | Источник | Статус | Eval |
+| ID | Slug | Rule | Source | Status | Eval |
 |---|---|---|---|---|---|
-| GID-152 | opts-style | opts в параметрах передаётся указателем (`*XxxOptions`); opts в теле сущности встраивается (embedded), а не хранится именованным полем | требование 2026-06-07 | ✅ | ✅ |
-| GID-153 | logger-after-opts | logger всегда идёт после opts сущности, если оба существуют (линтер `gidparamorder`) | требование 2026-06-07 | ✅ | ✅ |
-| GID-154 | logger-withfield-ctor | Если сущность содержит logger (logrus), конструктор `New<Entity>` обязан вызвать `WithField(<entity>, <name>)` | требование 2026-06-07 | ✅ | ✅ |
-| GID-155 | log-withcontext-witherror | Лог-вызов в функции с `ctx` обязан содержать `WithContext`; лог уровня `Error*` обязан содержать `WithError`. «WithError если есть error в области видимости» в общем виде — review | требование 2026-06-07 | ✅ | ✅ |
-| GID-156 | log-chain-multiline | Цепочка logrus из ≥2 вызовов — каждый вызов на своей строке, включая первый; одиночный вызов inline допустим | требование 2026-06-07 | ✅ | ✅ |
-| GID-214 | logger-singleton | `logrus.New()`/`logrus.StandardLogger()` вызываются только в composition root (пакет `main`, `internal/app`) — остальной код получает готовый `*logrus.Entry` через конструктор (GID-153/154); `_test.go` не задеваются (линтер `gidloggernew`) | libs.md | ✅ | ✅ |
+| GID-152 | opts-style | opts in parameters is passed by pointer (`*XxxOptions`); opts in the entity body is stored as an **unexported named field** (`opts Options` / `opts *Options`); embedding an Options type (anonymous field) is **forbidden** — it promotes option fields into the public API | requirement 2026-06-07 | ✅ | ✅ |
+| GID-153 | logger-after-opts | logger always goes after the entity's opts when both exist (linter `gidparamorder`) | requirement 2026-06-07 | ✅ | ✅ |
+| GID-154 | logger-withfield-ctor | If an entity contains a logger (logrus), the `New<Entity>` constructor must call `WithField(<entity>, <name>)` | requirement 2026-06-07 | ✅ | ✅ |
+| GID-155 | log-withcontext-witherror | A log call in a function with `ctx` must include `WithContext`; an `Error*`-level log must include `WithError`. "WithError whenever an error is in scope" in its general form — review | requirement 2026-06-07 | ✅ | ✅ |
+| GID-156 | log-chain-multiline | A logrus chain of ≥2 calls — each call on its own line, including the first; a single inline call is allowed | requirement 2026-06-07 | ✅ | ✅ |
+| GID-214 | logger-singleton | `logrus.New()`/`logrus.StandardLogger()` are called only in the composition root (the `main` package, `internal/app`) — the rest of the code receives a ready `*logrus.Entry` through the constructor (GID-153/154); `_test.go` are not affected (linter `gidloggernew`) | libs.md | ✅ | ✅ |
 
-### Перенесено из Uber / Google best practices (STYLEGUIDE_COVERAGE.md)
+### Ported from Uber / Google best practices (STYLEGUIDE_COVERAGE.md)
 
-| ID | Слаг | Правило | Источник | Статус | Eval |
+| ID | Slug | Rule | Source | Status | Eval |
 |---|---|---|---|---|---|
-| GID-178 | no-embed-mutex | Запрет встраивания `sync.Mutex`/`sync.RWMutex` в структуры — мьютекс хранится именованным неэкспортируемым полем | uber: zero-value mutex | ✅ | ✅ |
-| GID-179 | chan-buffer-size | Буфер канала только 0 или 1: `make(chan T, N)` с литералом N>1 запрещён. **Исключения**: `//nolint:gidchanbuf` | uber: channel size | ✅ | ✅ |
-| GID-180 | init-clean | В `init()` запрещены запуск goroutine и I/O (os/net/db-вызовы) — init детерминированный | uber: avoid init | ✅ | ✅ |
-| GID-181 | exit-once | `os.Exit`/`log.Fatal*` вызываются не более одного раза и только в `main()` (дополняет GID-161) | uber: exit once | ✅ | ✅ |
-| GID-182 | bytes-in-loop | Конверсия строкового литерала/константы в `[]byte`/`[]rune` внутри цикла — вынести из цикла | uber: perf | ✅ | ✅ |
-| GID-183 | map-capacity-hint | `make(map...)` без capacity + заполнение в `range`-цикле по коллекции с известным `len` → указать хинт | uber: perf (prealloc не умеет map) | ✅ | ✅ |
-| GID-184 | no-failed-to | Бан префиксов `failed to`/`failed`/`unable to` в сообщениях `Wrap`/`WithMessage`/`Errorf` — сообщение описывает операцию, не факт провала | uber: error wrapping | ✅ | ✅ |
-| GID-185 | nil-slice-style | `return []T{}` → `return nil`; `s := []T{}` → `var s []T` (zero-value слайс валиден) | uber/google: nil slices | ✅ | ✅ |
-| GID-186 | format-string-const | Format-строка printf-функций — литерал или `const`, не переменная | uber: format strings | ✅ | ✅ |
-| GID-187 | no-util-package | Бан имён пакетов `util`/`utils`/`common`/`helper`/`helpers`/`shared`/`misc`; список — `settings.names` | google: util packages | ✅ | ✅ |
-| GID-188 | no-custom-context | Запрет кастомных context-типов: в позиции ctx-параметра и в `interface`-embedding только `context.Context` | google: custom contexts (no exceptions) | ✅ | ✅ |
-| GID-189 | chan-direction | Параметры-каналы в сигнатурах — с направлением (`<-chan`/`chan<-`), двунаправленный параметр запрещён | google: channel direction | ✅ | ✅ |
-| GID-190 | error-last | `error` — последний возвращаемый параметр; конкретные error-типы в результатах запрещены (typed-nil ловушка) — возвращается интерфейс `error` | google: errors | ✅ | ✅ |
-| GID-191 | subtest-naming | Имена subtest в `t.Run` — без пробелов и слешей (литералы) | google: subtest names | ✅ | ✅ |
-| GID-192 | flag-in-main | `flag.*`/регистрация флагов только в пакете `main`; имя флага snake_case, переменная camelCase | google: flags | ✅ | ✅ |
-| GID-193 | no-pkg-stutter | Экспортируемый символ не повторяет имя пакета (`widget.NewWidget`, `widget.WidgetOptions`). **Исключение**: конструкторы `New<Entity>` (GID-104 главнее) | google: repetition | ✅ | ✅ |
+| GID-178 | no-embed-mutex | Ban embedding `sync.Mutex`/`sync.RWMutex` into structs — the mutex is stored as a named unexported field | uber: zero-value mutex | ✅ | ✅ |
+| GID-179 | chan-buffer-size | Channel buffer is only 0 or 1: `make(chan T, N)` with a literal N>1 is banned. **Exceptions**: `//nolint:gidchanbuf` | uber: channel size | ✅ | ✅ |
+| GID-180 | init-clean | Launching goroutines and I/O (os/net/db calls) are banned in `init()` — init is deterministic | uber: avoid init | ✅ | ✅ |
+| GID-181 | exit-once | `os.Exit`/`log.Fatal*` are called at most once and only in `main()` (complements GID-161) | uber: exit once | ✅ | ✅ |
+| GID-182 | bytes-in-loop | Converting a string literal/constant to `[]byte`/`[]rune` inside a loop — move it out of the loop | uber: perf | ✅ | ✅ |
+| GID-183 | map-capacity-hint | `make(map...)` without capacity + filling in a `range` loop over a collection with a known `len` → provide the hint | uber: perf (prealloc cannot handle maps) | ✅ | ✅ |
+| GID-184 | no-failed-to | Ban the `failed to`/`failed`/`unable to` prefixes in `Wrap`/`WithMessage`/`Errorf` messages — the message describes the operation, not the fact of failure | uber: error wrapping | ✅ | ✅ |
+| GID-185 | nil-slice-style | `return []T{}` → `return nil`; `s := []T{}` → `var s []T` (a zero-value slice is valid) | uber/google: nil slices | ✅ | ✅ |
+| GID-186 | format-string-const | The format string of printf functions is a literal or a `const`, not a variable | uber: format strings | ✅ | ✅ |
+| GID-187 | no-util-package | Ban the package names `util`/`utils`/`common`/`helper`/`helpers`/`shared`/`misc`; the list — `settings.names` | google: util packages | ✅ | ✅ |
+| GID-188 | no-custom-context | Ban custom context types: only `context.Context` in the ctx parameter position and in `interface` embedding | google: custom contexts (no exceptions) | ✅ | ✅ |
+| GID-189 | chan-direction | Channel parameters in signatures carry a direction (`<-chan`/`chan<-`); a bidirectional parameter is banned | google: channel direction | ✅ | ✅ |
+| GID-190 | error-last | `error` is the last return parameter; concrete error types in results are banned (the typed-nil trap) — the `error` interface is returned | google: errors | ✅ | ✅ |
+| GID-191 | subtest-naming | Subtest names in `t.Run` — no spaces or slashes (literals) | google: subtest names | ✅ | ✅ |
+| GID-192 | flag-in-main | `flag.*`/flag registration only in the `main` package; the flag name is snake_case, the variable is camelCase | google: flags | ✅ | ✅ |
+| GID-193 | no-pkg-stutter | An exported symbol does not repeat the package name (`widget.NewWidget`, `widget.WidgetOptions`). **Exception**: `New<Entity>` constructors (GID-104 takes precedence) | google: repetition | ✅ | ✅ |
 
-Отброшено как противоречащее нашему стайлгайду: `_`-префикс приватных глобалов (Uber), enum start at one (у нас string-enum — GID-123), `var _ Iface` compliance-assertions (judgment), go.uber.org/atomic.
+Dropped as contradicting our styleguide: the `_` prefix for private globals (Uber), enum start at one (we use string enums — GID-123), `var _ Iface` compliance assertions (judgment), go.uber.org/atomic.
 
-## Слой 3: покрыто стандартными линтерами golangci-lint
+## Layer 3: covered by standard golangci-lint linters
 
-| ID | Правило | Линтер | Статус |
+| ID | Rule | Linter | Status |
 |---|---|---|---|
-| GID-201 | Ширина строки ≤ 120 (осознанное отклонение от Google) | `lll` (`line-length: 120`) | ✅ конфиг |
-| GID-202 | Запрет `_ = err`; обязательный comma-ok у type assertion | `errcheck` (`check-blank`, `check-type-assertions`) | ✅ конфиг |
-| GID-203 | Форматирование goimports | formatters: `goimports` | ✅ конфиг |
-| GID-204 | Динамические ошибки в рантайме | `err113` включён базой consent-api, его dynamic-errors-чек погашен exclusion'ом (конфликт с GID-146 pkg/errors); закрыто GID-136/144/145/146 | ✅ конфиг |
-| GID-205 | Корректность: copylocks, composites, printf, lostcancel, SA-чеки, unused, ineffassign | стандартная пятёрка: `govet`, `staticcheck`, `unused`, `ineffassign` (+`errcheck`) | ✅ конфиг |
-| GID-206 | Стиль staticcheck: mixed caps/initialisms (ST1003), package comment (ST1000), консистентный ресивер (ST1016), error strings (ST1005), error naming (ST1012) | `staticcheck` `checks: [all]` | ✅ конфиг |
-| GID-207 | Doc-comments экспортируемых, indent-error-flow, early-return, superfluous-else, deep-exit, dot/blank imports, `any` вместо `interface{}` | `revive` (точечные rules) | ✅ конфиг |
-| GID-208 | Builtin-шейдинг, запрет init, naked return, slice capacity, strconv vs fmt, теги marshaled-структур, вложенность, когнитивная сложность, ctx в структуре, размер интерфейса, return concrete types, группировка объявлений, proto-алиасы | `predeclared`, `gochecknoinits`, `nakedret`, `prealloc`, `perfsprint`, `musttag`, `nestif`, `gocognit`, `containedctx`, `interfacebloat`, `ireturn`, `grouper`, `importas` | ✅ конфиг |
-| GID-209 | Тесты: `t.Helper()`, `_test`-пакеты, корректность параллельных тестов | `thelper`, `testpackage`, `tparallel`, `paralleltest` (`ignore-missing`) | ✅ конфиг |
+| GID-201 | Line width ≤ 120 (a deliberate deviation from Google) | `lll` (`line-length: 120`) | ✅ config |
+| GID-202 | Ban `_ = err`; mandatory comma-ok on type assertions | `errcheck` (`check-blank`, `check-type-assertions`) | ✅ config |
+| GID-203 | goimports formatting | formatters: `goimports` | ✅ config |
+| GID-204 | Dynamic errors at runtime | `err113` is enabled by the consent-api base, its dynamic-errors check is muted by an exclusion (conflicts with GID-146 pkg/errors); closed by GID-136/144/145/146 | ✅ config |
+| GID-205 | Correctness: copylocks, composites, printf, lostcancel, SA checks, unused, ineffassign | the standard five: `govet`, `staticcheck`, `unused`, `ineffassign` (+`errcheck`) | ✅ config |
+| GID-206 | staticcheck style: mixed caps/initialisms (ST1003), package comment (ST1000), consistent receiver (ST1016), error strings (ST1005), error naming (ST1012) | `staticcheck` `checks: [all]` | ✅ config |
+| GID-207 | Doc comments on exported symbols, indent-error-flow, early-return, superfluous-else, deep-exit, dot/blank imports, `any` instead of `interface{}` | `revive` (selected rules) | ✅ config |
+| GID-208 | Builtin shadowing, init ban, naked returns, slice capacity, strconv vs fmt, tags of marshaled structs, nesting, cognitive complexity, ctx in a struct, interface size, return concrete types, declaration grouping, proto aliases | `predeclared`, `gochecknoinits`, `nakedret`, `prealloc`, `perfsprint`, `musttag`, `nestif`, `gocognit`, `containedctx`, `interfacebloat`, `ireturn`, `grouper`, `importas` | ✅ config |
+| GID-209 | Tests: `t.Helper()`, `_test` packages, correctness of parallel tests | `thelper`, `testpackage`, `tparallel`, `paralleltest` (`ignore-missing`) | ✅ config |
 
-С переходом на базу consent-api (2026-06-07): `errorlint`, `err113`, `forcetypeassert` включены
-базой (dynamic-errors-чек err113 погашен exclusion'ом — конфликт с GID-146; forcetypeassert
-дублирует `errcheck.check-type-assertions` — вреда нет). `depguard` включён для
-модуленезависимых банов библиотек (uuid-форки — GID-137 на уровне импорта); запреты слоёв
-в depguard не выражаются (deny — префиксный матчинг полного import-пути, требует хардкода
-module path в каждом сервисе) — их закрывает `gidlayerimports` (GID-132/170/172/224…229).
-Не включаем: `gochecknoglobals` (ломается об `Default*Options` и `var ErrX`), `wrapcheck`
-(заменён собственным `giderrwrap` — GID-176/177).
+With the move to the consent-api base (2026-06-07): `errorlint`, `err113`, `forcetypeassert` are enabled
+by the base (the err113 dynamic-errors check is muted by an exclusion — conflicts with GID-146; forcetypeassert
+duplicates `errcheck.check-type-assertions` — no harm done). `depguard` is enabled for
+module-independent library bans (uuid forks — GID-137 at the import level); layer bans
+cannot be expressed in depguard (deny is prefix matching of the full import path, requiring the
+module path to be hardcoded in every service) — they are covered by `gidlayerimports` (GID-132/170/172/224…229).
+Not enabled: `gochecknoglobals` (breaks on `Default*Options` and `var ErrX`), `wrapcheck`
+(replaced by our own `giderrwrap` — GID-176/177).
 
-## Не переносим (остаётся на code review) ⛔
+## Not portable (stays on code review) ⛔
 
-Из «частично проверяемых» реализованы и перенесены в реестр: chain-call-per-line → GID-196,
-interface-minimal → GID-197 (2026-06-07); раздел закрыт — остальные эвристики решением
-2026-06-07 признаны непереносимыми (FP-риск неприемлем) и перечислены ниже.
+From the "partially checkable" set, chain-call-per-line → GID-196 and interface-minimal → GID-197
+were implemented and moved to the registry (2026-06-07); the section is closed — by the decision
+of 2026-06-07 the remaining heuristics were declared non-portable (the FP risk is unacceptable) and are listed below.
 
-Качество имён · глагольность имён операций (verb-first-naming: словарь глаголов даёт высокий FP — детерминированной формулировки нет) · уместность абстракций · полнота обработки ошибок · сложность методов · читаемость · корректность бизнес-логики · полнота логирования/метрик · корректность SQL в build-функциях · правильность FSM-переходов · возвращаемый тип с полями, которые функция не может заполнить (styleguide.md#возвращаемые-типы) · стиль SQL-параметров (`@id` в inline-SQL vs `$1` в build-функциях — требует анализа строк запросов) · порядок полей entity-структур (ID → бизнес-поля → nullable → timestamps; высокий FP-риск) · new-prefix-factories (неэкспортируемые фабрики с префиксом `new`: эвристика «что такое фабрика» даёт неприемлемый FP) · ptr-at-callsite (`&` в месте вызова, не `&Type{}` заранее: usage-анализ даёт спорные диагностики).
+Name quality · verb-first naming of operations (verb-first-naming: a verb dictionary yields high FP — no deterministic formulation exists) · appropriateness of abstractions · completeness of error handling · method complexity · readability · business logic correctness · completeness of logging/metrics · SQL correctness in build functions · correctness of FSM transitions · a return type with fields the function cannot populate (styleguide.md#возвращаемые-типы) · SQL parameter style (`@id` in inline SQL vs `$1` in build functions — requires analysis of query strings) · field order of entity structs (ID → business fields → nullable → timestamps; high FP risk) · new-prefix-factories (unexported factories with the `new` prefix: the "what counts as a factory" heuristic yields unacceptable FP) · ptr-at-callsite (`&` at the call site rather than `&Type{}` upfront: usage analysis yields debatable diagnostics).
 
 ---
 
-## Процесс добавления правила
+## Process for adding a rule
 
-1. Завести строку в этом реестре (ID, слаг, источник).
-2. Спецификация — `.feature` по шаблону `rule_template.feature` (4 класса кейсов).
-3. Реализация: ruleguard-функция в `ruleguard/rules.go` **или** анализатор в `analyzers/<slug>/`.
-4. **Eval обязателен**: testdata с `// want`, все 4 класса кейсов, `go test ./...` зелёный.
-5. Включить в `.golangci.yml`, обновить статус здесь.
+1. Add a row to this registry (ID, slug, source).
+2. Specification — a `.feature` following the `rule_template.feature` template (4 case classes).
+3. Implementation: an analyzer in `analyzers/<slug>/` (simple AST patterns go into the `analyzers/patterns` package).
+4. **Eval is mandatory**: testdata with `// want`, all 4 case classes, `go test ./...` green.
+5. Enable in `.golangci.yml`, update the status here.
