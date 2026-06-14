@@ -105,7 +105,7 @@ func init() {
 	register.Plugin("gidlayerimports", newConfigurablePlugin(layerimports.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidservicemodel", newSingleAnalyzerPlugin(servicemodel.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidparamorder", newSingleAnalyzerPlugin(paramorder.Analyzer, register.LoadModeTypesInfo))
-	register.Plugin("gidoptsstyle", newSingleAnalyzerPlugin(optsstyle.Analyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidoptsstyle", newConfigurablePlugin(optsstyle.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidlogconstruct", newSingleAnalyzerPlugin(logconstruct.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidlogctx", newSingleAnalyzerPlugin(logctx.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidlogchain", newSingleAnalyzerPlugin(logchain.Analyzer, register.LoadModeTypesInfo))
