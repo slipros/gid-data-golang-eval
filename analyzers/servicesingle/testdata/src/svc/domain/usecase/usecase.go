@@ -1,6 +1,6 @@
-// Неприменимость: usecase — оркестратор, ему можно зависеть от
-// нескольких сервисов (даже структур из своего пакета правило не касается —
-// оно действует только в /domain/service).
+// Not applicable: a usecase is an orchestrator, it may depend on several
+// services (the rule does not even touch structs from its own package —
+// it applies only in /domain/service).
 package usecase
 
 import "context"

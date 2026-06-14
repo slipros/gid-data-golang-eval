@@ -1,6 +1,6 @@
-// Файл с наименьшим именем — сюда детерминированно ставится репорт о
-// том, что пакет metric не объявляет агрегатор Prometheus.
+// The file with the smallest name — the report that the metric package does
+// not declare a Prometheus aggregator is deterministically placed here.
 package metric // want `GID-174: the metric package must declare a metrics aggregator: struct Prometheus with a Register method\. Fix: add it`
 
-// HTTPRequests — какая-то метрика, но без агрегатора Prometheus.
+// HTTPRequests — some metric, but without a Prometheus aggregator.
 var HTTPRequests int

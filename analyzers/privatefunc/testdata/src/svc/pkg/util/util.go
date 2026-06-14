@@ -1,5 +1,5 @@
-// Неприменимость: вне service/usecase/repository приватные функции
-// пакета — норма.
+// Not applicable: outside service/usecase/repository private package
+// functions are the norm.
 package util
 
 func helper(s string) string { return s }

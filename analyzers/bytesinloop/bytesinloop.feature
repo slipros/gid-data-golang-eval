@@ -1,76 +1,76 @@
-# language: ru
+# language: en
 
-Функция: GID-182 — конверсия строкового литерала/константы в []byte/[]rune внутри цикла (bytes-in-loop)
-  Как разработчик
-  Я хочу, чтобы конверсия строковой константы в []byte/[]rune вычислялась один раз перед циклом
-  Чтобы не выполнять одинаковую аллокацию и копирование на каждой итерации
+Feature: GID-182 — conversion of a string literal/constant to []byte/[]rune inside a loop (bytes-in-loop)
+  As a developer
+  I want a conversion of a string constant to []byte/[]rune to be computed once before the loop
+  So that the same allocation and copy is not performed on every iteration
 
-  # Правило Uber: "avoid repeated string-to-byte conversions".
-  # Анализатор gidbytesinloop, LoadMode TypesInfo. Матчим конверсию
-  #   []byte(X) / []rune(X), где X — строковый ЛИТЕРАЛ или КОНСТАНТА
-  #   (значение из pass.TypesInfo.Types[X].Value, тип types.IsString),
-  #   находящуюся внутри тела цикла (for/range), включая вложенные блоки
-  #   и тела замыканий, объявленных в цикле (выполняются на каждой итерации).
-  # НЕ матчим:
-  #   - конверсию переменной/параметра (не константы) — значение меняется;
-  #   - конверсию вне цикла — она и так вычисляется один раз.
-  # Сгенерированный код (ast.IsGenerated) пропускается.
+  # Uber rule: "avoid repeated string-to-byte conversions".
+  # Analyzer gidbytesinloop, LoadMode TypesInfo. We match the conversion
+  #   []byte(X) / []rune(X), where X is a string LITERAL or CONSTANT
+  #   (value from pass.TypesInfo.Types[X].Value, type types.IsString),
+  #   located inside a loop body (for/range), including nested blocks
+  #   and bodies of closures declared in the loop (executed on every iteration).
+  # We do NOT match:
+  #   - conversion of a variable/parameter (not a constant) — the value changes;
+  #   - conversion outside a loop — it is computed once anyway.
+  # Generated code (ast.IsGenerated) is skipped.
 
-  # === Класс 1: позитивные (константная конверсия в цикле) ===
+  # === Class 1: positive (constant conversion in a loop) ===
 
-  Сценарий: позитивный — []byte литерала в for
-    Допустим тело "for i := 0; i < 10; i++ { _ = []byte(\"hello\") }"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-182: конверсия []byte в цикле — вычислите один раз перед циклом"
+  Scenario: positive — []byte of a literal in a for loop
+    Given the body "for i := 0; i < 10; i++ { _ = []byte(\"hello\") }"
+    When the analyzer checks the file
+    Then the diagnostic "GID-182: converting to []byte inside a loop repeats the allocation. Fix: compute it once before the loop." is reported
 
-  Сценарий: позитивный — []byte константы в range
-    Допустим const "constStr = \"const\"" и тело "for range items { _ = []byte(constStr) }"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-182: конверсия []byte в цикле — вычислите один раз перед циклом"
+  Scenario: positive — []byte of a constant in a range loop
+    Given the const "constStr = \"const\"" and the body "for range items { _ = []byte(constStr) }"
+    When the analyzer checks the file
+    Then the diagnostic "GID-182: converting to []byte inside a loop repeats the allocation. Fix: compute it once before the loop." is reported
 
-  Сценарий: позитивный — []rune литерала во вложенном блоке цикла
-    Допустим тело "for i := 0; i < 10; i++ { if i > 5 { { _ = []rune(\"world\") } } }"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-182: конверсия []rune в цикле — вычислите один раз перед циклом"
+  Scenario: positive — []rune of a literal in a nested block of a loop
+    Given the body "for i := 0; i < 10; i++ { if i > 5 { { _ = []rune(\"world\") } } }"
+    When the analyzer checks the file
+    Then the diagnostic "GID-182: converting to []rune inside a loop repeats the allocation. Fix: compute it once before the loop." is reported
 
-  # === Класс 2: негативные (чистый код) ===
+  # === Class 2: negative (clean code) ===
 
-  Сценарий: негативный — []byte литерала вне цикла
-    Допустим выражение "_ = []byte(\"hello\")" вне любого цикла
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — []byte of a literal outside a loop
+    Given the expression "_ = []byte(\"hello\")" outside any loop
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: негативный — []byte переменной в цикле
-    Допустим параметр "s string" и тело "for i := 0; i < 10; i++ { _ = []byte(s) }"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
-    # Конверсия переменной (не константы) — значение может меняться, выносить нельзя.
+  Scenario: negative — []byte of a variable in a loop
+    Given the parameter "s string" and the body "for i := 0; i < 10; i++ { _ = []byte(s) }"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+    # Conversion of a variable (not a constant) — the value may change, it cannot be hoisted.
 
-  # === Класс 3: граничные ===
+  # === Class 3: boundary ===
 
-  Сценарий: граничный — замыкание объявлено в цикле и содержит []byte литерала
-    Допустим тело "for i := 0; i < 10; i++ { fn := func() { _ = []byte(\"closure\") }; fn() }"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-182: конверсия []byte в цикле — вычислите один раз перед циклом"
-    # Замыкание выполняется на каждой итерации — конверсия повторяется.
+  Scenario: boundary — a closure declared in the loop contains []byte of a literal
+    Given the body "for i := 0; i < 10; i++ { fn := func() { _ = []byte(\"closure\") }; fn() }"
+    When the analyzer checks the file
+    Then the diagnostic "GID-182: converting to []byte inside a loop repeats the allocation. Fix: compute it once before the loop." is reported
+    # The closure runs on every iteration — the conversion is repeated.
 
-  Сценарий: граничный — []byte параметра замыкания в цикле
-    Допустим тело "for i := 0; i < 10; i++ { fn := func(s string) { _ = []byte(s) }; fn(\"x\") }"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
-    # s — параметр (не константа), не матчится.
+  Scenario: boundary — []byte of a closure parameter in a loop
+    Given the body "for i := 0; i < 10; i++ { fn := func(s string) { _ = []byte(s) }; fn(\"x\") }"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+    # s is a parameter (not a constant), it is not matched.
 
-  # === Класс 4: неприменимость ===
+  # === Class 4: non-applicability ===
 
-  Сценарий: неприменимость — файл без циклов и конверсий
-    Допустим пакет без единого цикла и конверсии в []byte/[]rune
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: non-applicability — a file without loops or conversions
+    Given a package without a single loop or conversion to []byte/[]rune
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (RULES.md, GID-182)
-#  [x] Выбран слой: go/analysis (анализатор gidbytesinloop в analyzers/bytesinloop)
-#  [x] Заданы severity и сообщение ("GID-182: …")
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [ ] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (RULES.md, GID-182)
+#  [x] Layer chosen: go/analysis (analyzer gidbytesinloop in analyzers/bytesinloop)
+#  [x] Severity and message are defined ("GID-182: …")
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [ ] Rule enabled in .golangci.yml

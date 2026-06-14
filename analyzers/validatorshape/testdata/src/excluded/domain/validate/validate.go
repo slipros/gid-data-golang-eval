@@ -1,18 +1,18 @@
-// Eval GID-213: тип из settings.exclude не считается валидатором.
+// Eval GID-213: a type from settings.exclude is not considered a validator.
 package validate
 
 import "context"
 
 type jobReq struct{ ID string }
 
-// Числится в settings.exclude как "HealthCheck" — без Validate не флагается.
+// Listed in settings.exclude as "HealthCheck" — not flagged without Validate.
 type HealthCheck struct{}
 
-// Корректный валидатор — не флагается в любом случае.
+// A correct validator — not flagged in any case.
 type Ping struct{}
 
 func (v *Ping) Validate(ctx context.Context, req *jobReq) error { return nil }
 
-// Не в exclude и без корректного Validate — флагается, проверяет, что
-// исключение не глушит весь пакет.
+// Not in exclude and without a correct Validate — flagged; verifies that the
+// exclusion does not silence the whole package.
 type Echo struct{} // want `GID-213: validator "Echo" must have a Validate\(ctx context.Context, req \*T\) error method\. Fix: add it`

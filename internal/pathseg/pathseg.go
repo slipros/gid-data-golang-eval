@@ -1,13 +1,13 @@
-// Package pathseg — определение слоя Clean Architecture по сегментам
-// import-пути пакета. Конвенция: слой задаётся последовательностью
-// сегментов, например /dal/repository или /domain/model — независимо от
-// префикса модуля.
+// Package pathseg — Clean Architecture layer detection by the segments of a
+// package's import path. The convention: a layer is defined by a sequence of
+// segments, e.g. /dal/repository or /domain/model — regardless of the module
+// prefix.
 package pathseg
 
 import "strings"
 
-// Index возвращает индекс первого вхождения seq как последовательных
-// сегментов пути, либо -1.
+// Index returns the index of the first occurrence of seq as consecutive
+// path segments, or -1.
 func Index(path string, seq ...string) int {
 	segs := Segments(path)
 	if len(seq) == 0 || len(segs) < len(seq) {
@@ -21,13 +21,13 @@ func Index(path string, seq ...string) int {
 	return -1
 }
 
-// Contains сообщает, содержит ли путь seq как последовательные сегменты.
+// Contains reports whether the path contains seq as consecutive segments.
 func Contains(path string, seq ...string) bool {
 	return Index(path, seq...) >= 0
 }
 
-// EndsWith сообщает, заканчивается ли путь сегментами seq —
-// т.е. пакет является корнем слоя, а не его подпакетом.
+// EndsWith reports whether the path ends with the seq segments —
+// i.e. the package is the root of the layer, not its subpackage.
 func EndsWith(path string, seq ...string) bool {
 	segs := Segments(path)
 	if len(segs) < len(seq) {
@@ -36,7 +36,7 @@ func EndsWith(path string, seq ...string) bool {
 	return matchAt(segs, len(segs)-len(seq), seq)
 }
 
-// Segments разбивает import-путь на сегменты.
+// Segments splits an import path into segments.
 func Segments(path string) []string {
 	return strings.Split(path, "/")
 }

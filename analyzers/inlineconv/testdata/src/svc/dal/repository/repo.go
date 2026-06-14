@@ -1,5 +1,5 @@
-// Класс 4 (неприменимость) — /dal/repository не входит в domain-слой,
-// правило не применяется: entity-литералы здесь не флагаются.
+// Class 4 (not applicable) — /dal/repository is not part of the domain layer,
+// the rule does not apply: entity literals here are not flagged.
 package repository
 
 import "svc/dal/entity"

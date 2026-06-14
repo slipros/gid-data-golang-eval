@@ -1,5 +1,5 @@
-// Класс «неприменимость»: библиотечный пакет без exit-вызовов —
-// правило не срабатывает.
+// "Inapplicability" class: a library package without exit calls —
+// the rule does not fire.
 package cleanlib
 
 import (
@@ -8,7 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// Используем нефатальные методы — они не подпадают под GID-181.
+// We use non-fatal methods — they do not fall under GID-181.
 func process(l *logrus.Entry) error {
 	l.Info("processing")
 	stdlog.Print("processing")

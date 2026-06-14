@@ -1,4 +1,4 @@
-// Негатив: errors.go в /dal/entity — разрешённый файл.
+// Negative: errors.go in /dal/entity is an allowed file.
 package entity
 
 import "github.com/pkg/errors"

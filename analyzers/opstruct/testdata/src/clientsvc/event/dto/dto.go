@@ -1,9 +1,9 @@
-// Eval GID-210: неприменимость — Create-структура в /event/dto не флагается.
+// Eval GID-210: not applicable — a Create struct in /event/dto is not flagged.
 package dto
 
 import "time"
 
-// /event/dto — не model и не entity, правило не применяется.
+// /event/dto is neither model nor entity, the rule does not apply.
 type CreateJob struct {
 	ID        int
 	CreatedAt time.Time

@@ -1,10 +1,10 @@
-// Package httperrors реализует правило GID-162: http handler всегда
-// обрабатывает свои ошибки внутри себя.
+// Package httperrors implements rule GID-162: an http handler always
+// handles its own errors inside itself.
 //
-//   - запрещены «супер-методы», принимающие все ошибки и универсально
-//     их обрабатывающие (признак: параметры http.ResponseWriter + error);
-//   - handler-функция (http.ResponseWriter, *http.Request) не возвращает
-//     error — ошибка обрабатывается на месте.
+//   - "super-methods" that accept all errors and handle them universally
+//     are forbidden (the marker: http.ResponseWriter + error parameters);
+//   - a handler function (http.ResponseWriter, *http.Request) does not
+//     return an error — the error is handled in place.
 package httperrors
 
 import (
@@ -18,7 +18,7 @@ import (
 
 const ruleID = "GID-162"
 
-// Analyzer — правило GID-162: http handler обрабатывает свои ошибки внутри себя.
+// Analyzer — rule GID-162: an http handler handles its own errors inside itself.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidhttperrors",
 	Doc:  ruleID + ": an http handler handles its own errors inline, without super-methods. Fix: handle errors inside the handler",

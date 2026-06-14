@@ -1,34 +1,34 @@
-// Eval для GID-148 (service-single).
+// Eval for GID-148 (service-single).
 package service
 
 import "context"
 
-// SnapshotRepository — интерфейс зависимости, определён рядом с потребителем.
+// SnapshotRepository — a dependency interface, defined next to its consumer.
 type SnapshotRepository interface {
 	Snapshot(ctx context.Context, id string) (string, error)
 }
 
-// SnapshotOptions — настройки сервиса.
+// SnapshotOptions — the service settings.
 type SnapshotOptions struct {
 	MaxSize int
 }
 
-// Snapshot — сервис, посвящённый сущности Snapshot.
+// Snapshot — the service devoted to the Snapshot entity.
 type Snapshot struct {
 	repo SnapshotRepository
 	opts SnapshotOptions
 }
 
-// Job — второй сервис в том же пакете.
+// Job — a second service in the same package.
 type Job struct {
 	repo SnapshotRepository
 }
 
-// --- Позитив: сервис зависит от другого сервиса ---
+// --- Positive: a service depends on another service ---
 
 type Upload struct {
 	snapshots *Snapshot // want `GID-148: service "Upload" depends on service "Snapshot"\. Fix: a service serves one entity, orchestrate multiple services in usecase`
 	jobs      Job       // want `GID-148: service "Upload" depends on service "Job"`
 }
 
-// --- Негатив: зависимости-интерфейсы и Options — норма (см. Snapshot, Job) ---
+// --- Negative: interface dependencies and Options are the norm (see Snapshot, Job) ---

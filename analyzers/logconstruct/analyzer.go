@@ -1,6 +1,6 @@
-// Package logconstruct реализует правило GID-154: если сущность содержит
-// logger (logrus), её конструктор обязан вызвать WithField(<entity>, <name>) —
-// так по логам всегда видно, какая сущность их пишет.
+// Package logconstruct implements rule GID-154: if an entity holds a
+// logger (logrus), its constructor must call WithField(<entity>, <name>) —
+// so the logs always show which entity writes them.
 package logconstruct
 
 import (
@@ -13,7 +13,7 @@ import (
 
 const ruleID = "GID-154"
 
-// Analyzer — правило GID-154: an entity constructor with a logger must call WithField. Fix: call logger.WithField(<entity>, <name>).
+// Analyzer — rule GID-154: an entity constructor with a logger must call WithField. Fix: call logger.WithField(<entity>, <name>).
 var Analyzer = &analysis.Analyzer{
 	Name: "gidlogconstruct",
 	Doc:  ruleID + ": an entity constructor with a logger must call WithField. Fix: call logger.WithField(<entity>, <name>)",
@@ -48,7 +48,7 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-// structsWithLogger собирает имена структур пакета, содержащих logrus-поле.
+// structsWithLogger collects the names of package structs that hold a logrus field.
 func structsWithLogger(pass *analysis.Pass) map[string]struct{} {
 	out := map[string]struct{}{}
 	for _, file := range pass.Files {
@@ -78,7 +78,7 @@ func structsWithLogger(pass *analysis.Pass) map[string]struct{} {
 	return out
 }
 
-// constructedEntity сопоставляет конструктор New<Entity> сущности с logger.
+// constructedEntity matches a New<Entity> constructor to an entity with a logger.
 func constructedEntity(fnName string, withLogger map[string]struct{}) (string, bool) {
 	entity, ok := cutNew(fnName)
 	if !ok {
@@ -97,7 +97,7 @@ func cutNew(name string) (string, bool) {
 	return name[3:], true
 }
 
-// callsWithField ищет в теле вызов WithField на logrus-типе.
+// callsWithField looks in the body for a WithField call on a logrus type.
 func callsWithField(pass *analysis.Pass, body *ast.BlockStmt) bool {
 	found := false
 	ast.Inspect(body, func(n ast.Node) bool {

@@ -1,24 +1,24 @@
-// Eval GID-171: фильтры в /domain/** вне model-слоя.
+// Eval of GID-171: filters in /domain/** outside the model layer.
 package service
 
-// --- Позитивный класс: нарушение ловится ---
+// --- Positive class: the violation is caught ---
 
-// Префикс Filter* в service — должен жить в /domain/model.
+// The Filter* prefix in service — must live in /domain/model.
 type FilterJobs struct { // want `GID-171: filter "FilterJobs" must live in /domain/model\. Fix: move it there`
 	Status string
 }
 
-// Суффикс *Filter — тоже фильтр.
+// The *Filter suffix — a filter too.
 type JobsFilter struct { // want `GID-171: filter "JobsFilter" must live in /domain/model\. Fix: move it there`
 	Limit int
 }
 
-// --- Граничный класс ---
+// --- Boundary class ---
 
-// FilterFunc — func-тип, не struct, правило не трогает.
+// FilterFunc — a func type, not a struct, the rule leaves it alone.
 type FilterFunc func(j string) bool
 
-// Filterable — не имя-фильтр (Filter + строчная).
+// Filterable — not a filter name (Filter + a lowercase letter).
 type Filterable struct {
 	On bool
 }

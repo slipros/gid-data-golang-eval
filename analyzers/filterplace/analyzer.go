@@ -1,16 +1,17 @@
-// Package filterplace реализует правило GID-171 (filter-location):
+// Package filterplace implements rule GID-171 (filter-location):
 //
-//   - GID-171 (gidfilterplace): фильтры list-операций живут в своём месте
-//     слоя. Entity-фильтры — в /dal/entity/filter, model-фильтры — в
-//     model-слое (/domain/model и его подпакеты, например /domain/model/filter).
+//   - GID-171 (gidfilterplace): list-operation filters live in their layer's
+//     place. Entity filters — in /dal/entity/filter, model filters — in the
+//     model layer (/domain/model and its subpackages, e.g. /domain/model/filter).
 //
-// Проверяются только объявления STRUCT-типов с именем-фильтром (Filter* или
-// *Filter), чтобы не задевать FilterFunc, интерфейсы и алиасы. Имя считается
-// фильтром, если слово Filter стоит на границе: префикс Filter + заглавная
-// буква/конец (FilterJobs, Filter) либо суффикс Filter (JobsFilter). Filterable
-// не флагается — после Filter идёт строчная буква, это другое слово.
+// Only declarations of STRUCT types with a filter name (Filter* or
+// *Filter) are checked, so as not to touch FilterFunc, interfaces and aliases.
+// A name counts as a filter when the word Filter sits on a boundary: the prefix
+// Filter + a capital letter/end (FilterJobs, Filter) or the suffix Filter
+// (JobsFilter). Filterable is not flagged — Filter is followed by a lowercase
+// letter, which makes it a different word.
 //
-// Источники: model.md, entity.md.
+// Sources: model.md, entity.md.
 package filterplace
 
 import (
@@ -24,13 +25,13 @@ import (
 
 const ruleID = "GID-171"
 
-// filterName: префикс Filter перед заглавной буквой/цифрой или концом имени
-// (Filter, FilterJobs, Filter2) либо суффикс Filter после строчной буквы/цифры
-// или в начале имени (JobsFilter, Filter). Filterable не матчится — после
-// Filter идёт строчная буква.
+// filterName: the prefix Filter before a capital letter/digit or the end of the
+// name (Filter, FilterJobs, Filter2), or the suffix Filter after a lowercase
+// letter/digit or at the start of the name (JobsFilter, Filter). Filterable is
+// not matched — Filter is followed by a lowercase letter.
 var filterName = regexp.MustCompile(`(^Filter([A-Z0-9].*)?$)|([a-z0-9]Filter$)`)
 
-// Analyzer — правило GID-171: list-operation filters live in /dal/entity/filter (entity) or /domain/model (model). Fix: move the filter there.
+// Analyzer — rule GID-171: list-operation filters live in /dal/entity/filter (entity) or /domain/model (model). Fix: move the filter there.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidfilterplace",
 	Doc:  ruleID + ": list-operation filters live in /dal/entity/filter (entity) or /domain/model (model). Fix: move the filter there",
@@ -45,7 +46,7 @@ func run(pass *analysis.Pass) (any, error) {
 	inDomain := pathseg.Contains(pkgPath, "domain")
 	inModel := pathseg.Contains(pkgPath, "domain", "model")
 
-	// Слой не dal и не domain — правило не применяется.
+	// Neither the dal nor the domain layer — the rule does not apply.
 	dalViolating := inDAL && !inEntityFilter
 	domainViolating := inDomain && !inModel
 	if !dalViolating && !domainViolating {
@@ -66,7 +67,7 @@ func run(pass *analysis.Pass) (any, error) {
 				if !ok {
 					continue
 				}
-				// Только struct-типы: FilterFunc, интерфейсы и алиасы не трогаем.
+				// Struct types only: FilterFunc, interfaces and aliases are untouched.
 				if _, ok := ts.Type.(*ast.StructType); !ok {
 					continue
 				}

@@ -1,5 +1,5 @@
-// Неприменимость: фильтры (подпакет) — параметры выборки, не строки БД;
-// указатели там допустимы.
+// Not applicable: filters (a subpackage) are query parameters, not DB rows;
+// pointers are allowed there.
 package filter
 
 type Snapshots struct {

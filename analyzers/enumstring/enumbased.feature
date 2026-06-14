@@ -1,64 +1,64 @@
-# language: ru
+# language: en
 
-Функция: GID-123 — enum это именованный тип на основе string, не голый string/int
-  Как разработчик
-  Я хочу, чтобы enum в /domain/model и /dal/entity был именованным string-типом
-  Чтобы перечисления были типобезопасными и единообразными
-  Источник: styleguide.md#enum
-  Scope: пакеты в /domain/model/** и /dal/entity/**
+Feature: GID-123 — an enum is a named type based on string, not a bare string/int
+  As a developer
+  I want enums in /domain/model and /dal/entity to be named string types
+  So that enumerations are type-safe and uniform
+  Source: styleguide.md#enum
+  Scope: packages in /domain/model/** and /dal/entity/**
 
-  # --- Позитивный класс: нарушение ловится ---
+  # --- Positive class: the violation is caught ---
 
-  Сценарий: alias на basic string — нарушение
-    Допустим в /domain/model объявлен "type ConsentEventType = string"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-123" с текстом "именованный тип, не alias"
+  Scenario: an alias to basic string — violation
+    Given "type ConsentEventType = string" is declared in /domain/model
+    When the analyzer checks the file
+    Then a "GID-123" diagnostic is reported with the text "a named type, not an alias"
 
-  Сценарий: int-enum с двумя и более значениями — нарушение
-    Допустим в /dal/entity объявлен "type Status int" с const-значениями "StatusA, StatusB"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-123" с текстом "строится на string, не int"
+  Scenario: an int enum with two or more values — violation
+    Given "type Status int" with the const values "StatusA, StatusB" is declared in /dal/entity
+    When the analyzer checks the file
+    Then a "GID-123" diagnostic is reported with the text "must be based on string, not int"
 
-  Сценарий: группа нетипизированных string-констант — нарушение
-    Допустим в /domain/model объявлена const-группа из двух нетипизированных string-констант
-    Когда анализатор проверяет файл
-    Тогда выводится одна диагностика "GID-123" на первой константе группы
+  Scenario: a group of untyped string constants — violation
+    Given a const group of two untyped string constants is declared in /domain/model
+    When the analyzer checks the file
+    Then a single "GID-123" diagnostic is reported on the first constant of the group
 
-  # --- Негативный класс: чистый код проходит ---
+  # --- Negative class: clean code passes ---
 
-  Сценарий: именованный string-тип с const — ок
-    Допустим в /domain/model объявлен "type EventType string" с const-значениями
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a named string type with consts — ok
+    Given "type EventType string" with const values is declared in /domain/model
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  # --- Граничный класс ---
+  # --- Boundary class ---
 
-  Сценарий: одиночная const именованного int-типа — не enum, не флагуем
-    Допустим в /domain/model объявлены "type Limit int" и одна "const DefaultLimit Limit = 100"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a single const of a named int type — not an enum, not flagged
+    Given "type Limit int" and a single "const DefaultLimit Limit = 100" are declared in /domain/model
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: одиночная нетипизированная string-const — ок
-    Допустим в /dal/entity объявлена одна "const DefaultName = \"x\""
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a single untyped string const — ok
+    Given a single "const DefaultName = \"x\"" is declared in /dal/entity
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  # --- Класс неприменимости: правило не действует вне scope ---
+  # --- Non-applicability class: the rule does not apply out of scope ---
 
-  Сценарий: alias на string вне /domain/model и /dal/entity — правило не применяется
-    Допустим в /domain/service объявлен "type ConsentEventType = string"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: an alias to string outside /domain/model and /dal/entity — the rule does not apply
+    Given "type ConsentEventType = string" is declared in /domain/service
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: сгенерированный файл — пропускается
-    Допустим файл помечен "// Code generated ... DO NOT EDIT."
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a generated file — skipped
+    Given the file is marked "// Code generated ... DO NOT EDIT."
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (RULES.md, GID-123)
-#  [x] Выбран слой: go/analysis (нужны типы для underlying/alias)
-#  [x] Заданы severity и сообщение ("GID-123: ...")
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [ ] Правило включено в .golangci.yml (вне scope этой задачи)
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (RULES.md, GID-123)
+#  [x] Layer chosen: go/analysis (types needed for underlying/alias)
+#  [x] Severity and message are defined ("GID-123: ...")
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [ ] Rule enabled in .golangci.yml (outside the scope of this task)

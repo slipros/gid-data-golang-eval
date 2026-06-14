@@ -1,109 +1,109 @@
-# language: ru
+# language: en
 
-Функция: GID-114 — методы repo/service именуются от сущности (entitymethod)
-  Как разработчик
-  Я хочу, чтобы экспортируемые методы структур в /dal/repository и /domain/service
-  именовались от сущности: без префикса List, без суффикса ByID, с именем сущности в имени
-  Чтобы API слоя читался единообразно (Jobs вместо ListJobs, Job(ctx, id) вместо JobByID)
+Feature: GID-114 — repo/service methods are named after the entity (entitymethod)
+  As a developer
+  I want exported struct methods in /dal/repository and /domain/service
+  to be named after the entity: no List prefix, no ByID suffix, with the entity name in the method name
+  So that the layer API reads uniformly (Jobs instead of ListJobs, Job(ctx, id) instead of JobByID)
 
-  # Один анализатор entitymethod → линтер gidentitymethod, LoadModeTypesInfo.
-  # Scope — корневые пакеты слоя по сегментам пути (pathseg.EndsWith):
-  #   /dal/repository и /domain/service. Подпакеты convert/build вне scope.
-  # Проверяются только ЭКСПОРТИРУЕМЫЕ методы структур (fn.Recv != nil).
-  # Конструкторы New* — функции без ресивера, сюда не попадают.
-  # Сгенерированный код (ast.IsGenerated) пропускается.
+  # One analyzer entitymethod → linter gidentitymethod, LoadModeTypesInfo.
+  # Scope — root packages of the layer by path segments (pathseg.EndsWith):
+  #   /dal/repository and /domain/service. Subpackages convert/build are out of scope.
+  # Only EXPORTED struct methods are checked (fn.Recv != nil).
+  # New* constructors are functions without a receiver and do not fall under this.
+  # Generated code (ast.IsGenerated) is skipped.
   #
-  # Три проверки (в порядке приоритета, репортится первая сработавшая):
-  #   1. префикс List по границе CamelCase запрещён → «без префикса List …»;
-  #   2. точный суффикс ByID запрещён → «без суффикса ByID …»
-  #      (ByStageID и прочие By<Field>ID разрешены — уточнение выборки);
-  #   3. имя метода обязано содержать имя типа-ресивера как CamelCase-подстроку.
-  #      Применяется только к осмысленному имени сущности (len > 2);
-  #      однобуквенные/служебные ресиверы (T, S, ID) не проверяются.
+  # Three checks (in priority order, the first one that fires is reported):
+  #   1. the List prefix at a CamelCase boundary is forbidden → "drop the List prefix …";
+  #   2. the exact ByID suffix is forbidden → "drop the ByID suffix …"
+  #      (ByStageID and other By<Field>ID are allowed — selection refinement);
+  #   3. the method name must contain the receiver type name as a CamelCase substring.
+  #      Applies only to a meaningful entity name (len > 2);
+  #      one-letter/auxiliary receivers (T, S, ID) are not checked.
   #
-  # FP-зона: методы-глаголы без имени сущности (Close, Ping, Flush) в репозитории
-  # легитимны редко, но бывают — они попадут под проверку 3 и гасятся
-  # //nolint:gidentitymethod или settings.exclude ("Метод" | "Тип.Метод").
+  # FP zone: verb methods without the entity name (Close, Ping, Flush) are rarely
+  # legitimate in a repository, but they happen — they fall under check 3 and are
+  # suppressed via //nolint:gidentitymethod or settings.exclude ("Method" | "Type.Method").
 
-  # --- Класс 1: позитивный (нарушение ловится) ---
+  # --- Class 1: positive (the violation is caught) ---
 
-  Сценарий: позитивный — префикс List
-    Допустим метод "func (j *Job) ListJobs(ctx context.Context) ([]Snapshot, error)" в /dal/repository
-    Когда анализатор gidentitymethod проверяет файл
-    Тогда выводится диагностика "GID-114: без префикса List — множественное число: Jobs вместо ListJobs"
+  Scenario: positive — List prefix
+    Given the method "func (j *Job) ListJobs(ctx context.Context) ([]Snapshot, error)" in /dal/repository
+    When the gidentitymethod analyzer checks the file
+    Then the diagnostic "GID-114: drop the List prefix. Fix: use the plural Jobs instead of ListJobs" is reported
 
-  Сценарий: позитивный — суффикс ByID
-    Допустим метод "func (j *Job) JobByID(ctx context.Context, id string) (Snapshot, error)" в /dal/repository
-    Когда анализатор gidentitymethod проверяет файл
-    Тогда выводится диагностика "GID-114: без суффикса ByID — Job(ctx, id) вместо JobByID"
+  Scenario: positive — ByID suffix
+    Given the method "func (j *Job) JobByID(ctx context.Context, id string) (Snapshot, error)" in /dal/repository
+    When the gidentitymethod analyzer checks the file
+    Then the diagnostic "GID-114: drop the ByID suffix. Fix: use Job(ctx, id) instead of JobByID" is reported
 
-  Сценарий: позитивный — имя метода не содержит сущность
-    Допустим метод "func (j *Job) Fetch(ctx context.Context) (Snapshot, error)" в /dal/repository
-    Когда анализатор gidentitymethod проверяет файл
-    Тогда выводится диагностика "GID-114: имя метода \"Fetch\" должно содержать имя сущности \"Job\""
+  Scenario: positive — the method name does not contain the entity
+    Given the method "func (j *Job) Fetch(ctx context.Context) (Snapshot, error)" in /dal/repository
+    When the gidentitymethod analyzer checks the file
+    Then the diagnostic "GID-114: method name \"Fetch\" must contain the entity name \"Job\"" is reported
 
-  Сценарий: позитивный — метод-глагол без сущности (FP-зона)
-    Допустим метод "func (j *Job) Close() error" в /dal/repository
-    Когда анализатор gidentitymethod проверяет файл
-    Тогда выводится диагностика "GID-114: имя метода \"Close\" должно содержать имя сущности \"Job\""
-    # Это и есть FP-зона: легитимный Close/Ping/Flush ловится — выключается exclude/nolint.
+  Scenario: positive — a verb method without the entity (FP zone)
+    Given the method "func (j *Job) Close() error" in /dal/repository
+    When the gidentitymethod analyzer checks the file
+    Then the diagnostic "GID-114: method name \"Close\" must contain the entity name \"Job\"" is reported
+    # This is exactly the FP zone: a legitimate Close/Ping/Flush is caught — suppressed via exclude/nolint.
 
-  # --- Класс 2: негативный (чистый код проходит) ---
+  # --- Class 2: negative (clean code passes) ---
 
-  Сценарий: негативный — имена от сущности
-    Допустим методы "Job", "Jobs", "CreateJob", "DeleteJob" на типе Job в /dal/repository
-    Когда анализатор gidentitymethod проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — names derived from the entity
+    Given the methods "Job", "Jobs", "CreateJob", "DeleteJob" on the type Job in /dal/repository
+    When the gidentitymethod analyzer checks the file
+    Then no diagnostic is reported
 
-  # --- Класс 3: граничный (похоже на нарушение, но допустимо) ---
+  # --- Class 3: boundary (looks like a violation but is allowed) ---
 
-  Сценарий: граничный — суффикс ByStageID разрешён
-    Допустим метод "func (j *Job) JobsByStageID(ctx context.Context, stageID string) ([]Snapshot, error)" в /dal/repository
-    Когда анализатор gidentitymethod проверяет файл
-    Тогда диагностика не выводится
-    # ByStageID — уточнение выборки (By<Field>ID), не точный суффикс ByID; имя содержит Job.
+  Scenario: boundary — the ByStageID suffix is allowed
+    Given the method "func (j *Job) JobsByStageID(ctx context.Context, stageID string) ([]Snapshot, error)" in /dal/repository
+    When the gidentitymethod analyzer checks the file
+    Then no diagnostic is reported
+    # ByStageID is a selection refinement (By<Field>ID), not the exact ByID suffix; the name contains Job.
 
-  Сценарий: граничный — Listen не считается префиксом List
-    Допустим метод "func (j *Job) ListenJobEvents(ctx context.Context) error" в /dal/repository
-    Когда анализатор gidentitymethod проверяет файл
-    Тогда диагностика не выводится
-    # Граница CamelCase: после "List" идёт строчная "e" — это не слово List.
+  Scenario: boundary — Listen does not count as the List prefix
+    Given the method "func (j *Job) ListenJobEvents(ctx context.Context) error" in /dal/repository
+    When the gidentitymethod analyzer checks the file
+    Then no diagnostic is reported
+    # CamelCase boundary: "List" is followed by a lowercase "e" — it is not the word List.
 
-  Сценарий: граничный — неэкспортируемый метод не матчится
-    Допустим метод "func (j *Job) listJobsInternal(ctx context.Context) ([]Snapshot, error)" в /dal/repository
-    Когда анализатор gidentitymethod проверяет файл
-    Тогда диагностика не выводится
+  Scenario: boundary — an unexported method is not matched
+    Given the method "func (j *Job) listJobsInternal(ctx context.Context) ([]Snapshot, error)" in /dal/repository
+    When the gidentitymethod analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: граничный — однобуквенная сущность: проверка 3 не применяется
-    Допустим тип "S" и метод "func (x *S) Touch(ctx context.Context) error" в /domain/service
-    Когда анализатор gidentitymethod проверяет файл
-    Тогда диагностика не выводится
-    # len(recv) <= 2 — имя сущности служебное, требование «содержать сущность» не проверяется.
-    # Префикс List/суффикс ByID при этом всё равно ловятся (от длины не зависят).
+  Scenario: boundary — a one-letter entity: check 3 does not apply
+    Given the type "S" and the method "func (x *S) Touch(ctx context.Context) error" in /domain/service
+    When the gidentitymethod analyzer checks the file
+    Then no diagnostic is reported
+    # len(recv) <= 2 — the entity name is auxiliary, the "must contain the entity" requirement is not checked.
+    # The List prefix / ByID suffix are still caught (they do not depend on the length).
 
-  Сценарий: граничный — settings.exclude гасит метод-глагол
-    Допустим settings.exclude = ["Job.Close", "Ping"] и методы Close, Ping, Flush на типе Job
-    Когда анализатор gidentitymethod проверяет файл
-    Тогда диагностика выводится только на Flush; Close и Ping погашены
+  Scenario: boundary — settings.exclude suppresses a verb method
+    Given settings.exclude = ["Job.Close", "Ping"] and the methods Close, Ping, Flush on the type Job
+    When the gidentitymethod analyzer checks the file
+    Then a diagnostic is reported only on Flush; Close and Ping are suppressed
 
-  # --- Класс 4: неприменимость ---
+  # --- Class 4: non-applicability ---
 
-  Сценарий: неприменимость — подпакет convert вне scope
-    Допустим метод "ListSnapshots" на типе Mapper в /dal/repository/convert
-    Когда анализатор gidentitymethod проверяет файл
-    Тогда диагностика не выводится
-    # Scope — корень слоя (EndsWith), подпакеты convert/build не задеваются.
+  Scenario: non-applicability — the convert subpackage is out of scope
+    Given the method "ListSnapshots" on the type Mapper in /dal/repository/convert
+    When the gidentitymethod analyzer checks the file
+    Then no diagnostic is reported
+    # Scope is the layer root (EndsWith), the convert/build subpackages are not affected.
 
-  Сценарий: неприменимость — /domain/usecase вне scope
-    Допустим методы "ListJobs" и "Fetch" на типе Job в /domain/usecase
-    Когда анализатор gidentitymethod проверяет файл
-    Тогда диагностика не выводится
-    # Scope правила — только repository и service; usecase не задевается.
+  Scenario: non-applicability — /domain/usecase is out of scope
+    Given the methods "ListJobs" and "Fetch" on the type Job in /domain/usecase
+    When the gidentitymethod analyzer checks the file
+    Then no diagnostic is reported
+    # The rule's scope is only repository and service; usecase is not affected.
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (RULES.md, GID-114)
-#  [x] Выбран слой: go/analysis (пакет entitymethod: gidentitymethod), LoadModeTypesInfo
-#  [x] Задано сообщение ("GID-114: …")
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [ ] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (RULES.md, GID-114)
+#  [x] Layer chosen: go/analysis (package entitymethod: gidentitymethod), LoadModeTypesInfo
+#  [x] Message is defined ("GID-114: …")
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [ ] Rule enabled in .golangci.yml

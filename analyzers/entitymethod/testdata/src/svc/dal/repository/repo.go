@@ -1,4 +1,4 @@
-// Eval для GID-114 (repo): корневой пакет /dal/repository — в scope.
+// Eval for GID-114 (repo): the root package /dal/repository is in scope.
 package repository
 
 import "context"
@@ -7,29 +7,29 @@ type Snapshot struct{ ID string }
 
 type Job struct{}
 
-// --- Класс 1: позитив (нарушение ловится) ---
+// --- Class 1: positive (the violation is caught) ---
 
-// Префикс List запрещён.
+// The List prefix is forbidden.
 func (j *Job) ListJobs(ctx context.Context) ([]Snapshot, error) { // want `GID-114: drop the List prefix\. Fix: use the plural Jobs instead of ListJobs`
 	return nil, nil
 }
 
-// Точный суффикс ByID запрещён.
+// The exact ByID suffix is forbidden.
 func (j *Job) JobByID(ctx context.Context, id string) (Snapshot, error) { // want `GID-114: drop the ByID suffix\. Fix: use Job\(ctx, id\) instead of JobByID`
 	return Snapshot{}, nil
 }
 
-// Имя метода не содержит имя сущности Job.
+// The method name does not contain the Job entity name.
 func (j *Job) Fetch(ctx context.Context) (Snapshot, error) { // want `GID-114: method name "Fetch" must contain the entity name "Job"`
 	return Snapshot{}, nil
 }
 
-// FP-зона: метод-глагол без сущности — легитимен редко, но ловится; гасится exclude/nolint.
+// FP zone: a verb method without an entity — rarely legitimate, but caught; muted via exclude/nolint.
 func (j *Job) Close() error { // want `GID-114: method name "Close" must contain the entity name "Job"`
 	return nil
 }
 
-// --- Класс 2: негатив (чистый код проходит) ---
+// --- Class 2: negative (clean code passes) ---
 
 func (j *Job) Job(ctx context.Context, id string) (Snapshot, error) {
 	return Snapshot{}, nil
@@ -47,26 +47,26 @@ func (j *Job) DeleteJob(ctx context.Context, id string) error {
 	return nil
 }
 
-// --- Класс 3: граничный ---
+// --- Class 3: edge ---
 
-// ByStageID — уточнение выборки, не суффикс ByID; имя содержит Job. Разрешено.
+// ByStageID is a query refinement, not the ByID suffix; the name contains Job. Allowed.
 func (j *Job) JobsByStageID(ctx context.Context, stageID string) ([]Snapshot, error) {
 	return nil, nil
 }
 
-// Неэкспортируемый метод не матчится.
+// An unexported method is not matched.
 func (j *Job) listJobsInternal(ctx context.Context) ([]Snapshot, error) {
 	return nil, nil
 }
 
-// Граница слова: Listen — не префикс List (следующая руна строчная).
+// Word boundary: Listen is not the List prefix (the next rune is lowercase).
 func (j *Job) ListenJobEvents(ctx context.Context) error {
 	return nil
 }
 
-// FP-зона: метод-глагол Ping; в проде гасится //nolint:gidentitymethod
-// (analysistest не обрабатывает nolint — фильтрация на стороне golangci-lint,
-// поэтому здесь диагностика ожидаема).
+// FP zone: the verb method Ping; in production muted via //nolint:gidentitymethod
+// (analysistest does not process nolint — filtering happens on the golangci-lint
+// side, so the diagnostic is expected here).
 func (j *Job) Ping(ctx context.Context) error { // want `GID-114: method name "Ping" must contain the entity name "Job"`
 	return nil
 }

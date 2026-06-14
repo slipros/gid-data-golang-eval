@@ -1,7 +1,7 @@
-// Eval GID-123 в /dal/entity.
+// Eval GID-123 in /dal/entity.
 package entity
 
-// --- Позитив: int-enum с ≥2 const-значений ---
+// --- Positive: int-enum with ≥2 const values ---
 
 type Status int // want `GID-123: enum Status must be based on string, not int`
 
@@ -10,11 +10,11 @@ const (
 	StatusInactive Status = 2
 )
 
-// --- Позитив: alias на string ---
+// --- Positive: alias to string ---
 
 type Code = string // want `GID-123: enum Code must be a named type, not an alias`
 
-// --- Негатив: правильный string-enum ---
+// --- Negative: a correct string-enum ---
 
 type Kind string
 
@@ -23,7 +23,7 @@ const (
 	KindB Kind = "b"
 )
 
-// --- Граничный: одиночная const именованного int-типа — не enum ---
+// --- Edge case: a single const of a named int type — not an enum ---
 
 type Priority int
 

@@ -1,4 +1,4 @@
-// Eval GID-180: позитивные и граничные нарушения в init().
+// Eval GID-180: positive and boundary violations in init().
 package bad
 
 import (
@@ -6,25 +6,25 @@ import (
 	"os"
 )
 
-// Позитив: запуск горутины прямо в init.
+// Positive: starting a goroutine directly in init.
 func init() {
 	go func() {} () // want `GID-180: a goroutine in init\(\) is forbidden`
 }
 
-// Позитив: I/O-вызов os.Open в init.
+// Positive: an I/O call os.Open in init.
 func init() {
 	f, _ := os.Open("/etc/hosts") // want `GID-180: an I/O call os\.Open in init\(\) is forbidden`
 	_ = f
 }
 
-// Позитив: I/O-вызов sql.Open в init.
+// Positive: an I/O call sql.Open in init.
 func init() {
 	db, _ := sql.Open("postgres", "") // want `GID-180: an I/O call database/sql\.Open in init\(\) is forbidden`
 	_ = db
 }
 
-// Граничный: замыкание объявлено и вызвано в init, внутри os.Open — матчится,
-// так как тело замыкания обходится как часть init.
+// Boundary: a closure is declared and called in init, with os.Open inside — matched,
+// because the closure's body is walked as part of init.
 func init() {
 	fn := func() {
 		_, _ = os.Open("/tmp/x") // want `GID-180: an I/O call os\.Open in init\(\) is forbidden`
@@ -32,7 +32,7 @@ func init() {
 	fn()
 }
 
-// Граничный: горутина во вложенном блоке init — матчится.
+// Boundary: a goroutine in a nested block of init — matched.
 func init() {
 	{
 		go func() {}() // want `GID-180: a goroutine in init\(\) is forbidden`

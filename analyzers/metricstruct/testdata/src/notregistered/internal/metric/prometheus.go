@@ -1,15 +1,15 @@
-// Проверка 8: поле-группа с методом Register не зарегистрирована в
+// Check 8: a group field with a Register method is not registered in
 // Prometheus.Register.
 package metric
 
-// Prometheus агрегирует группы.
+// Prometheus aggregates the groups.
 type Prometheus struct {
 	HTTP  HTTPMetrics
 	Kafka KafkaMetrics // want `GID-174: Prometheus.Register registers group Kafka\. Fix: call its Register`
-	Total int          // граничный: тип без Register — регистрировать не нужно
+	Total int          // boundary: a type without Register — no registration needed
 }
 
-// Register регистрирует только HTTP, забыли Kafka.
+// Register registers only HTTP; Kafka was forgotten.
 func (p Prometheus) Register() error {
 	return p.HTTP.Register()
 }

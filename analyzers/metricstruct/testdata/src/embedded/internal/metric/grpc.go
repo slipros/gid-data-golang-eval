@@ -1,10 +1,10 @@
-// Группа GRPC — отдельный файл.
+// The GRPC group — a separate file.
 package metric
 
-// GRPCMetrics — группа GRPC.
+// GRPCMetrics — the GRPC group.
 type GRPCMetrics struct {
 	Calls int
 }
 
-// Register группы GRPC.
+// Register of the GRPC group.
 func (m GRPCMetrics) Register() error { return nil }

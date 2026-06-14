@@ -1,4 +1,4 @@
-// Негатив (граница): build/ — легитимный подпакет репозитория.
+// Negative (boundary): build/ is a legitimate repository subpackage.
 package build
 
 func SelectSnapshots() {}

@@ -1,24 +1,24 @@
-// Package nilslice реализует правило GID-185 (Uber/Google: nil is a valid slice):
-// пустой композит-литерал слайса `[]T{}` лишний — nil-слайс полноценно валиден
-// (его можно итерировать, к нему можно делать append, len(nil) == 0).
+// Package nilslice implements rule GID-185 (Uber/Google: nil is a valid slice):
+// an empty slice composite literal `[]T{}` is redundant — a nil slice is fully
+// valid (it can be iterated, appended to, len(nil) == 0).
 //
-// Что матчится:
-//   - `return []T{}` — пустой литерал слайса в return-операторе
-//     → «возвращайте nil вместо пустого слайса»;
-//   - `s := []T{}` и `var s = []T{}` — инициализация переменной пустым литералом
-//     → «объявляйте zero-value слайс: var s []T».
+// What is matched:
+//   - `return []T{}` — an empty slice literal in a return statement
+//     → "return nil instead of an empty slice";
+//   - `s := []T{}` and `var s = []T{}` — initializing a variable with an empty
+//     literal → "declare a zero-value slice: var s []T".
 //
-// Что НЕ матчится:
-//   - непустые литералы (`[]T{1, 2}`) — это данные, а не «пустота»;
-//   - `[]T{}` как аргумент вызова или значение поля структуры — там пустой
-//     (не-nil) слайс может быть осознанной семантикой (например, JSON-маршалинг
-//     `[]` против `null`);
-//   - map-литералы (`map[K]V{}`) и массивы (`[N]T{}`) — правило только про слайсы;
-//   - `make([]T, ...)` — это зона правил prealloc, не наша.
+// What is NOT matched:
+//   - non-empty literals (`[]T{1, 2}`) — that is data, not "emptiness";
+//   - `[]T{}` as a call argument or a struct field value — there an empty
+//     (non-nil) slice may be deliberate semantics (e.g. JSON marshaling
+//     `[]` vs `null`);
+//   - map literals (`map[K]V{}`) and arrays (`[N]T{}`) — the rule is only about slices;
+//   - `make([]T, ...)` — that is the domain of prealloc rules, not ours.
 //
-// LoadMode: TypesInfo — нужны типы, чтобы отличить слайс от массива/мапы.
-// Сгенерированный код (ast.IsGenerated) пропускается.
-// Точечное отключение: //nolint:gidnilslice.
+// LoadMode: TypesInfo — types are needed to tell a slice from an array/map.
+// Generated code (ast.IsGenerated) is skipped.
+// Targeted opt-out: //nolint:gidnilslice.
 package nilslice
 
 import (
@@ -31,7 +31,7 @@ import (
 
 const ruleID = "GID-185"
 
-// Analyzer — правило GID-185: return/declare a nil slice instead of an empty literal []T{}. Fix: use nil or var s []T.
+// Analyzer — rule GID-185: return/declare a nil slice instead of an empty literal []T{}. Fix: use nil or var s []T.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidnilslice",
 	Doc:  ruleID + ": return/declare a nil slice instead of an empty literal []T{}. Fix: use nil or var s []T",
@@ -53,7 +53,7 @@ func run(pass *analysis.Pass) (any, error) {
 					}
 				}
 			case *ast.AssignStmt:
-				// s := []T{} — короткое объявление переменной.
+				// s := []T{} — a short variable declaration.
 				if node.Tok != token.DEFINE {
 					return true
 				}
@@ -64,7 +64,7 @@ func run(pass *analysis.Pass) (any, error) {
 					}
 				}
 			case *ast.ValueSpec:
-				// var s = []T{} — объявление через var с инициализатором.
+				// var s = []T{} — a var declaration with an initializer.
 				for _, val := range node.Values {
 					if isEmptySliceLit(pass, val) {
 						pass.Reportf(val.Pos(),
@@ -78,15 +78,15 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-// isEmptySliceLit: выражение — пустой композит-литерал, чей тип (по TypesInfo)
-// является слайсом. Массивы, мапы и непустые литералы отсекаются.
+// isEmptySliceLit: the expression is an empty composite literal whose type
+// (per TypesInfo) is a slice. Arrays, maps, and non-empty literals are filtered out.
 func isEmptySliceLit(pass *analysis.Pass, expr ast.Expr) bool {
 	lit, ok := expr.(*ast.CompositeLit)
 	if !ok {
 		return false
 	}
 	if len(lit.Elts) != 0 {
-		return false // непустой литерал — это данные.
+		return false // a non-empty literal is data.
 	}
 	t := pass.TypesInfo.TypeOf(lit)
 	if t == nil {

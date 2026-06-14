@@ -1,111 +1,111 @@
-# language: ru
-# Спецификация правила GID-174 (metric-prometheus-struct).
-# Линтер: gidmetricstruct (go/analysis, LoadModeTypesInfo).
+# language: en
+# Specification of rule GID-174 (metric-prometheus-struct).
+# Linter: gidmetricstruct (go/analysis, LoadModeTypesInfo).
 
-Функция: GID-174 — стандартизированный пакет метрик сервиса
-  Как разработчик backend-go сервиса
-  Я хочу, чтобы пакет метрик был оформлен по единой конвенции
-  Чтобы во всех сервисах метрики жили по пути /metric, в пакете metric,
-  и агрегировались в экспортируемом struct Prometheus с методом Register
+Feature: GID-174 — the standardized service metrics package
+  As a backend-go service developer
+  I want the metrics package to follow a single convention
+  So that in all services metrics live under the /metric path, in the metric package,
+  and are aggregated in the exported Prometheus struct with a Register method
 
-  # Конвенция группировки: доп. метрики живут в ОТДЕЛЬНЫХ файлах, группируясь
-  # функционально в структурах (по одной группе на файл). prometheus.go —
-  # wiring: тип Prometheus объявлен в нём, его Register вызывает Register групп.
+  # The grouping convention: extra metrics live in SEPARATE files, grouped
+  # functionally in structs (one group per file). prometheus.go is the
+  # wiring: the Prometheus type is declared there, its Register calls the groups' Register.
 
-  # --- Позитивные кейсы (нарушение ловится) ---
+  # --- Positive cases (the violation is caught) ---
 
-  Сценарий: путь пакета оканчивается metrics — нарушение
-    Допустим пакет, чей import-путь оканчивается сегментом "metrics"
-    Когда анализатор проверяет пакет
-    Тогда выводится диагностика "GID-174: пакет метрик называется metric, не metrics" на package clause
+  Scenario: the package path ends with metrics — violation
+    Given a package whose import path ends with the segment "metrics"
+    When the analyzer checks the package
+    Then the diagnostic "GID-174: the metrics package must be named metric, not metrics" is reported on the package clause
 
-  Сценарий: путь оканчивается metric, но типа Prometheus нет — нарушение
-    Допустим пакет по пути ".../metric" без типа Prometheus
-    Когда анализатор проверяет пакет
-    Тогда выводится диагностика "GID-174: пакет metric объявляет агрегатор метрик — struct Prometheus с методом Register"
-    И диагностика выводится на package clause файла с наименьшим именем (детерминированно)
+  Scenario: the path ends with metric but there is no Prometheus type — violation
+    Given a package at the path ".../metric" without a Prometheus type
+    When the analyzer checks the package
+    Then the diagnostic "GID-174: the metric package must declare a metrics aggregator: struct Prometheus with a Register method" is reported
+    And the diagnostic is reported on the package clause of the file with the smallest name (deterministic)
 
-  Сценарий: Prometheus есть, но без метода Register — нарушение
-    Допустим пакет по пути ".../metric" с типом-struct Prometheus без метода Register
-    Когда анализатор проверяет пакет
-    Тогда выводится диагностика про отсутствие метода Register на объявлении типа Prometheus
+  Scenario: Prometheus exists but has no Register method — violation
+    Given a package at the path ".../metric" with a Prometheus struct type without a Register method
+    When the analyzer checks the package
+    Then a diagnostic about the missing Register method is reported on the Prometheus type declaration
 
-  Сценарий: Prometheus объявлен, но не struct — нарушение
-    Допустим пакет по пути ".../metric" с типом Prometheus, который не является struct
-    Когда анализатор проверяет пакет
-    Тогда выводится диагностика про то, что Prometheus обязан быть struct на объявлении типа
+  Scenario: Prometheus is declared but is not a struct — violation
+    Given a package at the path ".../metric" with a Prometheus type that is not a struct
+    When the analyzer checks the package
+    Then a diagnostic saying Prometheus must be a struct is reported on the type declaration
 
-  Сценарий: Prometheus объявлен не в prometheus.go — нарушение
-    Допустим пакет по пути ".../metric" со struct Prometheus в файле metric.go
-    Когда анализатор проверяет пакет
-    Тогда выводится диагностика "GID-174: агрегатор Prometheus живёт в prometheus.go" на объявлении типа
+  Scenario: Prometheus is declared outside prometheus.go — violation
+    Given a package at the path ".../metric" with the Prometheus struct in the file metric.go
+    When the analyzer checks the package
+    Then the diagnostic "GID-174: the Prometheus aggregator must live in prometheus.go" is reported on the type declaration
 
-  Сценарий: в prometheus.go объявлена другая экспортируемая struct-группа — нарушение
-    Допустим в prometheus.go есть Prometheus и экспортируемый struct-тип HTTPMetrics
-    Когда анализатор проверяет пакет
-    Тогда выводится диагностика "GID-174: группа метрик живёт в отдельном файле — prometheus.go только wiring" на объявлении HTTPMetrics
+  Scenario: another exported struct group is declared in prometheus.go — violation
+    Given prometheus.go contains Prometheus and the exported struct type HTTPMetrics
+    When the analyzer checks the package
+    Then the diagnostic "GID-174: a metrics group must live in its own file; prometheus.go is wiring only" is reported on the HTTPMetrics declaration
 
-  Сценарий: две функциональные группы в одном файле — нарушение
-    Допустим в одном файле пакета (не prometheus.go) объявлено ≥2 экспортируемых struct-типов
-    Когда анализатор проверяет пакет
-    Тогда выводится диагностика "GID-174: одна функциональная группа метрик на файл" на втором и последующих
+  Scenario: two functional groups in one file — violation
+    Given one file of the package (not prometheus.go) declares ≥2 exported struct types
+    When the analyzer checks the package
+    Then the diagnostic "GID-174: one functional metrics group per file" is reported on the second and subsequent ones
 
-  Сценарий: поле-группа не зарегистрирована в Prometheus.Register — нарушение
-    Допустим поле Prometheus имеет тип с методом Register, но в теле Prometheus.Register нет вызова его Register
-    Когда анализатор проверяет пакет
-    Тогда выводится диагностика "GID-174: Prometheus.Register регистрирует группу %s — вызовите её Register" на поле
+  Scenario: a group field is not registered in Prometheus.Register — violation
+    Given a Prometheus field has a type with a Register method, but the body of Prometheus.Register has no call to its Register
+    When the analyzer checks the package
+    Then the diagnostic "GID-174: Prometheus.Register registers group %s — call its Register" is reported on the field
 
-  Сценарий: embedded-поле-группа не зарегистрирована — нарушение
-    Допустим Prometheus встраивает (embedded) тип с методом Register, не вызвав его Register в Prometheus.Register
-    Когда анализатор проверяет пакет
-    Тогда выводится диагностика про необходимость вызвать Register встроенной группы
+  Scenario: an embedded group field is not registered — violation
+    Given Prometheus embeds a type with a Register method without calling its Register in Prometheus.Register
+    When the analyzer checks the package
+    Then a diagnostic about the need to call the embedded group's Register is reported
 
-  # --- Негативные кейсы (чистый код проходит) ---
+  # --- Negative cases (clean code passes) ---
 
-  Сценарий: канонический пакет metric с wiring и группами — ок
-    Допустим prometheus.go объявляет Prometheus, группы — в отдельных файлах,
-      а Prometheus.Register вызывает Register каждой группы-поля
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
+  Scenario: a canonical metric package with wiring and groups — ok
+    Given prometheus.go declares Prometheus, the groups are in separate files,
+      and Prometheus.Register calls the Register of every group field
+    When the analyzer checks the package
+    Then no diagnostic is reported
 
-  Сценарий: Register с pointer receiver — ок
-    Допустим метод Register объявлен на указателе (*Prometheus)
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
+  Scenario: Register with a pointer receiver — ok
+    Given the Register method is declared on a pointer (*Prometheus)
+    When the analyzer checks the package
+    Then no diagnostic is reported
 
-  # --- Граничные кейсы ---
+  # --- Boundary cases ---
 
-  Сценарий: Register с любой сигнатурой (с параметрами и возвратом) — ок
-    Допустим метод Register имеет произвольную сигнатуру
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
+  Scenario: Register with any signature (with parameters and a return value) — ok
+    Given the Register method has an arbitrary signature
+    When the analyzer checks the package
+    Then no diagnostic is reported
 
-  Сценарий: generated-файл не выбирается для репорта на package clause
-    Допустим в пакете metric есть generated-файл и обычный файл
-    Когда анализатор репортит на package clause
-    Тогда репорт ставится на не-generated файл
+  Scenario: a generated file is not chosen for the package-clause report
+    Given the metric package contains a generated file and an ordinary file
+    When the analyzer reports on the package clause
+    Then the report is placed on the non-generated file
 
-  Сценарий: поле-группа без метода Register не требует регистрации — ок
-    Допустим поле Prometheus имеет тип без метода Register (например int)
-    Когда анализатор проверяет пакет
-    Тогда диагностика на это поле не выводится
+  Scenario: a group field without a Register method does not require registration — ok
+    Given a Prometheus field has a type without a Register method (e.g. int)
+    When the analyzer checks the package
+    Then no diagnostic is reported on this field
 
-  # --- Неприменимость (правило не действует) ---
+  # --- Non-applicability (the rule does not apply) ---
 
-  Сценарий: путь пакета не оканчивается metric/metrics — правило не применяется
-    Допустим пакет вне metric-пути, даже если в нём есть тип Prometheus без Register
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
+  Scenario: the package path does not end with metric/metrics — the rule does not apply
+    Given a package outside a metric path, even if it has a Prometheus type without Register
+    When the analyzer checks the package
+    Then no diagnostic is reported
 
-  Сценарий: пакет main или вспомогательный — scope только по пути
-    Допустим пакет, чей путь не оканчивается metric/metrics
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
+  Scenario: a main or auxiliary package — the scope is by path only
+    Given a package whose path does not end with metric/metrics
+    When the analyzer checks the package
+    Then no diagnostic is reported
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (RULES.md, GID-174)
-#  [x] Выбран слой: go/analysis (нужны типы — метод Register через types)
-#  [x] Заданы severity и сообщение
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [ ] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (RULES.md, GID-174)
+#  [x] Layer chosen: go/analysis (types needed — the Register method via types)
+#  [x] Severity and message are defined
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [ ] Rule enabled in .golangci.yml

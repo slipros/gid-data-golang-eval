@@ -1,15 +1,15 @@
-// Eval для GID-194 (constscope): сервисный пакет — обычный scope правила.
+// Eval for GID-194 (constscope): a service package — the rule's ordinary scope.
 package service
 
-// --- Позитив: экспортируемая константа вне model/entity ---
+// --- Positive: an exported constant outside model/entity ---
 
 const DefaultPageSize = 25 // want `GID-194: exported constant "DefaultPageSize" is declared outside model/entity\. Fix: keep shared constants in /domain/model or /dal/entity, and declare local ones where they are used`
 
-// --- Позитив: константа используется только одним методом ---
+// --- Positive: a constant used by only one method ---
 
 const snapshotPrefix = "snap-" // want `GID-194: constant "snapshotPrefix" is used only in "Snapshot\.Render"\. Fix: declare it inside that function`
 
-// --- Негатив: константа разделяется двумя методами — package-level легален ---
+// --- Negative: a constant shared by two methods — package-level is legal ---
 
 const snapshotTable = "snapshots"
 
@@ -23,7 +23,7 @@ func (s *Snapshot) Table() string {
 	return snapshotTable
 }
 
-// --- Негатив: константа объявлена внутри функции — целевое состояние ---
+// --- Negative: a constant declared inside a function — the target state ---
 
 func (s *Snapshot) Endpoint() string {
 	const endpoint = "/v1/snapshots"

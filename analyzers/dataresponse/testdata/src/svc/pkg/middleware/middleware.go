@@ -1,4 +1,4 @@
-// Неприменимость: вне server/http правило не действует.
+// Not applicable: outside server/http the rule does not apply.
 package middleware
 
 import "net/http"

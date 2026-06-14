@@ -1,12 +1,14 @@
-// Package optsnaming реализует правило GID-126: конвенции имени и дефолтов
-// Options-паттерна.
+// Package optsnaming implements rule GID-126: naming and defaults conventions
+// of the Options pattern.
 //
-//   - struct-тип с именем РОВНО Options вне app-слоя — нарушение: тип
-//     настроек именуется с префиксом сущности (JobOptions), не голым Options.
-//     В app-слое голый Options — норма (композиция GRPCOptions/KafkaOptions).
-//   - package-level var типа <X>Options (включая указатель), имя которой не
-//     начинается с Default — нарушение: дефолты живут в переменной Default<X>Options.
-//     Var в app-слое тоже проверяется (дефолты и там Default*).
+//   - a struct type named EXACTLY Options outside the app layer is a violation:
+//     a settings type is named with an entity prefix (JobOptions), not bare
+//     Options. In the app layer a bare Options is the norm (composition of
+//     GRPCOptions/KafkaOptions).
+//   - a package-level var of type <X>Options (including a pointer) whose name
+//     does not start with Default is a violation: defaults live in a
+//     Default<X>Options variable. Vars in the app layer are checked too
+//     (defaults are Default* there as well).
 package optsnaming
 
 import (
@@ -22,8 +24,8 @@ import (
 
 const ruleID = "GID-126"
 
-// Analyzer — правило GID-126: имя Options-типа с префиксом сущности,
-// дефолты — переменная Default<X>Options.
+// Analyzer — rule GID-126: an Options type name has an entity prefix,
+// defaults are a Default<X>Options variable.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidoptsnaming",
 	Doc:  ruleID + ": an options type has an entity prefix; defaults are a Default<X>Options variable. Fix: rename accordingly",
@@ -54,8 +56,8 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-// checkTypeNames: struct-тип с именем ровно Options вне app-слоя — нарушение.
-// Не-struct типы (alias на Options, interface) не задеваются.
+// checkTypeNames: a struct type named exactly Options outside the app layer
+// is a violation. Non-struct types (an alias to Options, an interface) are not affected.
 func checkTypeNames(pass *analysis.Pass, gd *ast.GenDecl) {
 	for _, spec := range gd.Specs {
 		ts, ok := spec.(*ast.TypeSpec)
@@ -66,19 +68,19 @@ func checkTypeNames(pass *analysis.Pass, gd *ast.GenDecl) {
 			continue
 		}
 		if ts.Assign.IsValid() {
-			continue // alias (type Options = X) — не задеваем
+			continue // an alias (type Options = X) — not affected
 		}
 		if _, ok := ts.Type.(*ast.StructType); !ok {
-			continue // только struct-типы
+			continue // struct types only
 		}
 		pass.Reportf(ts.Name.Pos(),
 			"%s: an options type must have an entity prefix. Fix: use JobOptions, not bare Options", ruleID)
 	}
 }
 
-// checkDefaultNames: package-level var типа <X>Options (включая указатель),
-// имя которой не начинается с Default — нарушение. Локальные переменные сюда
-// не попадают (проверяются только top-level GenDecl с Tok==var).
+// checkDefaultNames: a package-level var of type <X>Options (including a
+// pointer) whose name does not start with Default is a violation. Local
+// variables do not get here (only top-level GenDecls with Tok==var are checked).
 func checkDefaultNames(pass *analysis.Pass, gd *ast.GenDecl) {
 	for _, spec := range gd.Specs {
 		vs, ok := spec.(*ast.ValueSpec)
@@ -105,9 +107,9 @@ func checkDefaultNames(pass *analysis.Pass, gd *ast.GenDecl) {
 	}
 }
 
-// isOptionsType сообщает, является ли тип именованным <X>Options
-// (с префиксом сущности) — по значению или по указателю. Голый Options
-// без префикса не считается (это сам тип настроек, не его дефолт).
+// isOptionsType reports whether the type is a named <X>Options (with an
+// entity prefix) — by value or by pointer. A bare Options without a prefix
+// does not count (it is the settings type itself, not its default).
 func isOptionsType(t types.Type) bool {
 	if ptr, ok := t.(*types.Pointer); ok {
 		t = ptr.Elem()

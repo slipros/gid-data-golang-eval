@@ -1,50 +1,50 @@
-# language: ru
-# Eval-спека правила GID-211 (enum-location), линтер gidenumplace.
+# language: en
+# Eval spec of rule GID-211 (enum-location), linter gidenumplace.
 
-Функция: GID-211 — enum DAL-слоя живут в /dal/entity/enum
-  Как разработчик DAL-слоя
-  Я хочу, чтобы string-enum объявлялись только в /dal/entity/enum
-  Чтобы каждый enum лежал в отдельном файле по имени сущности (entity.md)
+Feature: GID-211 — DAL-layer enums live in /dal/entity/enum
+  As a DAL-layer developer
+  I want string enums to be declared only in /dal/entity/enum
+  So that each enum lives in a separate file named after the entity (entity.md)
 
-  Сценарий: string-enum в /dal/entity (корне) — нарушение
-    Допустим в пакете /dal/entity объявлен "type Status string" с const этого типа
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-211" на имени типа "Status"
+  Scenario: a string enum in /dal/entity (the root) — violation
+    Given "type Status string" with consts of this type is declared in the /dal/entity package
+    When the analyzer checks the file
+    Then a "GID-211" diagnostic is reported on the type name "Status"
 
-  Сценарий: string-enum в /dal/repository — нарушение
-    Допустим в пакете /dal/repository объявлен "type Mode string" с const этого типа
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-211" на имени типа "Mode"
+  Scenario: a string enum in /dal/repository — violation
+    Given "type Mode string" with consts of this type is declared in the /dal/repository package
+    When the analyzer checks the file
+    Then a "GID-211" diagnostic is reported on the type name "Mode"
 
-  Сценарий: string-enum в /dal/entity/enum — ок
-    Допустим в пакете /dal/entity/enum объявлен "type Status string" с const этого типа
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a string enum in /dal/entity/enum — ok
+    Given "type Status string" with consts of this type is declared in the /dal/entity/enum package
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: string-тип без const в DAL — не enum
-    Допустим в пакете /dal/entity объявлен "type RawJSON string" без const этого типа
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a string type without consts in DAL — not an enum
+    Given "type RawJSON string" without consts of this type is declared in the /dal/entity package
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: alias на string с const — зона GID-123, не GID-211
-    Допустим в пакете /dal/entity объявлен "type Code = string" с const
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: an alias to string with consts — the domain of GID-123, not GID-211
+    Given "type Code = string" with consts is declared in the /dal/entity package
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: именованный int-тип с const — не string-enum
-    Допустим в пакете /dal/entity объявлен "type Priority int" с const этого типа
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a named int type with consts — not a string enum
+    Given "type Priority int" with consts of this type is declared in the /dal/entity package
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: string-enum в /domain/model — правило не применяется
-    Допустим в пакете /domain/model объявлен "type Status string" с const этого типа
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a string enum in /domain/model — the rule does not apply
+    Given "type Status string" with consts of this type is declared in the /domain/model package
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (RULES.md)
-#  [x] Выбран слой: go/analysis (нужна информация о типах)
-#  [x] Заданы severity и сообщение
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [x] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (RULES.md)
+#  [x] Layer chosen: go/analysis (type information needed)
+#  [x] Severity and message are defined
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [x] Rule enabled in .golangci.yml

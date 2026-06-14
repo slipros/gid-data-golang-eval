@@ -1,4 +1,4 @@
-// Stub pb-пакета для eval settings.exclude.
+// Stub of a pb package for the settings.exclude eval.
 package orderpb
 
 import "google.golang.org/grpc"

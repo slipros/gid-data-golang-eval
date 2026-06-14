@@ -1,10 +1,10 @@
-// Негатив: родитель импортирует ребёнка — это правильное направление,
-// диагностики быть не должно.
+// Negative: the parent imports a child — the correct direction,
+// there must be no diagnostic.
 package parent
 
-import "app/parent/child" // ок: родитель импортирует ребёнка
+import "app/parent/child" // ok: the parent imports a child
 
-// Root — общий тип родительского пакета.
+// Root — the shared type of the parent package.
 type Root struct {
 	Leaf child.Leaf
 }

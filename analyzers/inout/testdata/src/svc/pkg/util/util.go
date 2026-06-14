@@ -1,4 +1,4 @@
-// Неприменимость: пакет вне слоёв repo/service/usecase/handler.
+// Not applicable: the package is outside the repo/service/usecase/handler layers.
 package util
 
 type Payload struct{ Data string }

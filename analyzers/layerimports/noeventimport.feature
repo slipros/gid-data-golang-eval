@@ -1,40 +1,40 @@
-# language: ru
+# language: en
 
-Функция: GID-170 — domain и dal не импортируют event-слой
-  Как архитектор сервиса
-  Я хочу, чтобы пакеты /domain/** и /dal/** не импортировали /event/**
-  Чтобы event-слой (kafka producer/consumer, DTO) зависел от domain/model
-  и конвертировал model <-> DTO, а не наоборот
+Feature: GID-170 — domain and dal do not import the event layer
+  As a service architect
+  I want /domain/** and /dal/** packages not to import /event/**
+  So that the event layer (kafka producer/consumer, DTOs) depends on domain/model
+  and converts model <-> DTO, not the other way around
 
-  Сценарий: domain импортирует event/dto — нарушение
-    Допустим пакет "svc/domain/notifier" импортирует "svc/event/dto"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-170" на импорте "svc/event/dto"
+  Scenario: domain imports event/dto — violation
+    Given the package "svc/domain/notifier" imports "svc/event/dto"
+    When the analyzer checks the file
+    Then a "GID-170" diagnostic is reported on the import "svc/event/dto"
 
-  Сценарий: dal импортирует event/dto — нарушение
-    Допустим пакет "svc/dal/outbox" импортирует "svc/event/dto"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-170" на импорте "svc/event/dto"
+  Scenario: dal imports event/dto — violation
+    Given the package "svc/dal/outbox" imports "svc/event/dto"
+    When the analyzer checks the file
+    Then a "GID-170" diagnostic is reported on the import "svc/event/dto"
 
-  Сценарий: event импортирует domain/model — ок
-    Допустим пакет "svc/event/producer" импортирует "svc/domain/model"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: event imports domain/model — ok
+    Given the package "svc/event/producer" imports "svc/domain/model"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: сегмент "events" (мн. число) — правило не применяется
-    Допустим пакет "svc/domain/boundary" импортирует "svc/events/dto"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: the segment "events" (plural) — the rule does not apply
+    Given the package "svc/domain/boundary" imports "svc/events/dto"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: сегмент "event-api" — не равен сегменту "event", правило не применяется
-    Допустим пакет "svc/domain/boundary" импортирует "svc/event-api/contract"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: the segment "event-api" — not equal to the segment "event", the rule does not apply
+    Given the package "svc/domain/boundary" imports "svc/event-api/contract"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр PRD (раздел 5)
-#  [x] Выбран слой: go/analysis (нужны сегменты import-пути)
-#  [x] Заданы severity и сообщение
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [ ] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the PRD registry (section 5)
+#  [x] Layer chosen: go/analysis (import-path segments are needed)
+#  [x] Severity and message are defined
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [ ] Rule enabled in .golangci.yml

@@ -1,6 +1,6 @@
-// Package onlygofrsuuid реализует правило GID-137: для работы с UUID
-// используется только библиотека github.com/gofrs/uuid (go-styleguide,
-// «Идентификаторы»). Импорт альтернативных uuid-библиотек запрещён.
+// Package onlygofrsuuid implements rule GID-137: only the
+// github.com/gofrs/uuid library is used for UUIDs (go-styleguide,
+// "Identifiers"). Importing alternative uuid libraries is forbidden.
 package onlygofrsuuid
 
 import (
@@ -15,7 +15,7 @@ const (
 	allowedPkg = "github.com/gofrs/uuid"
 )
 
-// deniedPkgs — известные альтернативные uuid-библиотеки.
+// deniedPkgs — known alternative uuid libraries.
 var deniedPkgs = map[string]struct{}{
 	"github.com/google/uuid":       {},
 	"github.com/satori/go.uuid":    {},
@@ -24,7 +24,7 @@ var deniedPkgs = map[string]struct{}{
 	"github.com/twinj/uuid":        {},
 }
 
-// Analyzer — правило GID-137: для UUID разрешена только github.com/gofrs/uuid.
+// Analyzer — rule GID-137: only github.com/gofrs/uuid is allowed for UUIDs.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidonlygofrsuuid",
 	Doc:  ruleID + ": for UUID only this library is allowed: " + allowedPkg,

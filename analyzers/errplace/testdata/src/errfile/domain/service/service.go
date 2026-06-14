@@ -1,6 +1,6 @@
-// Неприменимость: /domain/service — НЕ корень слоя model/entity,
-// GID-169 здесь не действует (это зона GID-144). error-var в любом
-// файле сервиса не должна давать диагностику GID-169.
+// Inapplicable: /domain/service is NOT a model/entity layer root,
+// GID-169 does not apply here (this is GID-144 territory). An error var in any
+// service file must not produce a GID-169 diagnostic.
 package service
 
 import "github.com/pkg/errors"

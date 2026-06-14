@@ -1,25 +1,24 @@
-// Package errlast реализует правило GID-190: соглашения Google по ошибкам
-// в результатах функций и методов.
+// Package errlast implements rule GID-190: Google's conventions on errors
+// in the results of functions and methods.
 //
-// Проверка 1 (error не последний). Если среди результатов есть тип error
-// и после него идут другие результаты — это нарушение: error обязан быть
-// последним возвращаемым значением.
+// Check 1 (error is not last). If among the results there is an error type
+// and other results follow it — this is a violation: error must be the last
+// returned value.
 //
-// Проверка 2 (конкретный error-тип в результате). Результат функции —
-// конкретный тип, реализующий error (именованный тип или указатель на него,
-// например *MyError / MyError), а не интерфейс error. Конкретный тип в
-// interface-позиции даёт классическую typed-nil ловушку: возвращённый
-// nil-указатель в переменной типа error != nil. Возвращать следует
-// интерфейс error.
+// Check 2 (a concrete error type in a result). A function result is a
+// concrete type implementing error (a named type or a pointer to it,
+// e.g. *MyError / MyError), not the error interface. A concrete type in an
+// interface position causes the classic typed-nil trap: a returned nil pointer
+// in a variable of type error != nil. The error interface should be returned.
 //
-// НЕ матчатся проверкой 2:
-//   - сам интерфейс error;
-//   - интерфейсные типы, расширяющие error (кастомный error-интерфейс —
-//     осознанное решение автора);
-//   - функции-конструкторы ошибок в файлах error.go / errors.go — там
-//     конкретный тип легитимен (это конструкторы вида NewMyError() *MyError).
+// NOT matched by check 2:
+//   - the error interface itself;
+//   - interface types extending error (a custom error interface — a deliberate
+//     decision by the author);
+//   - error-constructor functions in error.go / errors.go files — there a
+//     concrete type is legitimate (these are constructors like NewMyError() *MyError).
 //
-// Сгенерированный код (ast.IsGenerated) пропускается. LoadMode — TypesInfo.
+// Generated code (ast.IsGenerated) is skipped. LoadMode is TypesInfo.
 package errlast
 
 import (
@@ -32,14 +31,14 @@ import (
 
 const ruleID = "GID-190"
 
-// errorFiles — файлы, в которых приватные функции-конструкторы ошибок
-// могут возвращать конкретный error-тип (проверка 2 не применяется).
+// errorFiles — files in which private error-constructor functions
+// may return a concrete error type (check 2 is not applied).
 var errorFiles = map[string]bool{
 	"error.go":  true,
 	"errors.go": true,
 }
 
-// Analyzer — правило GID-190: error — последний результат, конкретные error-типы не возвращаются.
+// Analyzer — rule GID-190: error is the last result, concrete error types are not returned.
 var Analyzer = &analysis.Analyzer{
 	Name: "giderrlast",
 	Doc:  ruleID + ": error must be the last result, and the error interface (not a concrete type) is returned. Fix: move error last and return the error interface",
@@ -73,13 +72,13 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-// checkResults применяет обе проверки к результатам функции/метода.
+// checkResults applies both checks to the results of a function/method.
 func checkResults(pass *analysis.Pass, fn *ast.FuncDecl, errIface *types.Interface, inErrorFile bool) {
 	if fn.Type.Results == nil {
 		return
 	}
 
-	// Развернём group-результаты в плоский список (тип, выражение).
+	// Expand group results into a flat list (type, expression).
 	type result struct {
 		expr ast.Expr
 		typ  types.Type
@@ -90,7 +89,7 @@ func checkResults(pass *analysis.Pass, fn *ast.FuncDecl, errIface *types.Interfa
 		if t == nil {
 			continue
 		}
-		// Несколько имён результатов одного типа: (a, b int) — каждый — отдельный результат.
+		// Several result names of one type: (a, b int) — each is a separate result.
 		count := len(field.Names)
 		if count == 0 {
 			count = 1
@@ -104,16 +103,16 @@ func checkResults(pass *analysis.Pass, fn *ast.FuncDecl, errIface *types.Interfa
 	}
 
 	for i, r := range results {
-		// Проверка 1: error не последний — есть результаты после него.
+		// Check 1: error is not last — there are results after it.
 		if isExactError(r.typ) && i != len(results)-1 {
 			pass.Reportf(r.expr.Pos(),
 				"%s: error must be the last return value. Fix: move it to the end", ruleID)
 			continue
 		}
 
-		// Проверка 2: конкретный error-тип в результате.
+		// Check 2: a concrete error type in a result.
 		if inErrorFile {
-			continue // конструкторы ошибок в error.go/errors.go легитимно возвращают конкретный тип
+			continue // error constructors in error.go/errors.go legitimately return a concrete type
 		}
 		if isConcreteError(r.typ, errIface) {
 			pass.Reportf(r.expr.Pos(),
@@ -123,7 +122,7 @@ func checkResults(pass *analysis.Pass, fn *ast.FuncDecl, errIface *types.Interfa
 	}
 }
 
-// isExactError сообщает, является ли тип ровно интерфейсом error.
+// isExactError reports whether the type is exactly the error interface.
 func isExactError(t types.Type) bool {
 	named, ok := t.(*types.Named)
 	if ok {
@@ -133,16 +132,16 @@ func isExactError(t types.Type) bool {
 	return false
 }
 
-// isConcreteError сообщает, реализует ли тип error, будучи конкретным
-// (неинтерфейсным) типом — именованным или указателем на именованный.
-// Интерфейсы (включая сам error и кастомные error-интерфейсы) исключаются.
+// isConcreteError reports whether the type implements error while being a
+// concrete (non-interface) type — named or a pointer to a named one.
+// Interfaces (including error itself and custom error interfaces) are excluded.
 func isConcreteError(t types.Type, errIface *types.Interface) bool {
-	// Интерфейсный тип (error и его расширения) — не конкретный.
+	// An interface type (error and its extensions) is not concrete.
 	if _, isIface := t.Underlying().(*types.Interface); isIface {
 		return false
 	}
 
-	// Интересуют только именованные типы и указатели на именованные.
+	// Only named types and pointers to named ones are of interest.
 	switch u := t.(type) {
 	case *types.Named:
 		// ok

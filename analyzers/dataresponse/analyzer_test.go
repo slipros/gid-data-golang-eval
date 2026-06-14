@@ -12,7 +12,7 @@ func TestAnalyzer(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), dataresponse.Analyzer, "svc/...")
 }
 
-// TestExclude — хендлеры из settings.exclude разрешены.
+// TestExclude — handlers from settings.exclude are allowed.
 func TestExclude(t *testing.T) {
 	a := dataresponse.NewAnalyzer(dataresponse.Settings{
 		Exclude: []string{"Health"},

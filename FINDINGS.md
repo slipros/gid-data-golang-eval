@@ -1,31 +1,31 @@
-# Аудит: исключения в backend-go и упущенные правила
+# Audit: exclusions in backend-go and missed rules
 
-Дата: 2026-06-07.
-Источники: [RULES.md](RULES.md), skill `go-styleguide` (полный gap-анализ доков),
-скан 20 сервисов `/mnt/w/GPM-Data/UDMP/backend-go`.
-Обратное направление (конвенции из кода, не попавшие в стайлгайд) — [FINDINGS_DDD.md](FINDINGS_DDD.md).
+Date: 2026-06-07.
+Sources: [RULES.md](RULES.md), skill `go-styleguide` (full gap analysis of the docs),
+scan of 20 services in `/mnt/w/GPM-Data/UDMP/backend-go`.
+The reverse direction (conventions from code that did not make it into the styleguide) — [FINDINGS_DDD.md](FINDINGS_DDD.md).
 
-Документ фиксирует: (1) места, где реальный код нарушает уже реализованные правила —
-кандидаты в `settings.exclude` или сигнал к смягчению правила; (2) правила, упущенные
-в реестре, и решение по каждому; (3) открытые вопросы.
+This document records: (1) places where real code violates already implemented rules —
+candidates for `settings.exclude` or a signal to relax the rule; (2) rules missing
+from the registry, with a decision for each; (3) open questions.
 
 ---
 
-## 1. Исключения — нарушения реализованных (✅) правил
+## 1. Exclusions — violations of implemented (✅) rules
 
-### 1.1 GID-001 `no-time-now` — ~15 мест, три кластера
+### 1.1 GID-001 `no-time-now` — ~15 occurrences, three clusters
 
-| Кластер | Файлы |
+| Cluster | Files |
 |---|---|
-| **Замер метрик** (`defer calculateMetrics(..., time.Now())`) | `file-storage/internal/client/minio.go:101,123,172,225,251` · `profile-targeting-api/internal/client/http/metrics.go:8` · `file-storage/internal/app/file-storage/application.go:212` |
-| **`nowFunc` в валидаторах** (max-дата = «сейчас») | `consent-api/pkg/consent/v{1,2}/server/http/handler/validate/statuses.go:35` · `event-api/internal/server/http/router/handler/validate/consent_event_v{1,2}.go:90` · `gid-sso-consent-consumer/internal/event/consumer/kafka/validate/consent_event_v1.go:80,215`, `consent_event_v2.go:96,484` |
-| **Шедулеры** | `consent-api/internal/schedule/schedule.go:20` · `data-marketplace/internal/schedule/schedule.go:24` · `data-marketplace/pkg/marketplace/job/materialization/job.go:144` |
+| **Metric measurement** (`defer calculateMetrics(..., time.Now())`) | `file-storage/internal/client/minio.go:101,123,172,225,251` · `profile-targeting-api/internal/client/http/metrics.go:8` · `file-storage/internal/app/file-storage/application.go:212` |
+| **`nowFunc` in validators** (max date = "now") | `consent-api/pkg/consent/v{1,2}/server/http/handler/validate/statuses.go:35` · `event-api/internal/server/http/router/handler/validate/consent_event_v{1,2}.go:90` · `gid-sso-consent-consumer/internal/event/consumer/kafka/validate/consent_event_v1.go:80,215`, `consent_event_v2.go:96,484` |
+| **Schedulers** | `consent-api/internal/schedule/schedule.go:20` · `data-marketplace/internal/schedule/schedule.go:24` · `data-marketplace/pkg/marketplace/job/materialization/job.go:144` |
 
-**Вопрос**: смягчить правило для замеров длительности в metric-коде — или всё в `settings.exclude`.
+**Question**: relax the rule for duration measurement in metric code — or put everything into `settings.exclude`.
 
-### 1.2 GID-112 `create-update-no-return` — ~12 мест
+### 1.2 GID-112 `create-update-no-return` — ~12 occurrences
 
-| Сервис | Файл | Метод |
+| Service | File | Method |
 |---|---|---|
 | consent-api | `internal/domain/service/attribute_group.go:119` | `Create() (uuid.UUID, error)` |
 | consent-api | `internal/domain/service/subject_group.go:119` | `Create() (uuid.UUID, error)` |
@@ -41,71 +41,71 @@
 | user-api | `internal/service/organization/service.go:36` | `Create() (uuid.UUID, error)` |
 | user-api | `internal/service/group_organization/service.go:34` | `Create() (uuid.UUID, error)` |
 
-Готовый список для `settings.exclude` / `//nolint:gidcreateupdate` — либо техдолг к починке.
+A ready-made list for `settings.exclude` / `//nolint:gidcreateupdate` — or tech debt to fix.
 
-### 1.3 GID-144/145 `errors-in-model/entity` — самое массовое (50+ файлов)
+### 1.3 GID-144/145 `errors-in-model/entity` — the most widespread (50+ files)
 
-`errors.go` с `errors.New` живёт в `/domain/service/` и `/dal/repository/` почти везде:
+`errors.go` with `errors.New` lives in `/domain/service/` and `/dal/repository/` almost everywhere:
 
-- **lk-api** — 30+ файлов: `internal/domain/service/errors.go`, `internal/validate/errors.go`, `pkg/{account,member,consent,organization,…}/domain/service/errors.go`, `pkg/*/dal/repository/errors.go`
+- **lk-api** — 30+ files: `internal/domain/service/errors.go`, `internal/validate/errors.go`, `pkg/{account,member,consent,organization,…}/domain/service/errors.go`, `pkg/*/dal/repository/errors.go`
 - **organization-portfolio** — `internal/domain/service/errors.go`, `internal/dal/repository/errors.go`
 - **organization-ticket** — `internal/domain/service/errors.go:6-12`
-- **file-storage** — `internal/service/errors.go` (26 ошибок; сама папка нарушает GID-158), `internal/client/errors.go`, `internal/dal/repository/errors.go`
+- **file-storage** — `internal/service/errors.go` (26 errors; the folder itself violates GID-158), `internal/client/errors.go`, `internal/dal/repository/errors.go`
 - **event-packer** — `internal/domain/service/errors.go:9`
 - **gid-sso-consent-consumer** — `internal/event/consumer/kafka/validate/errors.go`
 
-**Ключевой вопрос**: правило = целевое состояние (это техдолг) или норму команды надо пересмотреть.
+**Key question**: is the rule the target state (this is tech debt), or should the team norm be reconsidered.
 
-### 1.4 GID-160 `grpc-via-repository` — ложноположительный класс
+### 1.4 GID-160 `grpc-via-repository` — a false-positive class
 
-В `/domain/service` импортируются только `google.golang.org/grpc/codes` и `…/status`
-для **маппинга кодов ошибок**, не для транспорта:
+In `/domain/service`, only `google.golang.org/grpc/codes` and `…/status` are imported
+for **error code mapping**, not for transport:
 `gid-sso-consent-consumer/internal/domain/service/user_v2.go:10-11`,
 `lk-api/internal/domain/service/{file,file_upload,organizations}.go`.
 
-**Предложение**: разрешить `codes`/`status` в правиле — иначе шквал nolint.
+**Proposal**: allow `codes`/`status` in the rule — otherwise a flood of nolint.
 
-### 1.5 GID-158 `dir-tree` — повторяющиеся «нестандартные» папки
+### 1.5 GID-158 `dir-tree` — recurring "non-standard" folders
 
-| Папка | Сервисы | Оценка |
+| Folder | Services | Assessment |
 |---|---|---|
-| `schedule/` | consent-api, data-marketplace | кандидат в дефолтный allowlist |
-| `validate/` | file-storage, lk-api, consent-api | обсудить (валидация общего назначения) |
-| `statement/`, `batch/`, `collector/`, `consumer/` | event-collector | специализированный пайплайн |
-| `enricher/` | event-enricher | специализированный пайплайн |
-| `job/`, `producer/`, `service/` | file-storage | `service/` — нарушение (должно быть `domain/service`) |
-| `metrics/` (вместо `metric`), `testharness/` | lk-api | `metrics` → переименовать |
+| `schedule/` | consent-api, data-marketplace | candidate for the default allowlist |
+| `validate/` | file-storage, lk-api, consent-api | to discuss (general-purpose validation) |
+| `statement/`, `batch/`, `collector/`, `consumer/` | event-collector | specialized pipeline |
+| `enricher/` | event-enricher | specialized pipeline |
+| `job/`, `producer/`, `service/` | file-storage | `service/` — a violation (should be `domain/service`) |
+| `metrics/` (instead of `metric`), `testharness/` | lk-api | `metrics` → rename |
 
-### 1.6 Кандидаты на исключение целыми модулями
+### 1.6 Candidates for exclusion as whole modules
 
-- **tools-cli** — CLI-утилита (urfave/cli) без слоёв: исключить из GID-110/111/130-х/132/151/158.
-- **user-api** — легаси-структура (`/internal/service/{account,member,…}` вместо `/domain/service`); нарушает GID-132, GID-148 (`member` → `organizationService`, `auditLog`, `providerService`; `account` → `memberService` + репозиторий напрямую), GID-158.
-- **test/**, **example/** (event-collector: `example/http-request-producer/producer.go:8` импортирует `github.com/google/uuid` → GID-137).
+- **tools-cli** — a CLI utility (urfave/cli) without layers: exclude from GID-110/111/130s/132/151/158.
+- **user-api** — legacy structure (`/internal/service/{account,member,…}` instead of `/domain/service`); violates GID-132, GID-148 (`member` → `organizationService`, `auditLog`, `providerService`; `account` → `memberService` + repository accessed directly), GID-158.
+- **test/**, **example/** (event-collector: `example/http-request-producer/producer.go:8` imports `github.com/google/uuid` → GID-137).
 
-### 1.7 Прочее
+### 1.7 Miscellaneous
 
-- **GID-123, реальный кейс**: event-collector `internal/domain/model/enum/{consent_event_type,consent_event_v2_type,device_type}.go` — `type X = string` (alias вместо именованного типа). Берём как позитивный кейс eval'а GID-123.
-- **GID-003 в тестах**: `uuid.Must(uuid.NewV4())` массово в `_test.go` (consent-webhook-trigger — 30+, data-reports). Вопрос: применять ли правило к тестам.
+- **GID-123, real-world case**: event-collector `internal/domain/model/enum/{consent_event_type,consent_event_v2_type,device_type}.go` — `type X = string` (alias instead of a named type). Taking it as the positive case for the GID-123 eval.
+- **GID-003 in tests**: `uuid.Must(uuid.NewV4())` is widespread in `_test.go` (consent-webhook-trigger — 30+, data-reports). Question: should the rule apply to tests.
 
 ---
 
-## 2. Упущенные правила
+## 2. Missed rules
 
-### 2.1 Принято в работу (реализуются в этом репо)
+### 2.1 Accepted for work (to be implemented in this repo)
 
-| ID | Слаг | Правило | Источник |
+| ID | Slug | Rule | Source |
 |---|---|---|---|
-| GID-123 | enum-string-based | Реализация существующего 🔜: именованный string-тип, запрет alias (`type X = string`) и int-enum, запрет групп нетипизированных string-const в model/entity | styleguide.md#enum + кейс event-collector |
-| GID-168 | no-db-tags-in-model | В `/domain/**` запрещены `db:`-теги у полей структур — маппинг на БД живёт в entity | model.md |
-| GID-169 | errors-in-error-file | Уточнение GID-144/145: error-переменные в `/domain/model` и `/dal/entity` живут в файле `error.go`/`errors.go` | model.md, entity.md |
-| GID-170 | no-event-import | `/domain/**` и `/dal/**` не импортируют `/event/**` — event-слой конвертирует model ↔ DTO, не наоборот | event.md, ARCHITECTURE.md |
-| GID-171 | filter-location | Filter-структуры: в `/dal/**` — только `/dal/entity/filter`; в `/domain/**` — только model-слой | model.md, entity.md |
-| GID-172 | client-no-entity | `/client/**` не импортирует `/dal/**` — у клиента свои типы | client.md |
-| GID-173 | iface-entity-prefix | Интерфейсы зависимостей — с префиксом сущности (`HelloRepository`), голые роли (`Repository`, `Service`, …) запрещены | styleguide.md#интерфейсы |
-| GID-174 | metric-prometheus-struct | Пакет `/metric`: тип `Prometheus` (агрегатор метрик по протоколам) с методом `Register`; пакет называется `metric` | конвенция всех сервисов |
-| GID-175 | in-transaction | Типы транзакций (`InTransactionFunc`, `InTransactionWithReturnFunc[T]`) живут в `/domain/model`; service/usecase используют именованный тип (connection с tx-сигнатурой инжектится конструктором); repo/service не объявляют tx-методы | требование 2026-06-07 |
+| GID-123 | enum-string-based | Implementation of the existing 🔜: named string type; ban on alias (`type X = string`) and int enums; ban on groups of untyped string consts in model/entity | styleguide.md#enum + the event-collector case |
+| GID-168 | no-db-tags-in-model | `db:` tags on struct fields are forbidden in `/domain/**` — DB mapping lives in entity | model.md |
+| GID-169 | errors-in-error-file | Refinement of GID-144/145: error variables in `/domain/model` and `/dal/entity` live in the file `error.go`/`errors.go` | model.md, entity.md |
+| GID-170 | no-event-import | `/domain/**` and `/dal/**` do not import `/event/**` — the event layer converts model ↔ DTO, not the other way around | event.md, ARCHITECTURE.md |
+| GID-171 | filter-location | Filter structs: in `/dal/**` — only `/dal/entity/filter`; in `/domain/**` — only the model layer | model.md, entity.md |
+| GID-172 | client-no-entity | `/client/**` does not import `/dal/**` — the client has its own types | client.md |
+| GID-173 | iface-entity-prefix | Dependency interfaces carry an entity prefix (`HelloRepository`); bare roles (`Repository`, `Service`, …) are forbidden | styleguide.md#interfaces |
+| GID-174 | metric-prometheus-struct | Package `/metric`: type `Prometheus` (aggregator of metrics by protocol) with a `Register` method; the package is named `metric` | convention across all services |
+| GID-175 | in-transaction | Transaction types (`InTransactionFunc`, `InTransactionWithReturnFunc[T]`) live in `/domain/model`; service/usecase use the named type (a connection with the tx signature is injected via the constructor); repo/service do not declare tx methods | requirement of 2026-06-07 |
 
-Каноническая форма GID-175 (живёт в `/domain/model`):
+Canonical form of GID-175 (lives in `/domain/model`):
 
 ```go
 type InTransactionFunc func(ctx context.Context, fn func(ctx context.Context) error) error
@@ -116,44 +116,44 @@ type InTransactionWithReturnFunc[T any] func(ctx context.Context, fn func(ctx co
 func NewInTransactionWithReturnFunc[T any](tx InTransactionFunc) InTransactionWithReturnFunc[T] { … }
 ```
 
-### 2.2 Уже покрыто существующими правилами (реализация не нужна)
+### 2.2 Already covered by existing rules (no implementation needed)
 
-- **transport-converter-naming** (`Model<T>FromGRPC` / `GRPC<T>FromModel`) — `gidconvnaming` (GID-105/135) уже действует в слоях `server` и `event`, паттерн `<Dst><Type>From<Src>` покрывает транспортные имена. Не покрыт только нейминг *приватных* enum-хелперов (`grpc<X>FromEnum`) — низкая ценность, отложено.
-- **dal-enum-string** — GID-124 (`gidenumstring`) не ограничен слоем и уже требует `String()` у любых string-enum, включая `/dal/entity/enum`; «именованный тип, не alias» закрывается реализацией GID-123.
+- **transport-converter-naming** (`Model<T>FromGRPC` / `GRPC<T>FromModel`) — `gidconvnaming` (GID-105/135) already applies in the `server` and `event` layers; the `<Dst><Type>From<Src>` pattern covers transport names. The only thing not covered is the naming of *private* enum helpers (`grpc<X>FromEnum`) — low value, deferred.
+- **dal-enum-string** — GID-124 (`gidenumstring`) is not limited to a layer and already requires `String()` on any string enums, including `/dal/entity/enum`; "named type, not alias" is closed by the implementation of GID-123.
 
-### 2.3 Найденное противоречие — nested Options
+### 2.3 Contradiction found — nested Options
 
-Из доков (app.md) выводится «Options не содержат вложенных `*Options`», но реальный код
-повсеместно делает наоборот: `Options` в `internal/app/api/options.go` агрегирует
+From the docs (app.md) one can derive "Options do not contain nested `*Options`", but real code
+does the opposite everywhere: `Options` in `internal/app/api/options.go` aggregates
 `GRPCOptions`, `KafkaOptions`, `TraceOptions` (consent-api, event-api, event-collector,
-organization-ticket, …). Решение: кандидат отклонён; при доработке GID-126 учесть, что
-композиция Options в app-слое — норма.
+organization-ticket, …). Decision: candidate rejected; when reworking GID-126, take into
+account that Options composition in the app layer is the norm.
 
-### 2.4 Отложено (средняя ценность, не взяты сейчас)
+### 2.4 Deferred (medium value, not taken now)
 
-| Слаг | Правило | Почему отложено |
+| Slug | Rule | Why deferred |
 |---|---|---|
-| ctor-deps-signature | Часть про event-слой (consumer принимает logger, producer — нет) **реализована как GID-216** (2026-06-07). Остаток: Client обязан принимать Metrics (client.md) — отложен до уточнения спеки client-слоя | узкое, детерминированное, но мало нарушений |
-| slice-type-required | Для основной сущности обязателен слайс-тип (`Jobs []Job`) | нет надёжного признака «основной» сущности — FP |
-| logger-nil-default | Конструктор с logger: nil → `logrus.StandardLogger()` | в доках не зафиксировано, только в коде 3 сервисов |
-| mocks-location | Моки в `mock*/` подпакетах | конвенция из кода, в стайлгайде нет |
-| private-enum-converter-naming | `grpc<X>FromEnum`, `avro<X>FromDTO` для приватных конвертеров | низкая ценность |
+| ctor-deps-signature | The event-layer part (consumer accepts logger, producer does not) **is implemented as GID-216** (2026-06-07). The remainder — Client must accept Metrics (client.md) — is deferred until the client-layer spec is clarified | narrow, deterministic, but few violations |
+| slice-type-required | A slice type is mandatory for the main entity (`Jobs []Job`) | no reliable indicator of the "main" entity — FP |
+| logger-nil-default | Constructor with logger: nil → `logrus.StandardLogger()` | not recorded in the docs, only in the code of 3 services |
+| mocks-location | Mocks in `mock*/` subpackages | a convention from code, not in the styleguide |
+| private-enum-converter-naming | `grpc<X>FromEnum`, `avro<X>FromDTO` for private converters | low value |
 
-### 2.5 Остаётся на review (статически не проверить)
+### 2.5 Remains for code review (not statically checkable)
 
-Validator-паттерны (`When` vs callback, `NewNested`+`NewEach`, internal vs public валидация,
-proto3-enum через `NewInRange`, `NewTime` только для string) · «конвертер — чистая функция» ·
-«handler не содержит бизнес-логики» · «usecase зависит от сервисов, не от repo» (частично
-закрыто GID-132) · FSM-карта переходов + `CanTransitionTo` · graceful shutdown в main ·
-генерация ID/CreatedAt в конвертере · операционные entity-структуры с минимальным набором полей.
+Validator patterns (`When` vs callback, `NewNested`+`NewEach`, internal vs public validation,
+proto3 enums via `NewInRange`, `NewTime` only for string) · "a converter is a pure function" ·
+"a handler contains no business logic" · "a usecase depends on services, not on repos" (partially
+closed by GID-132) · FSM transition map + `CanTransitionTo` · graceful shutdown in main ·
+ID/CreatedAt generation in the converter · operational entity structs with a minimal field set.
 
 ---
 
-## 3. Открытые вопросы (требуют решения владельца стайлгайда)
+## 3. Open questions (require a decision from the styleguide owner)
 
-1. **GID-144/145 vs реальность** — 50+ файлов нарушают. Целевое состояние или пересмотр правила?
-2. **GID-160** — разрешить `google.golang.org/grpc/codes` и `…/status` (маппинг ошибок ≠ транспорт)?
-3. **GID-001** — исключение для замера длительности в метриках?
-4. **Тесты** — применять ли GID-003 (uuid) и прочие правила к `_test.go`?
-5. **GID-158** — что вносим в дефолтный allowlist: `schedule/`? `validate/`? пайплайн-папки event-сервисов?
-6. **tools-cli / user-api** — исключать целиком через конфиг или чинить?
+1. **GID-144/145 vs reality** — 50+ files violate. Target state or rule revision?
+2. **GID-160** — allow `google.golang.org/grpc/codes` and `…/status` (error mapping ≠ transport)?
+3. **GID-001** — an exception for duration measurement in metrics?
+4. **Tests** — should GID-003 (uuid) and other rules apply to `_test.go`?
+5. **GID-158** — what goes into the default allowlist: `schedule/`? `validate/`? the pipeline folders of event services?
+6. **tools-cli / user-api** — exclude entirely via config or fix?

@@ -1,92 +1,92 @@
-# language: ru
-# Спецификация правила GID-193 (no-pkg-stutter).
-# Линтер: gidpkgstutter (go/analysis, LoadModeSyntax — типы не нужны).
+# language: en
+# Specification of rule GID-193 (no-pkg-stutter).
+# Linter: gidpkgstutter (go/analysis, LoadModeSyntax — no types needed).
 
-Функция: GID-193 — запрет заикания «пакет.СимволСИменемПакета»
-  Как разработчик backend-go сервиса
-  Я хочу, чтобы экспортируемый символ не повторял имя своего пакета
-  Чтобы снаружи код читался как widget.Options, а не widget.WidgetOptions
+Feature: GID-193 — ban on the "package.SymbolWithPackageName" stutter
+  As a backend-go service developer
+  I want an exported symbol not to repeat the name of its package
+  So that from outside the code reads as widget.Options, not widget.WidgetOptions
 
-  # Проверяются экспортируемые символы верхнего уровня: типы, функции, var, const.
-  # Имя пакета сравнивается с первым CamelCase-словом символа регистронезависимо.
-  # Совпадение засчитывается только по границе слова: после префикса длиной
-  # len(pkgName) должна начинаться заглавная буква (следующее слово).
-  # Исключения: конструкторы New*, методы (есть ресивер), неэкспортируемые
-  # символы, пакет main. Сгенерированные файлы пропускаются.
+  # Top-level exported symbols are checked: types, functions, vars, consts.
+  # The package name is compared with the first CamelCase word of the symbol case-insensitively.
+  # A match counts only at a word boundary: after a prefix of length
+  # len(pkgName) an uppercase letter (the next word) must begin.
+  # Exceptions: New* constructors, methods (with a receiver), unexported
+  # symbols, package main. Generated files are skipped.
 
-  # --- Позитивные кейсы (нарушение ловится) ---
+  # --- Positive cases (the violation is caught) ---
 
-  Сценарий: позитивный — тип WidgetOptions в пакете widget
-    Допустим пакет "widget" с типом "WidgetOptions"
-    Когда анализатор проверяет пакет
-    Тогда выводится диагностика "GID-193: WidgetOptions повторяет имя пакета widget — снаружи это widget.Options; уберите префикс"
+  Scenario: positive — the type WidgetOptions in the widget package
+    Given the package "widget" with the type "WidgetOptions"
+    When the analyzer checks the package
+    Then the diagnostic "GID-193: WidgetOptions repeats the package name widget. Fix: from outside it is widget.Options; drop the prefix" is reported
 
-  Сценарий: позитивный — функция WidgetCount
-    Допустим пакет "widget" с функцией "WidgetCount"
-    Когда анализатор проверяет пакет
-    Тогда выводится диагностика "GID-193: WidgetCount повторяет имя пакета widget — снаружи это widget.Count; уберите префикс"
+  Scenario: positive — the function WidgetCount
+    Given the package "widget" with the function "WidgetCount"
+    When the analyzer checks the package
+    Then the diagnostic "GID-193: WidgetCount repeats the package name widget. Fix: from outside it is widget.Count; drop the prefix" is reported
 
-  Сценарий: позитивный — var WidgetDefault
-    Допустим пакет "widget" с переменной "WidgetDefault"
-    Когда анализатор проверяет пакет
-    Тогда выводится диагностика "GID-193: WidgetDefault повторяет имя пакета widget — снаружи это widget.Default; уберите префикс"
+  Scenario: positive — the var WidgetDefault
+    Given the package "widget" with the variable "WidgetDefault"
+    When the analyzer checks the package
+    Then the diagnostic "GID-193: WidgetDefault repeats the package name widget. Fix: from outside it is widget.Default; drop the prefix" is reported
 
-  Сценарий: позитивный — const WidgetMax
-    Допустим пакет "widget" с константой "WidgetMax"
-    Когда анализатор проверяет пакет
-    Тогда выводится диагностика "GID-193: WidgetMax повторяет имя пакета widget — снаружи это widget.Max; уберите префикс"
+  Scenario: positive — the const WidgetMax
+    Given the package "widget" with the constant "WidgetMax"
+    When the analyzer checks the package
+    Then the diagnostic "GID-193: WidgetMax repeats the package name widget. Fix: from outside it is widget.Max; drop the prefix" is reported
 
-  # --- Негативные кейсы (чистый код проходит) ---
+  # --- Negative cases (clean code passes) ---
 
-  Сценарий: негативный — тип Options без префикса
-    Допустим пакет "widget" с типом "Options"
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
+  Scenario: negative — the type Options without a prefix
+    Given the package "widget" with the type "Options"
+    When the analyzer checks the package
+    Then no diagnostic is reported
 
-  Сценарий: негативный — функция Count без префикса
-    Допустим пакет "widget" с функцией "Count"
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
+  Scenario: negative — the function Count without a prefix
+    Given the package "widget" with the function "Count"
+    When the analyzer checks the package
+    Then no diagnostic is reported
 
-  # --- Граничные кейсы ---
+  # --- Boundary cases ---
 
-  Сценарий: граничный — конструктор NewWidget исключён в пользу GID-104
-    Допустим пакет "widget" с функцией "NewWidget"
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
+  Scenario: boundary — the constructor NewWidget is exempt in favor of GID-104
+    Given the package "widget" with the function "NewWidget"
+    When the analyzer checks the package
+    Then no diagnostic is reported
 
-  Сценарий: граничный — тип Logger в пакете log (граница слова)
-    Допустим пакет "log" с типом "Logger"
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
-    # (log — лишь префикс слова Logger, а не отдельное CamelCase-слово.)
+  Scenario: boundary — the type Logger in the log package (word boundary)
+    Given the package "log" with the type "Logger"
+    When the analyzer checks the package
+    Then no diagnostic is reported
+    # (log is only a prefix of the word Logger, not a separate CamelCase word.)
 
-  Сценарий: граничный — метод (w *Widget) WidgetID() не матчится
-    Допустим пакет "widget" с методом "WidgetID" на ресивере Widget
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
+  Scenario: boundary — the method (w *Widget) WidgetID() is not matched
+    Given the package "widget" with the method "WidgetID" on the receiver Widget
+    When the analyzer checks the package
+    Then no diagnostic is reported
 
-  Сценарий: граничный — неэкспортируемый widgetCache не матчится
-    Допустим пакет "widget" с переменной "widgetCache"
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
+  Scenario: boundary — the unexported widgetCache is not matched
+    Given the package "widget" with the variable "widgetCache"
+    When the analyzer checks the package
+    Then no diagnostic is reported
 
-  Сценарий: граничный — символ Widget точно равен имени пакета (нет следующего слова)
-    Допустим пакет "widget" с типом "Widget"
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
+  Scenario: boundary — the symbol Widget exactly equals the package name (no next word)
+    Given the package "widget" with the type "Widget"
+    When the analyzer checks the package
+    Then no diagnostic is reported
 
-  # --- Неприменимость (правило не действует) ---
+  # --- Non-applicability (the rule does not apply) ---
 
-  Сценарий: неприменимость — пакет main
-    Допустим пакет "main" с типом "MainOptions"
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
+  Scenario: non-applicability — package main
+    Given the package "main" with the type "MainOptions"
+    When the analyzer checks the package
+    Then no diagnostic is reported
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (RULES.md, GID-193)
-#  [x] Выбран слой: go/analysis, LoadModeSyntax (типы не нужны — хватает AST и имени пакета)
-#  [x] Заданы severity и сообщение ("GID-193: …")
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [ ] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (RULES.md, GID-193)
+#  [x] Layer chosen: go/analysis, LoadModeSyntax (no types needed — AST and the package name suffice)
+#  [x] Severity and message are defined ("GID-193: …")
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [ ] Rule enabled in .golangci.yml

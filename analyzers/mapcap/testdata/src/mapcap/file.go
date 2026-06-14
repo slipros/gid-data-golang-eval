@@ -1,9 +1,9 @@
-// Eval для GID-183 (map capacity hint при заполнении из range).
+// Eval for GID-183 (map capacity hint when filling from range).
 package mapcap
 
-// --- Класс 1: позитивные (make(map) без cap + безусловное заполнение в range) ---
+// --- Class 1: positive (make(map) without cap + unconditional fill in range) ---
 
-// Заполнение из range по слайсу.
+// Fill from range over a slice.
 func fillFromSlice(src []int) map[int]int {
 	m := make(map[int]int) // want `GID-183: make without capacity while filling from range\. Fix: make\(map\[K\]V, len\(src\)\)`
 	for _, v := range src {
@@ -12,7 +12,7 @@ func fillFromSlice(src []int) map[int]int {
 	return m
 }
 
-// var-форма объявления.
+// var form of declaration.
 func fillFromSliceVar(src []string) map[string]bool {
 	var m = make(map[string]bool) // want `GID-183: make without capacity while filling from range\. Fix: make\(map\[K\]V, len\(src\)\)`
 	for _, v := range src {
@@ -21,7 +21,7 @@ func fillFromSliceVar(src []string) map[string]bool {
 	return m
 }
 
-// Заполнение из range по мапе.
+// Fill from range over a map.
 func fillFromMap(src map[string]int) map[string]int {
 	m := make(map[string]int) // want `GID-183: make without capacity while filling from range\. Fix: make\(map\[K\]V, len\(src\)\)`
 	for k, v := range src {
@@ -30,7 +30,7 @@ func fillFromMap(src map[string]int) map[string]int {
 	return m
 }
 
-// Заполнение из range по строке.
+// Fill from range over a string.
 func fillFromString(src string) map[rune]int {
 	m := make(map[rune]int) // want `GID-183: make without capacity while filling from range\. Fix: make\(map\[K\]V, len\(src\)\)`
 	for _, r := range src {
@@ -39,9 +39,9 @@ func fillFromString(src string) map[rune]int {
 	return m
 }
 
-// --- Класс 2: негативные ---
+// --- Class 2: negative ---
 
-// make с уже указанной ёмкостью — корректно.
+// make with capacity already specified — correct.
 func withCapacity(src []int) map[int]int {
 	m := make(map[int]int, len(src))
 	for _, v := range src {
@@ -50,7 +50,7 @@ func withCapacity(src []int) map[int]int {
 	return m
 }
 
-// Заполнение без range — размер не выводится из коллекции.
+// Fill without range — the size is not inferred from a collection.
 func fillWithoutRange() map[int]int {
 	m := make(map[int]int)
 	m[1] = 1
@@ -58,7 +58,7 @@ func fillWithoutRange() map[int]int {
 	return m
 }
 
-// range по каналу — длина неизвестна, размер не подсказать.
+// range over a channel — the length is unknown, the size cannot be hinted.
 func fillFromChan(src chan int) map[int]int {
 	m := make(map[int]int)
 	for v := range src {
@@ -67,9 +67,9 @@ func fillFromChan(src chan int) map[int]int {
 	return m
 }
 
-// --- Класс 3: граничные (не матчатся) ---
+// --- Class 3: boundary (not matched) ---
 
-// Условное заполнение внутри if в теле цикла — реальный размер < len(src).
+// Conditional fill inside an if in the loop body — real size < len(src).
 func conditionalFill(src []int) map[int]int {
 	m := make(map[int]int)
 	for _, v := range src {
@@ -80,7 +80,7 @@ func conditionalFill(src []int) map[int]int {
 	return m
 }
 
-// m используется между make и циклом (заполнение вне цикла) — отменяет диагностику.
+// m is used between make and the loop (fill outside the loop) — cancels the diagnostic.
 func usedBeforeLoop(src []int) map[int]int {
 	m := make(map[int]int)
 	m[0] = 0
@@ -90,7 +90,7 @@ func usedBeforeLoop(src []int) map[int]int {
 	return m
 }
 
-// m передаётся в вызов между make и циклом — отменяет диагностику.
+// m is passed into a call between make and the loop — cancels the diagnostic.
 func passedBeforeLoop(src []int) map[int]int {
 	m := make(map[int]int)
 	consume(m)
@@ -102,9 +102,9 @@ func passedBeforeLoop(src []int) map[int]int {
 
 func consume(m map[int]int) { _ = m }
 
-// --- Класс 4: неприменимость (нет make(map)) ---
+// --- Class 4: non-applicability (no make(map)) ---
 
-// make слайса — не мапа.
+// make of a slice — not a map.
 func makeSlice(src []int) []int {
 	s := make([]int, 0)
 	for _, v := range src {

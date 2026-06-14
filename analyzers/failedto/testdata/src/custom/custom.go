@@ -2,14 +2,14 @@ package custom
 
 import "github.com/pkg/errors"
 
-// settings.prefixes = ["oops"] замещает дефолт целиком:
-// дефолтный "failed to" больше не ловится, ловится только "oops".
+// settings.prefixes = ["oops"] replaces the default entirely:
+// the default "failed to" is no longer caught, only "oops" is.
 
 func wrapOops(err error) error {
 	return errors.Wrap(err, "oops broken") // want `GID-184: error message starts with "oops"`
 }
 
-// "failed to" не из кастомного списка — не матчится.
+// "failed to" is not in the custom list — not matched.
 func wrapFailed(err error) error {
 	return errors.Wrap(err, "failed to select")
 }

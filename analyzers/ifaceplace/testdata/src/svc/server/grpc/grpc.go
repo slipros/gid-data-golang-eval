@@ -1,9 +1,10 @@
-// Package grpc — «свой» пакет сервиса (слой /server/grpc), НЕ model и НЕ
-// тот же пакет, что у потребителя-репозитория/сервиса. Интерфейсы отсюда
-// использовать в чужих пакетах нельзя — определяй рядом с потребителем.
+// Package grpc — the service's "own" package (the /server/grpc layer), NOT
+// model and NOT the same package as the repository/service consumer.
+// Interfaces from here must not be used in foreign packages — define them
+// next to the consumer.
 package grpc
 
-// Notifier — интерфейс чужого пакета сервиса (server-слой).
+// Notifier — an interface of a foreign service package (the server layer).
 type Notifier interface {
 	Notify(msg string) error
 }

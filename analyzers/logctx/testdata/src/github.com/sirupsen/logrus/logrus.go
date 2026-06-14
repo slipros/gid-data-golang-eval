@@ -1,4 +1,4 @@
-// Stub github.com/sirupsen/logrus для eval.
+// Stub github.com/sirupsen/logrus for eval.
 package logrus
 
 import "context"

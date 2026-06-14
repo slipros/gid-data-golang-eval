@@ -1,88 +1,88 @@
-# language: ru
+# language: en
 
-Функция: GID-179 — размер буфера канала только 0 или 1 (chan-buffer-size)
-  Как разработчик
-  Я хочу, чтобы make(chan T, N) использовал буфер 0 или 1
-  Чтобы больший буфер не маскировал проблему синхронизации без явного обоснования
+Feature: GID-179 — channel buffer size only 0 or 1 (chan-buffer-size)
+  As a developer
+  I want make(chan T, N) to use a buffer of 0 or 1
+  So that a larger buffer does not mask a synchronization problem without an explicit justification
 
-  # Правило Uber: "channel size is one or none".
-  # Анализатор gidchanbuf, LoadMode TypesInfo. Размер вычисляется через
+  # Uber rule: "channel size is one or none".
+  # Analyzer gidchanbuf, LoadMode TypesInfo. The size is computed via
   #   pass.TypesInfo.Types[expr].Value (constant.Int):
-  #   - константа > 1 (литерал, именованный const, const-выражение) — матчим;
-  #   - 0 и 1 (или make без размера) — ОК;
-  #   - не константа (переменная, вызов) — НЕ матчим (обоснован рантаймом, решает review).
-  # Матчим только make для каналов: make([]T, N) и make(map[K]V, N) пропускаем.
-  # Сгенерированный код (ast.IsGenerated) пропускается.
-  # Точечное отключение — стандартный //nolint:gidchanbuf.
+  #   - a constant > 1 (literal, named const, const expression) — matched;
+  #   - 0 and 1 (or make without a size) — OK;
+  #   - not a constant (variable, call) — NOT matched (justified at runtime, review decides).
+  # Only make for channels is matched: make([]T, N) and make(map[K]V, N) are skipped.
+  # Generated code (ast.IsGenerated) is skipped.
+  # Targeted suppression — the standard //nolint:gidchanbuf.
 
-  # === Класс 1: позитивные (константный буфер > 1) ===
+  # === Class 1: positive (constant buffer > 1) ===
 
-  Сценарий: позитивный — литеральный размер больше 1
-    Допустим выражение "make(chan int, 2)"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-179: буфер канала 2 — допустимы только 0 и 1; больший буфер требует обоснования (//nolint:gidchanbuf с комментарием)"
+  Scenario: positive — literal size greater than 1
+    Given the expression "make(chan int, 2)"
+    When the analyzer checks the file
+    Then the diagnostic "GID-179: channel buffer 2 is not allowed (only 0 or 1). Fix: use an unbuffered channel or buffer 1, or justify a larger buffer with //nolint:gidchanbuf." is reported
 
-  Сценарий: позитивный — размер из именованной const (maxWorkers = 10)
-    Допустим const "maxWorkers = 10" и выражение "make(chan int, maxWorkers)"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-179: буфер канала 10 — допустимы только 0 и 1; больший буфер требует обоснования (//nolint:gidchanbuf с комментарием)"
+  Scenario: positive — size from a named const (maxWorkers = 10)
+    Given the const "maxWorkers = 10" and the expression "make(chan int, maxWorkers)"
+    When the analyzer checks the file
+    Then the diagnostic "GID-179: channel buffer 10 is not allowed (only 0 or 1). Fix: use an unbuffered channel or buffer 1, or justify a larger buffer with //nolint:gidchanbuf." is reported
 
-  Сценарий: позитивный — размер из константного выражения
-    Допустим выражение "make(chan string, 2*3)"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-179: буфер канала 6 — допустимы только 0 и 1; больший буфер требует обоснования (//nolint:gidchanbuf с комментарием)"
+  Scenario: positive — size from a constant expression
+    Given the expression "make(chan string, 2*3)"
+    When the analyzer checks the file
+    Then the diagnostic "GID-179: channel buffer 6 is not allowed (only 0 or 1). Fix: use an unbuffered channel or buffer 1, or justify a larger buffer with //nolint:gidchanbuf." is reported
 
-  # === Класс 2: негативные (буфер 0 или 1, либо без размера) ===
+  # === Class 2: negative (buffer 0 or 1, or no size) ===
 
-  Сценарий: негативный — канал без размера
-    Допустим выражение "make(chan int)"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — channel without a size
+    Given the expression "make(chan int)"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: негативный — буфер 0
-    Допустим выражение "make(chan int, 0)"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — buffer 0
+    Given the expression "make(chan int, 0)"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: негативный — буфер 1
-    Допустим выражение "make(chan int, 1)"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — buffer 1
+    Given the expression "make(chan int, 1)"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  # === Класс 3: граничные (не матчатся) ===
+  # === Class 3: boundary (not matched) ===
 
-  Сценарий: граничный — размер задан переменной
-    Допустим переменную "n int" и выражение "make(chan int, n)"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
-    # Размер не константа — обоснован рантаймом, решение за review.
+  Scenario: boundary — size given by a variable
+    Given the variable "n int" and the expression "make(chan int, n)"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+    # The size is not a constant — justified at runtime, review decides.
 
-  Сценарий: граничный — размер задан вызовом функции
-    Допустим выражение "make(chan int, size())"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: boundary — size given by a function call
+    Given the expression "make(chan int, size())"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: граничный — make слайса с размером > 1
-    Допустим выражение "make([]int, 5)"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: boundary — make of a slice with size > 1
+    Given the expression "make([]int, 5)"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: граничный — make мапы с размером > 1
-    Допустим выражение "make(map[string]int, 5)"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: boundary — make of a map with size > 1
+    Given the expression "make(map[string]int, 5)"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  # === Класс 4: неприменимость ===
+  # === Class 4: non-applicability ===
 
-  Сценарий: неприменимость — файл без make
-    Допустим пакет без единого вызова make
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: non-applicability — a file without make
+    Given a package without a single make call
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (RULES.md, GID-179)
-#  [x] Выбран слой: go/analysis (анализатор gidchanbuf в analyzers/chanbuf)
-#  [x] Заданы severity и сообщение ("GID-179: …")
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [ ] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (RULES.md, GID-179)
+#  [x] Layer chosen: go/analysis (analyzer gidchanbuf in analyzers/chanbuf)
+#  [x] Severity and message are defined ("GID-179: …")
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [ ] Rule enabled in .golangci.yml

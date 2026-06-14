@@ -1,4 +1,4 @@
-// Негатив (GID-225): app — composition root, ему доступны все слои.
+// Negative (GID-225): app is the composition root, all layers are available to it.
 package app
 
 import (
@@ -17,7 +17,7 @@ type App struct {
 	metric   *metric.Prometheus
 }
 
-// Wire собирает зависимости сервиса.
+// Wire assembles the service dependencies.
 func Wire() *App {
 	return &App{}
 }

@@ -1,4 +1,4 @@
-// Вложенный пакет model-слоя.
+// A nested package of the model layer.
 package filter
 
 type Snapshots struct {

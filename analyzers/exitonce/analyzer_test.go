@@ -10,11 +10,11 @@ import (
 
 func TestAnalyzer(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), exitonce.Analyzer,
-		"mainhelper",  // позитив (os.Exit в хелпере main-пакета) + негатив (один os.Exit в main, возврат error)
-		"libpkg",      // позитив (log.Fatal/logrus.Fatal* в не-main пакете) + негатив (возврат error)
-		"twoexit",     // позитив (два os.Exit в main — повторный)
-		"okmain",      // граничный (defer + один os.Exit — ок)
-		"closuremain", // граничный (os.Exit в замыкании в main — считается вызовом в main)
-		"cleanlib",    // неприменимость (библиотечный пакет без exit-вызовов)
+		"mainhelper",  // positive (os.Exit in a helper of the main package) + negative (one os.Exit in main, returning an error)
+		"libpkg",      // positive (log.Fatal/logrus.Fatal* in a non-main package) + negative (returning an error)
+		"twoexit",     // positive (two os.Exit in main — a duplicate)
+		"okmain",      // boundary (defer + one os.Exit — fine)
+		"closuremain", // boundary (os.Exit in a closure inside main — counts as a call in main)
+		"cleanlib",    // inapplicability (a library package without exit calls)
 	)
 }

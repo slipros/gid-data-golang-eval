@@ -1,4 +1,4 @@
-// Вспомогательный пакет для eval GID-196: конверсия через селектор.
+// Helper package for the GID-196 eval: a conversion via a selector.
 package sub
 
 type Code string

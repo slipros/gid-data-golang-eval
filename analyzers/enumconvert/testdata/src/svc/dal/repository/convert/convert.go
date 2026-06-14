@@ -1,11 +1,11 @@
-// Неприменимость: convert-пакет без map-индексаций enum — диагностик нет.
+// Not applicable: a convert package without enum map indexings — no diagnostics.
 package convert
 
 type model struct{ Name string }
 
 type entity struct{ Name string }
 
-// Обычный полевой конвертер — никаких мап.
+// An ordinary field converter — no maps at all.
 func EntityNameFromModel(in *model) entity {
 	return entity{Name: in.Name}
 }

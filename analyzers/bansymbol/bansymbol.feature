@@ -1,52 +1,52 @@
-# language: ru
+# language: en
 
-Функция: GID-217 — настраиваемый бан конкретных символов библиотек
-  Как разработчик
-  Я хочу запрещать конкретные символы сторонних библиотек (например gdpostgres.TQuery)
-  Чтобы команда использовала прямые методы conn (Select, ScanRow, NamedStruct, Transaction), как договорились в repo.md
+Feature: GID-217 — configurable ban of specific library symbols
+  As a developer
+  I want to ban specific symbols of third-party libraries (e.g. gdpostgres.TQuery)
+  So that the team uses direct conn methods (Select, ScanRow, NamedStruct, Transaction), as agreed in repo.md
 
-  Сценарий: позитивный — вызов забаненного символа
-    Допустим импортирован пакет gdpostgres "gitlab.gid.team/gid-data/tech/golang/libs/postgres.git"
-    И в коде есть вызов "gdpostgres.TQuery[int](conn, query)"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-217" с подсказкой использовать прямые методы conn
+  Scenario: positive — call of a banned symbol
+    Given the package gdpostgres "gitlab.gid.team/gid-data/tech/golang/libs/postgres.git" is imported
+    And the code contains the call "gdpostgres.TQuery[int](conn, query)"
+    When the analyzer checks the file
+    Then a "GID-217" diagnostic is reported with a hint to use direct conn methods
 
-  Сценарий: позитивный — generic-инстанциация ловится так же
-    Допустим импортирован пакет gdpostgres
-    И в коде есть инстанциация "gdpostgres.TQuery[string](conn, query)"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-217" на селекторе TQuery
+  Scenario: positive — generic instantiation is caught the same way
+    Given the package gdpostgres is imported
+    And the code contains the instantiation "gdpostgres.TQuery[string](conn, query)"
+    When the analyzer checks the file
+    Then a "GID-217" diagnostic is reported on the TQuery selector
 
-  Сценарий: негативный — разрешённые методы conn
-    Допустим импортирован пакет gdpostgres
-    И в коде есть вызовы "gdpostgres.Select(...)" и "gdpostgres.NamedStruct(...)"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — allowed conn methods
+    Given the package gdpostgres is imported
+    And the code contains the calls "gdpostgres.Select(...)" and "gdpostgres.NamedStruct(...)"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: негативный — одноимённый символ другого пакета
-    Допустим импортирован пакет otherdb "example.com/otherdb" со своей функцией TQuery
-    И в коде есть вызов "otherdb.TQuery[int](query)"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — a same-named symbol from another package
+    Given the package otherdb "example.com/otherdb" with its own TQuery function is imported
+    And the code contains the call "otherdb.TQuery[int](query)"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: граничный — символ задан настройками с кастомным Msg
-    Допустим settings.symbols задаёт символ otherdb.TQuery с Msg "otherdb.TQuery под запретом проекта"
-    И в коде есть вызов "otherdb.TQuery[int](query)"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-217" с текстом "otherdb.TQuery под запретом проекта"
+  Scenario: boundary — symbol configured in settings with a custom Msg
+    Given settings.symbols defines the symbol otherdb.TQuery with Msg "otherdb.TQuery is banned by the project"
+    And the code contains the call "otherdb.TQuery[int](query)"
+    When the analyzer checks the file
+    Then a "GID-217" diagnostic is reported with the text "otherdb.TQuery is banned by the project"
 
-  Сценарий: граничный — Pkg задан суффиксом сегментов пути
-    Допустим settings.symbols задаёт Pkg "libs/postgres.git" и Name "Select" без Msg
-    И import-путь символа оканчивается этими сегментами
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика с общей формулировкой "символ postgres.Select запрещён настройками gidbansymbol"
+  Scenario: boundary — Pkg given as a path-segment suffix
+    Given settings.symbols defines Pkg "libs/postgres.git" and Name "Select" without Msg
+    And the symbol's import path ends with those segments
+    When the analyzer checks the file
+    Then a diagnostic is reported with the generic wording "symbol postgres.Select is banned by gidbansymbol"
 
-  Сценарий: неприменимость — пакет без импорта забаненной библиотеки
-    Допустим в файле нет импорта запрещённого пакета
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: non-applicability — package without an import of the banned library
+    Given the file has no import of a banned package
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: неприменимость — сгенерированный код
-    Допустим файл помечен "// Code generated ... DO NOT EDIT." и вызывает gdpostgres.TQuery
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: non-applicability — generated code
+    Given the file is marked "// Code generated ... DO NOT EDIT." and calls gdpostgres.TQuery
+    When the analyzer checks the file
+    Then no diagnostic is reported

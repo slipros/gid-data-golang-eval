@@ -1,4 +1,4 @@
-// Неприменимость: обычный пакет (не validate) без сторонних валидаторов.
+// Not applicable: an ordinary package (not validate) without third-party validators.
 package util
 
 func Helper(s string) string { return s }

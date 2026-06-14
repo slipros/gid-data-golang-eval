@@ -1,21 +1,21 @@
-// Package errplace реализует правила размещения ошибок по слоям:
+// Package errplace implements the rules for placing errors by layer:
 //
-//   - GID-144 (giddomainerrors): все domain-ошибки живут в /domain/model.
-//     service и usecase не объявляют и не создают ошибки — они обменивают
-//     полученные ошибки на ошибки из model.
-//   - GID-145 (giddalerrors): все dal-ошибки живут в /dal/entity.
-//     Репозиторий обменивает ошибки подключения на ошибки из entity
-//     (если обмена не произошло — пробрасывает исходную, это не создание).
-//   - GID-169 (giderrfile): ошибки слоя живут в выделенном файле.
-//     В корневых пакетах /domain/model и /dal/entity package-level
-//     переменные типа error объявляются только в файле из settings.files
-//     (default: error.go, errors.go). Уточняет GID-144/GID-145: те задают
-//     слой-«дом» для ошибок, а GID-169 — конкретный файл внутри него.
+//   - GID-144 (giddomainerrors): all domain errors live in /domain/model.
+//     service and usecase neither declare nor create errors — they exchange
+//     received errors for errors from model.
+//   - GID-145 (giddalerrors): all dal errors live in /dal/entity.
+//     The repository exchanges connection errors for errors from entity
+//     (if no exchange happened — it passes the original through, which is not creation).
+//   - GID-169 (giderrfile): layer errors live in a dedicated file.
+//     In the root packages /domain/model and /dal/entity, package-level
+//     variables of type error are declared only in a file from settings.files
+//     (default: error.go, errors.go). Refines GID-144/GID-145: those define
+//     the "home" layer for errors, while GID-169 picks the exact file inside it.
 //
-// Запрещены вне разрешённого пакета: объявление package-level переменных
-// типа error и вызовы конструкторов ошибок (errors.New, fmt.Errorf,
-// errors.Errorf). Обмен и обогащение — errors.Wrap/WithStack/WithMessage
-// (github.com/pkg/errors) и типизированные ошибки gderror — разрешены.
+// Forbidden outside the allowed package: declaring package-level variables
+// of type error and calling error constructors (errors.New, fmt.Errorf,
+// errors.Errorf). Exchange and enrichment — errors.Wrap/WithStack/WithMessage
+// (github.com/pkg/errors) and typed gderror errors — are allowed.
 package errplace
 
 import (
@@ -29,14 +29,14 @@ import (
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 )
 
-// forbiddenCtors — конструкторы ошибок: пакет -> имена функций.
+// forbiddenCtors — error constructors: package -> function names.
 var forbiddenCtors = map[string]map[string]struct{}{
 	"errors":                {"New": {}},
 	"fmt":                   {"Errorf": {}},
 	"github.com/pkg/errors": {"New": {}, "Errorf": {}},
 }
 
-// DomainAnalyzer — правило GID-144: all domain errors live in /domain/model. Fix: declare them in /domain/model.
+// DomainAnalyzer — rule GID-144: all domain errors live in /domain/model. Fix: declare them in /domain/model.
 var DomainAnalyzer = &analysis.Analyzer{
 	Name: "giddomainerrors",
 	Doc:  "GID-144: all domain errors live in /domain/model. Fix: declare them in /domain/model",
@@ -48,7 +48,7 @@ var DomainAnalyzer = &analysis.Analyzer{
 	}),
 }
 
-// DALAnalyzer — правило GID-145: all dal errors live in /dal/entity. Fix: declare them in /dal/entity.
+// DALAnalyzer — rule GID-145: all dal errors live in /dal/entity. Fix: declare them in /dal/entity.
 var DALAnalyzer = &analysis.Analyzer{
 	Name: "giddalerrors",
 	Doc:  "GID-145: all dal errors live in /dal/entity. Fix: declare them in /dal/entity",
@@ -62,9 +62,9 @@ var DALAnalyzer = &analysis.Analyzer{
 
 type config struct {
 	ruleID  string
-	tree    []string // дерево слоя, в котором правило действует
-	allowed []string // подпуть, где ошибки разрешены
-	home    string   // человекочитаемое место ошибок для сообщения
+	tree    []string // layer tree in which the rule applies
+	allowed []string // subpath where errors are allowed
+	home    string   // human-readable home of errors for the message
 }
 
 func newRun(cfg *config) func(*analysis.Pass) (any, error) {
@@ -84,7 +84,7 @@ func newRun(cfg *config) func(*analysis.Pass) (any, error) {
 	}
 }
 
-// checkErrorVars ищет package-level переменные, реализующие error.
+// checkErrorVars looks for package-level variables implementing error.
 func checkErrorVars(pass *analysis.Pass, cfg *config, file *ast.File) {
 	for _, decl := range file.Decls {
 		gd, ok := decl.(*ast.GenDecl)
@@ -112,7 +112,7 @@ func checkErrorVars(pass *analysis.Pass, cfg *config, file *ast.File) {
 	}
 }
 
-// checkErrorCtors ищет вызовы конструкторов ошибок.
+// checkErrorCtors looks for calls to error constructors.
 func checkErrorCtors(pass *analysis.Pass, cfg *config, file *ast.File) {
 	ast.Inspect(file, func(n ast.Node) bool {
 		call, ok := n.(*ast.CallExpr)

@@ -1,4 +1,4 @@
-// Eval для GID-111 (service).
+// Eval for GID-111 (service).
 package service
 
 import (
@@ -9,19 +9,19 @@ import (
 
 type Snapshot struct{}
 
-// --- Позитив: вход по значению ---
+// --- Positive: input by value ---
 
 func (s *Snapshot) Create(ctx context.Context, in model.CreateSnapshot) error { // want `GID-111: input data must be passed by pointer\. Fix: use \*model\.CreateSnapshot`
 	return nil
 }
 
-// --- Позитив: выход по указателю ---
+// --- Positive: output by pointer ---
 
 func (s *Snapshot) Snapshot(ctx context.Context, id string) (*model.Snapshot, error) { // want `GID-111: output data must be returned by value\. Fix: use model\.Snapshot`
 	return nil, nil
 }
 
-// --- Негатив: канон — вход *T, выход T ---
+// --- Negative: canonical — input *T, output T ---
 
 func (s *Snapshot) Update(ctx context.Context, in *model.CreateSnapshot) error {
 	return nil
@@ -31,17 +31,17 @@ func (s *Snapshot) Get(ctx context.Context, id string) (model.Snapshot, error) {
 	return model.Snapshot{}, nil
 }
 
-// Граничный кейс: именованный строковый тип — не структура, по значению норма.
+// Edge case: a named string type — not a struct, by value is fine.
 func (s *Snapshot) Status(ctx context.Context, st model.SnapshotStatus) error {
 	return nil
 }
 
-// Граничный кейс: слайс структур — заголовок слайса, по значению норма.
+// Edge case: a slice of structs — a slice header, by value is fine.
 func (s *Snapshot) Many(ctx context.Context, in []model.CreateSnapshot) error {
 	return nil
 }
 
-// Неприменимость: неэкспортируемые хелперы не проверяются.
+// Not applicable: unexported helpers are not checked.
 func (s *Snapshot) helper(in model.CreateSnapshot) model.Snapshot {
 	return model.Snapshot{}
 }

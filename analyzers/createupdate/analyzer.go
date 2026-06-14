@@ -1,13 +1,13 @@
-// Package createupdate реализует правило GID-112: методы, создающие
-// сущность или обновляющие состояние (Create*/Update*), в repo и service
-// возвращают только error. Если после создания нужны данные — вызывающий
-// код получает их отдельным запросом.
+// Package createupdate implements rule GID-112: methods that create an
+// entity or update state (Create*/Update*) in repo and service
+// return only error. If data is needed after creation, the calling
+// code fetches it with a separate query.
 //
-// Исключения (бывает удобно сразу получить сущность):
-//   - точечно: //nolint:gidcreateupdate
-//   - централизованно: settings.exclude в .golangci.yml —
-//     записи вида "CreateSession" (имя метода) или "Job.CreateJob"
-//     (конкретный тип).
+// Exceptions (sometimes it is convenient to get the entity right away):
+//   - targeted: //nolint:gidcreateupdate
+//   - centralized: settings.exclude in .golangci.yml —
+//     entries like "CreateSession" (a method name) or "Job.CreateJob"
+//     (a specific type).
 package createupdate
 
 import (
@@ -31,16 +31,16 @@ var scopes = [][]string{
 	{"domain", "service"},
 }
 
-// Analyzer — вариант с настройками по умолчанию (без исключений).
+// Analyzer — the variant with default settings (no exclusions).
 var Analyzer = NewAnalyzer(Settings{})
 
-// Settings — настройки линтера из .golangci.yml.
+// Settings — linter settings from .golangci.yml.
 type Settings struct {
-	// Exclude — методы-исключения: "Метод" или "Тип.Метод".
+	// Exclude — excluded methods: "Method" or "Type.Method".
 	Exclude []string `json:"exclude"`
 }
 
-// NewAnalyzer строит анализатор GID-112 из настроек линтера (.golangci.yml).
+// NewAnalyzer builds the GID-112 analyzer from the linter settings (.golangci.yml).
 func NewAnalyzer(s Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name: "gidcreateupdate",
@@ -110,8 +110,8 @@ func inScope(pkgPath string) bool {
 	return false
 }
 
-// hasVerbPrefix: имя начинается со слова Create/Update
-// (CreateJob, Update — да; CreatedAt — нет).
+// hasVerbPrefix: the name starts with the word Create/Update
+// (CreateJob, Update — yes; CreatedAt — no).
 func hasVerbPrefix(name string) bool {
 	for _, verb := range verbs {
 		if name == verb {

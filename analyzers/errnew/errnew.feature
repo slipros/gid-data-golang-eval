@@ -1,88 +1,88 @@
-# language: ru
+# language: en
 
-Функция: GID-136 — errors.New только в package-level var (errnew)
-  Как разработчик
-  Я хочу, чтобы errors.New (github.com/pkg/errors) вызывался только в
-  объявлении package-level var
-  Чтобы статичные ошибки объявлялись заранее (var ErrX), а не
-  конструировались в рантайме
+Feature: GID-136 — errors.New only in a package-level var (errnew)
+  As a developer
+  I want errors.New (github.com/pkg/errors) to be called only in a
+  package-level var declaration
+  So that static errors are declared up front (var ErrX) rather than
+  constructed at runtime
 
-  # Один анализатор errnew → линтер giderrnew, LoadModeTypesInfo.
-  # pkg/errors распознаётся по import-пути github.com/pkg/errors через
-  # TypesInfo (стаб в testdata).
-  # Зона правила — только errors.New из github.com/pkg/errors:
-  #   - errors.Errorf — НЕ зона (динамический контекст легитимен, регулируют GID-144/145);
-  #   - std errors.New — НЕ зона (уже запрещён GID-146);
-  #   - New из любого другого пакета — НЕ зона.
-  # Рантайм = тело функции, метода или func-литерала (даже когда литерал
-  # записан в package-level var). Сгенерированный код (ast.IsGenerated) пропускается.
+  # One analyzer errnew → linter giderrnew, LoadModeTypesInfo.
+  # pkg/errors is recognized by the import path github.com/pkg/errors via
+  # TypesInfo (a stub in testdata).
+  # The rule covers only errors.New from github.com/pkg/errors:
+  #   - errors.Errorf — NOT covered (dynamic context is legitimate, governed by GID-144/145);
+  #   - std errors.New — NOT covered (already forbidden by GID-146);
+  #   - New from any other package — NOT covered.
+  # Runtime = the body of a function, method, or func literal (even when the literal
+  # is assigned to a package-level var). Generated code (ast.IsGenerated) is skipped.
 
-  Сценарий: позитив — errors.New в теле функции
-    Допустим пакет импортирует "github.com/pkg/errors"
-    И в теле функции "loadSomething" вызывается "errors.New(...)"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-136" на вызове
+  Scenario: positive — errors.New in a function body
+    Given the package imports "github.com/pkg/errors"
+    And "errors.New(...)" is called in the body of the function "loadSomething"
+    When the analyzer checks the file
+    Then a "GID-136" diagnostic is reported on the call
 
-  Сценарий: позитив — errors.New в теле метода
-    Допустим пакет импортирует "github.com/pkg/errors"
-    И в теле метода "Repo.Find" вызывается "errors.New(...)"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-136" на вызове
+  Scenario: positive — errors.New in a method body
+    Given the package imports "github.com/pkg/errors"
+    And "errors.New(...)" is called in the body of the method "Repo.Find"
+    When the analyzer checks the file
+    Then a "GID-136" diagnostic is reported on the call
 
-  Сценарий: позитив — errors.New в func-литерале внутри package-level var
-    Допустим пакет импортирует "github.com/pkg/errors"
-    И package-level "var makeErr = func() error { return errors.New(...) }"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-136" на вызове в теле литерала
+  Scenario: positive — errors.New in a func literal inside a package-level var
+    Given the package imports "github.com/pkg/errors"
+    And the package-level "var makeErr = func() error { return errors.New(...) }"
+    When the analyzer checks the file
+    Then a "GID-136" diagnostic is reported on the call in the literal body
 
-  Сценарий: негатив — errors.New в одиночном package-level var
-    Допустим пакет импортирует "github.com/pkg/errors"
-    И объявлена "var ErrNotFound = errors.New(\"not found\")"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — errors.New in a single package-level var
+    Given the package imports "github.com/pkg/errors"
+    And "var ErrNotFound = errors.New(\"not found\")" is declared
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: негатив — errors.New в var-блоке с несколькими ошибками
-    Допустим пакет импортирует "github.com/pkg/errors"
-    И в var-блоке объявлены "ErrConflict" и "ErrLocked" через errors.New
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — errors.New in a var block with several errors
+    Given the package imports "github.com/pkg/errors"
+    And "ErrConflict" and "ErrLocked" are declared via errors.New in a var block
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: граница — errors.Errorf в теле функции
-    Допустим пакет импортирует "github.com/pkg/errors"
-    И в теле функции "formatSomething" вызывается "errors.Errorf(...)"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
-    # (динамический контекст легитимен — зона GID-144/145, не GID-136)
+  Scenario: boundary — errors.Errorf in a function body
+    Given the package imports "github.com/pkg/errors"
+    And "errors.Errorf(...)" is called in the body of the function "formatSomething"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+    # (dynamic context is legitimate — the domain of GID-144/145, not GID-136)
 
-  Сценарий: граница — стандартный errors.New в теле функции
-    Допустим пакет импортирует "errors" (stdlib)
-    И в теле функции "stdNew" вызывается "errors.New(...)"
-    Когда анализатор проверяет файл
-    Тогда диагностика GID-136 не выводится
-    # (std errors.New уже запрещён GID-146)
+  Scenario: boundary — standard errors.New in a function body
+    Given the package imports "errors" (stdlib)
+    And "errors.New(...)" is called in the body of the function "stdNew"
+    When the analyzer checks the file
+    Then no GID-136 diagnostic is reported
+    # (std errors.New is already forbidden by GID-146)
 
-  Сценарий: граница — локальная функция New другого пакета
-    Допустим пакет импортирует "svc/othernew" со своей "New"
-    И в теле функции "otherNew" вызывается "othernew.New(...)"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: boundary — a local New function from another package
+    Given the package imports "svc/othernew" with its own "New"
+    And "othernew.New(...)" is called in the body of the function "otherNew"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: граница — сгенерированный файл пропускается
-    Допустим файл "zz_generated.go" помечен "// Code generated ... DO NOT EDIT."
-    И в теле функции вызывается "errors.New(...)"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: boundary — a generated file is skipped
+    Given the file "zz_generated.go" is marked "// Code generated ... DO NOT EDIT."
+    And "errors.New(...)" is called in a function body
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: неприменимость — пакет без github.com/pkg/errors
-    Допустим пакет не импортирует "github.com/pkg/errors"
-    И в теле функции вызывается "errors.New(...)" из stdlib
-    Когда анализатор проверяет файл
-    Тогда диагностика GID-136 не выводится
+  Scenario: non-applicability — a package without github.com/pkg/errors
+    Given the package does not import "github.com/pkg/errors"
+    And "errors.New(...)" from stdlib is called in a function body
+    When the analyzer checks the file
+    Then no GID-136 diagnostic is reported
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (GID-136, errors-new-static)
-#  [x] Выбран слой: go/analysis (нужны типы — TypesInfo для pkg/errors)
-#  [x] Заданы severity и сообщение ("GID-136: errors.New в рантайме — ...")
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [ ] Правило включено в .golangci.yml (вне scope задачи)
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (GID-136, errors-new-static)
+#  [x] Layer chosen: go/analysis (types needed — TypesInfo for pkg/errors)
+#  [x] Severity and message are defined ("GID-136: errors.New at runtime — ...")
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [ ] Rule enabled in .golangci.yml (outside the scope of the task)

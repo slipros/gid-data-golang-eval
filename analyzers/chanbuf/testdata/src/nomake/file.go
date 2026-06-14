@@ -1,4 +1,4 @@
-// Неприменимость: файл без make — диагностика не выводится.
+// Not applicable: a file without make — no diagnostic is emitted.
 package nomake
 
 func work() int {

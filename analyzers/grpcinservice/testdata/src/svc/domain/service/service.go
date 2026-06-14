@@ -1,4 +1,4 @@
-// Eval для GID-160: service вызывает gRPC через repository.
+// Eval for GID-160: a service calls gRPC through a repository.
 package service
 
 import (

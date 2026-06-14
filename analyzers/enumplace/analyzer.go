@@ -1,16 +1,17 @@
-// Package enumplace реализует правило GID-211 (enum-location):
+// Package enumplace implements rule GID-211 (enum-location):
 //
-//   - GID-211 (gidenumplace): enum DAL-слоя живут в /dal/entity/enum,
-//     отдельный файл на сущность. Объявление string-enum в любом другом
-//     пакете DAL-слоя (например /dal/entity или /dal/repository) — нарушение.
+//   - GID-211 (gidenumplace): DAL-layer enums live in /dal/entity/enum,
+//     a separate file per entity. Declaring a string enum in any other
+//     DAL-layer package (e.g. /dal/entity or /dal/repository) is a violation.
 //
-// Enum здесь — именованный тип с underlying string, у которого в том же
-// пакете есть ≥1 const этого типа (та же техника детекции, что в enumstring).
-// Alias (type X = string) не считается enum — это зона GID-123. Domain-слой
-// не задевается: в model enum живёт прямо в model (норма, GID-132).
+// An enum here is a named type with underlying string that has ≥1 const of
+// this type in the same package (the same detection technique as in enumstring).
+// An alias (type X = string) does not count as an enum — that is the domain of
+// GID-123. The domain layer is not touched: in model an enum lives right in
+// model (the norm, GID-132).
 //
-// Источник: entity.md «Enum (entity/enum/): каждый enum живёт в отдельном
-// файле по имени сущности».
+// Source: entity.md "Enum (entity/enum/): each enum lives in a separate
+// file named after the entity".
 package enumplace
 
 import (
@@ -24,7 +25,7 @@ import (
 
 const ruleID = "GID-211"
 
-// Analyzer — правило GID-211: DAL-layer enums live in /dal/entity/enum (one file per entity). Fix: move the enum into /dal/entity/enum.
+// Analyzer — rule GID-211: DAL-layer enums live in /dal/entity/enum (one file per entity). Fix: move the enum into /dal/entity/enum.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidenumplace",
 	Doc:  ruleID + ": DAL-layer enums live in /dal/entity/enum (one file per entity). Fix: move the enum into /dal/entity/enum",
@@ -34,7 +35,7 @@ var Analyzer = &analysis.Analyzer{
 func run(pass *analysis.Pass) (any, error) {
 	pkgPath := pass.Pkg.Path()
 
-	// Scope: только DAL-слой, исключая каноническое место /dal/entity/enum.
+	// Scope: only the DAL layer, excluding the canonical place /dal/entity/enum.
 	if !pathseg.Contains(pkgPath, "dal") {
 		return nil, nil
 	}
@@ -81,9 +82,10 @@ func checkEnum(pass *analysis.Pass, ts *ast.TypeSpec, withConsts map[*types.Name
 		ruleID, ts.Name.Name)
 }
 
-// enumTypesWithConsts — string-типы пакета, имеющие ≥1 const-значение.
-// Alias на basic-тип сюда не попадает: alias не создаёт *types.Named,
-// const такого alias имеет тип universe string. Это техника из enumstring.
+// enumTypesWithConsts — the package's string types that have ≥1 const value.
+// An alias of a basic type does not land here: an alias does not create a
+// *types.Named, a const of such an alias has the universe string type. This is
+// the technique from enumstring.
 func enumTypesWithConsts(pass *analysis.Pass) map[*types.Named]struct{} {
 	out := map[*types.Named]struct{}{}
 	for _, obj := range pass.TypesInfo.Defs {

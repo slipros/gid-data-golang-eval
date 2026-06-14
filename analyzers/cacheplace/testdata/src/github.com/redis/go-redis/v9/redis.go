@@ -1,4 +1,4 @@
-// Stub go-redis для eval.
+// Stub of go-redis for eval.
 package redis
 
 type Client struct{}

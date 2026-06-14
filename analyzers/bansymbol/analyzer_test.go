@@ -8,21 +8,21 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/bansymbol"
 )
 
-// TestAnalyzer — дефолтные настройки: запрет gdpostgres.TQuery.
-// Покрывает позитив (вызов и generic-инстанциация), негатив (Select,
-// NamedStruct, одноимённый TQuery другого пакета) и неприменимость
-// (сгенерированный файл svc/generated.go).
+// TestAnalyzer — default settings: ban on gdpostgres.TQuery.
+// Covers the positive case (a call and a generic instantiation), the negative
+// case (Select, NamedStruct, a same-named TQuery from another package) and
+// non-applicability (the generated file svc/generated.go).
 func TestAnalyzer(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), bansymbol.Analyzer, "svc")
 }
 
-// TestInapplicable — пакет без импорта забаненной библиотеки: чисто.
+// TestInapplicable — a package without an import of the banned library: clean.
 func TestInapplicable(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), bansymbol.Analyzer, "clean")
 }
 
-// TestCustomMsg — граничный: символ задан настройками с кастомным Msg —
-// флагается этим Msg.
+// TestCustomMsg — edge case: a symbol configured via settings with a custom Msg —
+// it is flagged with that Msg.
 func TestCustomMsg(t *testing.T) {
 	a := bansymbol.NewAnalyzer(bansymbol.Settings{Symbols: []bansymbol.Symbol{
 		{
@@ -34,8 +34,8 @@ func TestCustomMsg(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), a, "custom")
 }
 
-// TestDefaultMsg — символ без Msg использует общую формулировку; Pkg задан
-// суффиксом сегментов пути (postgres.git) — проверяет суффикс-матч.
+// TestDefaultMsg — a symbol without Msg uses the generic wording; Pkg is given
+// as a suffix of path segments (postgres.git) — verifies the suffix match.
 func TestDefaultMsg(t *testing.T) {
 	a := bansymbol.NewAnalyzer(bansymbol.Settings{Symbols: []bansymbol.Symbol{
 		{

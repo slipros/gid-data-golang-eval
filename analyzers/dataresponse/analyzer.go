@@ -1,10 +1,10 @@
-// Package dataresponse реализует правило GID-163: http handler строится
-// на github.com/raoptimus/data-response.go/v2 — чистый golang handler
-// func(http.ResponseWriter, *http.Request) запрещён.
+// Package dataresponse implements rule GID-163: an http handler is built
+// on github.com/raoptimus/data-response.go/v2 — a plain golang handler
+// func(http.ResponseWriter, *http.Request) is forbidden.
 //
-// Исключения возможны:
-//   - точечно: //nolint:giddataresponse
-//   - централизованно: settings.exclude — "Функция" или "Тип.Метод".
+// Exceptions are possible:
+//   - targeted: //nolint:giddataresponse
+//   - centralized: settings.exclude — "Function" or "Type.Method".
 package dataresponse
 
 import (
@@ -22,16 +22,16 @@ const (
 	responseLib = "github.com/raoptimus/data-response.go/v2"
 )
 
-// Analyzer — вариант без исключений.
+// Analyzer — the variant without exclusions.
 var Analyzer = NewAnalyzer(Settings{})
 
-// Settings — настройки линтера из .golangci.yml.
+// Settings — linter settings from .golangci.yml.
 type Settings struct {
-	// Exclude — хендлеры-исключения: "Функция" или "Тип.Метод".
+	// Exclude — excluded handlers: "Function" or "Type.Method".
 	Exclude []string `json:"exclude"`
 }
 
-// NewAnalyzer строит анализатор GID-163 из настроек линтера (.golangci.yml).
+// NewAnalyzer builds the GID-163 analyzer from the linter settings (.golangci.yml).
 func NewAnalyzer(s Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name: "giddataresponse",
@@ -69,7 +69,7 @@ func run(pass *analysis.Pass, s Settings) (any, error) {
 	return nil, nil
 }
 
-// isRawHandler: сигнатура (http.ResponseWriter, *http.Request) без результатов.
+// isRawHandler: the signature (http.ResponseWriter, *http.Request) without results.
 func isRawHandler(pass *analysis.Pass, fnType *ast.FuncType) bool {
 	if fnType.Results != nil && len(fnType.Results.List) > 0 {
 		return false

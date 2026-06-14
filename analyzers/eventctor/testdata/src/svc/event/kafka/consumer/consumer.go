@@ -1,4 +1,4 @@
-// Eval для GID-216: consumer-scope (event + consumer).
+// Eval for GID-216: consumer scope (event + consumer).
 package consumer
 
 import (
@@ -8,7 +8,7 @@ import (
 
 type Service interface{ Do() }
 
-// --- Позитив: consumer-конструктор без logger-параметра ---
+// --- Positive: a consumer constructor without a logger parameter ---
 
 type OrderConsumer struct {
 	svc Service
@@ -18,7 +18,7 @@ func NewOrderConsumer(svc Service) *OrderConsumer { // want `GID-216: a consumer
 	return &OrderConsumer{svc: svc}
 }
 
-// --- Негатив: consumer с *logrus.Logger ---
+// --- Negative: a consumer with *logrus.Logger ---
 
 type PaymentConsumer struct {
 	log *logrus.Entry
@@ -28,7 +28,7 @@ func NewPaymentConsumer(log *logrus.Logger) *PaymentConsumer {
 	return &PaymentConsumer{log: log.WithField("consumer", "payment")}
 }
 
-// --- Негатив: consumer с *logrus.Entry ---
+// --- Negative: a consumer with *logrus.Entry ---
 
 type RefundConsumer struct {
 	log *logrus.Entry
@@ -38,13 +38,13 @@ func NewRefundConsumer(log *logrus.Entry) *RefundConsumer {
 	return &RefundConsumer{log: log}
 }
 
-// --- Граничный: schema-функция возвращает тип чужого пакета — не конструктор ---
+// --- Boundary: a schema function returns a foreign package type — not a constructor ---
 
 func NewOrderCreatedSchema() *registry.Schema {
 	return &registry.Schema{}
 }
 
-// --- Граничный: неэкспортируемый хелпер — не конструктор ---
+// --- Boundary: an unexported helper — not a constructor ---
 
 type helper struct{}
 

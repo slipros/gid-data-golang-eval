@@ -1,15 +1,15 @@
-// Package validatorlib реализует правило GID-164: любые входящие данные
-// (http- и grpc-запросы, kafka-события) валидируются через
+// Package validatorlib implements rule GID-164: all incoming data
+// (http and grpc requests, kafka events) is validated via
 // github.com/raoptimus/validator.go/v2.
 //
-//   - validate-пакеты (server/*/handler/validate, kafka/consumer/validate)
-//     обязаны использовать validator.go;
-//   - сторонние валидационные библиотеки запрещены везде.
+//   - validate packages (server/*/handler/validate, kafka/consumer/validate)
+//     must use validator.go;
+//   - third-party validation libraries are forbidden everywhere.
 //
-// Исключения возможны:
-//   - точечно: //nolint:gidvalidator (на строке package или импорта)
-//   - централизованно: settings.exclude — пакеты, освобождённые от
-//     требования (полный import-путь или суффикс сегментов).
+// Exceptions are possible:
+//   - targeted: //nolint:gidvalidator (on the package or import line)
+//   - centralized: settings.exclude — packages exempt from the requirement
+//     (a full import path or a segment suffix).
 package validatorlib
 
 import (
@@ -27,7 +27,7 @@ const (
 	validatorLib = "github.com/raoptimus/validator.go/v2"
 )
 
-// foreignValidators — сторонние валидационные библиотеки (по префиксу).
+// foreignValidators — third-party validation libraries (by prefix).
 var foreignValidators = []string{
 	"github.com/go-playground/validator",
 	"github.com/go-ozzo/ozzo-validation",
@@ -35,17 +35,17 @@ var foreignValidators = []string{
 	"gopkg.in/go-playground/validator",
 }
 
-// Analyzer — вариант без исключений.
+// Analyzer — the variant without exclusions.
 var Analyzer = NewAnalyzer(Settings{})
 
-// Settings — настройки линтера из .golangci.yml.
+// Settings — the linter settings from .golangci.yml.
 type Settings struct {
-	// Exclude — validate-пакеты, освобождённые от требования:
-	// полный import-путь или суффикс сегментов.
+	// Exclude — validate packages exempt from the requirement:
+	// a full import path or a segment suffix.
 	Exclude []string `json:"exclude"`
 }
 
-// NewAnalyzer строит анализатор GID-164 из настроек линтера (.golangci.yml).
+// NewAnalyzer builds the GID-164 analyzer from the linter settings (.golangci.yml).
 func NewAnalyzer(s Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name: "gidvalidator",
@@ -64,7 +64,7 @@ func run(pass *analysis.Pass, s Settings) (any, error) {
 	return nil, nil
 }
 
-// checkForeignValidators: сторонние валидаторы запрещены в любом пакете.
+// checkForeignValidators: third-party validators are forbidden in any package.
 func checkForeignValidators(pass *analysis.Pass) {
 	for _, file := range pass.Files {
 		if ast.IsGenerated(file) {
@@ -86,7 +86,7 @@ func checkForeignValidators(pass *analysis.Pass) {
 	}
 }
 
-// checkValidatorUsed: validate-пакет обязан импортировать validator.go.
+// checkValidatorUsed: a validate package must import validator.go.
 func checkValidatorUsed(pass *analysis.Pass) {
 	for _, file := range pass.Files {
 		for _, imp := range file.Imports {
@@ -95,7 +95,7 @@ func checkValidatorUsed(pass *analysis.Pass) {
 				continue
 			}
 			if path == validatorLib || strings.HasPrefix(path, validatorLib+"/") {
-				return // validator.go используется
+				return // validator.go is used
 			}
 		}
 	}
@@ -106,7 +106,7 @@ func checkValidatorUsed(pass *analysis.Pass) {
 		pass.Reportf(file.Name.Pos(),
 			"%s: validate package %q must use %s. Fix: import it (exceptions: nolint or settings.exclude)",
 			ruleID, pass.Pkg.Path(), validatorLib)
-		return // одной диагностики на пакет достаточно
+		return // one diagnostic per package is enough
 	}
 }
 

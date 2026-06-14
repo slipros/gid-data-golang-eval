@@ -1,11 +1,11 @@
-// Eval для GID-216: producer-scope (event + producer).
+// Eval for GID-216: producer scope (event + producer).
 package producer
 
 import "github.com/sirupsen/logrus"
 
 type Service interface{ Do() }
 
-// --- Позитив: producer-конструктор с *logrus.Logger ---
+// --- Positive: a producer constructor with *logrus.Logger ---
 
 type OrderProducer struct {
 	log *logrus.Logger
@@ -15,7 +15,7 @@ func NewOrderProducer(log *logrus.Logger) *OrderProducer { // want `GID-216: a p
 	return &OrderProducer{log: log}
 }
 
-// --- Негатив: producer без logger ---
+// --- Negative: a producer without a logger ---
 
 type PaymentProducer struct {
 	svc Service

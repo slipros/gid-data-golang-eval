@@ -1,5 +1,5 @@
-// Негатив (settings.disable: GID-224): проект осознанно разрешил
-// транспорту импортировать domain/service — диагностики нет.
+// Negative (settings.disable: GID-224): the project deliberately allowed
+// transport to import domain/service — there is no diagnostic.
 package handler
 
 import "custom/domain/service"

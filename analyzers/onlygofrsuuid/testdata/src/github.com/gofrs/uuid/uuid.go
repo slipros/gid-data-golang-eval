@@ -1,4 +1,4 @@
-// Stub разрешённой библиотеки для eval.
+// A stub of the allowed library for the eval.
 package uuid
 
 type UUID [16]byte

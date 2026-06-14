@@ -1,14 +1,14 @@
-// Package initclean реализует правило GID-180: init() детерминированный.
-// Внутри func init() запрещены:
-//   - запуск горутин (go-statement) — прямо в теле init, включая вложенные
-//     блоки и замыкания, объявленные в самом init;
-//   - вызовы функций I/O-пакетов (os, net, net/http, database/sql,
-//     io/ioutil, bufio и т.п.) — фоновую работу и I/O выполняйте из
-//     main/конструктора/app.
+// Package initclean implements the GID-180 rule: init() is deterministic.
+// Inside func init() the following are forbidden:
+//   - starting goroutines (a go statement) — directly in the init body, including
+//     nested blocks and closures declared within init itself;
+//   - calls to functions of I/O packages (os, net, net/http, database/sql,
+//     io/ioutil, bufio, etc.) — do background work and I/O from
+//     main/constructor/app.
 //
-// Чтение переменных окружения (os.Getenv, os.LookupEnv) разрешено — это не I/O.
+// Reading environment variables (os.Getenv, os.LookupEnv) is allowed — it is not I/O.
 //
-// Список I/O-пакетов настраивается через settings.packages (заменяет дефолтный).
+// The list of I/O packages is configured via settings.packages (replaces the default).
 package initclean
 
 import (
@@ -20,8 +20,8 @@ import (
 
 const ruleID = "GID-180"
 
-// defaultPackages — пакеты, вызовы функций которых считаются I/O.
-// Матчинг по пути пакета через TypesInfo.
+// defaultPackages — packages whose function calls are considered I/O.
+// Matched by package path via TypesInfo.
 var defaultPackages = []string{
 	"os",
 	"net",
@@ -31,8 +31,8 @@ var defaultPackages = []string{
 	"bufio",
 }
 
-// allowedFuncs — функции I/O-пакетов, разрешённые в init().
-// Чтение env детерминировано и I/O-эффекта не несёт.
+// allowedFuncs — functions of I/O packages that are allowed in init().
+// Reading env is deterministic and carries no I/O effect.
 var allowedFuncs = map[string]map[string]bool{
 	"os": {
 		"Getenv":    true,
@@ -40,16 +40,16 @@ var allowedFuncs = map[string]map[string]bool{
 	},
 }
 
-// Analyzer — вариант с дефолтным списком I/O-пакетов.
+// Analyzer — the variant with the default list of I/O packages.
 var Analyzer = NewAnalyzer(Settings{})
 
-// Settings — настройки линтера из .golangci.yml.
+// Settings — linter settings from .golangci.yml.
 type Settings struct {
-	// Packages — I/O-пакеты (пути import). Заменяет дефолтный список.
+	// Packages — I/O packages (import paths). Replaces the default list.
 	Packages []string `json:"packages"`
 }
 
-// NewAnalyzer строит анализатор GID-180 из настроек линтера (.golangci.yml).
+// NewAnalyzer builds the GID-180 analyzer from linter settings (.golangci.yml).
 func NewAnalyzer(s Settings) *analysis.Analyzer {
 	pkgs := s.Packages
 	if len(pkgs) == 0 {
@@ -84,9 +84,9 @@ func run(pass *analysis.Pass, ioPkgs map[string]bool) (any, error) {
 	return nil, nil
 }
 
-// checkInitBody обходит тело init() целиком (включая вложенные блоки и
-// тела замыканий, объявленных прямо в init) и репортит запрещённые
-// конструкции.
+// checkInitBody walks the entire init() body (including nested blocks and
+// the bodies of closures declared directly in init) and reports forbidden
+// constructs.
 func checkInitBody(pass *analysis.Pass, body *ast.BlockStmt, ioPkgs map[string]bool) {
 	ast.Inspect(body, func(n ast.Node) bool {
 		switch node := n.(type) {
@@ -110,9 +110,9 @@ func checkInitBody(pass *analysis.Pass, body *ast.BlockStmt, ioPkgs map[string]b
 	})
 }
 
-// selectorPkgFunc возвращает путь пакета и имя функции для вызова вида
-// pkg.Func(...). Для не-пакетных вызовов (методы, локальные функции)
-// возвращает пустую строку пакета.
+// selectorPkgFunc returns the package path and function name for a call of the
+// form pkg.Func(...). For non-package calls (methods, local functions) it
+// returns an empty package string.
 func selectorPkgFunc(pass *analysis.Pass, call *ast.CallExpr) (pkgPath, fnName string) {
 	sel, ok := call.Fun.(*ast.SelectorExpr)
 	if !ok {

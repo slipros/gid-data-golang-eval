@@ -1,4 +1,4 @@
-// Класс «позитив»: регистрация флага в библиотечном (не main) пакете запрещена.
+// "Positive" class: registering a flag in a library (non-main) package is forbidden.
 package libflag
 
 import "flag"
@@ -9,8 +9,8 @@ func register() {
 	flag.String("addr", ":8080", "listen addr") // want `GID-192: registering a flag outside package main is forbidden\. Fix: declare flags in the binary, let libraries take parameters`
 }
 
-// Граничный: имя флага динамическое — часть 2 не считаем, но часть 1
-// (регистрация вне main) всё равно срабатывает.
+// Boundary: the flag name is dynamic — part 2 is not evaluated, but part 1
+// (registration outside main) still fires.
 func registerDynamic(name string) {
 	flag.String(name, "", "addr") // want `GID-192: registering a flag outside package main is forbidden\. Fix: declare flags in the binary, let libraries take parameters`
 }

@@ -1,8 +1,8 @@
-// Package gidrules регистрирует внутренние правила кода как линтеры
-// golangci-lint через Module Plugin System.
+// Package gidrules registers the internal code rules as golangci-lint
+// linters via the Module Plugin System.
 //
-// Каждое правило — отдельный линтер: его можно независимо включать и
-// выключать в .golangci.yml (см. RULES.md — реестр правил).
+// Each rule is a separate linter: it can be enabled and disabled
+// independently in .golangci.yml (see RULES.md — the rule registry).
 package gidrules
 
 import (
@@ -30,10 +30,12 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/embedmutex"
 	"github.com/slipros/gid-data-golang-eval/analyzers/entitygroup"
 	"github.com/slipros/gid-data-golang-eval/analyzers/entitymethod"
+	"github.com/slipros/gid-data-golang-eval/analyzers/enumcast"
 	"github.com/slipros/gid-data-golang-eval/analyzers/enumconvert"
 	"github.com/slipros/gid-data-golang-eval/analyzers/enumplace"
 	"github.com/slipros/gid-data-golang-eval/analyzers/enumstring"
 	"github.com/slipros/gid-data-golang-eval/analyzers/errlast"
+	"github.com/slipros/gid-data-golang-eval/analyzers/errname"
 	"github.com/slipros/gid-data-golang-eval/analyzers/errnew"
 	"github.com/slipros/gid-data-golang-eval/analyzers/errplace"
 	"github.com/slipros/gid-data-golang-eval/analyzers/errwrap"
@@ -44,7 +46,9 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/flagmain"
 	"github.com/slipros/gid-data-golang-eval/analyzers/flatlayout"
 	"github.com/slipros/gid-data-golang-eval/analyzers/fmtconst"
+	"github.com/slipros/gid-data-golang-eval/analyzers/fsmmap"
 	"github.com/slipros/gid-data-golang-eval/analyzers/grpcinservice"
+	"github.com/slipros/gid-data-golang-eval/analyzers/handlershape"
 	"github.com/slipros/gid-data-golang-eval/analyzers/httperrors"
 	"github.com/slipros/gid-data-golang-eval/analyzers/ifacemin"
 	"github.com/slipros/gid-data-golang-eval/analyzers/ifacenaming"
@@ -75,6 +79,7 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/patterns"
 	"github.com/slipros/gid-data-golang-eval/analyzers/pkgstutter"
 	"github.com/slipros/gid-data-golang-eval/analyzers/privatefunc"
+	"github.com/slipros/gid-data-golang-eval/analyzers/protorequired"
 	"github.com/slipros/gid-data-golang-eval/analyzers/receivernaming"
 	"github.com/slipros/gid-data-golang-eval/analyzers/servicemodel"
 	"github.com/slipros/gid-data-golang-eval/analyzers/servicesingle"
@@ -86,7 +91,7 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/validatorshape"
 )
 
-//nolint:gochecknoinits // контракт golangci-lint Module Plugin System — регистрация только через init
+//nolint:gochecknoinits // golangci-lint Module Plugin System contract — registration only via init
 func init() {
 	register.Plugin("gidnogetprefix", newSingleAnalyzerPlugin(nogetprefix.Analyzer, register.LoadModeSyntax))
 	register.Plugin("gidnobatch", newSingleAnalyzerPlugin(nobatch.Analyzer, register.LoadModeSyntax))
@@ -167,7 +172,12 @@ func init() {
 	register.Plugin("gidinlineconv", newSingleAnalyzerPlugin(inlineconv.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gideventctor", newConfigurablePlugin(eventctor.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidbansymbol", newConfigurablePlugin(bansymbol.NewAnalyzer, register.LoadModeTypesInfo))
-	// Слой 1 (бывший ruleguard) — простые AST-паттерны, теперь нативные анализаторы.
+	register.Plugin("gidhandlershape", newConfigurablePlugin(handlershape.NewAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidfsmmap", newSingleAnalyzerPlugin(fsmmap.Analyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidprotorequired", newConfigurablePlugin(protorequired.NewAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidenumcast", newSingleAnalyzerPlugin(enumcast.Analyzer, register.LoadModeTypesInfo))
+	register.Plugin("giderrname", newConfigurablePlugin(errname.NewAnalyzer, register.LoadModeTypesInfo))
+	// Layer 1 (former ruleguard) — simple AST patterns, now native analyzers.
 	register.Plugin("gidtimenow", newSingleAnalyzerPlugin(patterns.TimeNowAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("giduuidnil", newSingleAnalyzerPlugin(patterns.UUIDNilAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("giduuidversion", newSingleAnalyzerPlugin(patterns.UUIDVersionAnalyzer, register.LoadModeTypesInfo))
@@ -177,17 +187,17 @@ func init() {
 	register.Plugin("giddeepequal", newSingleAnalyzerPlugin(patterns.DeepEqualAnalyzer, register.LoadModeTypesInfo))
 }
 
-// newSingleAnalyzerPlugin оборачивает один анализатор в плагин golangci-lint:
-// одно правило = один линтер. loadMode — LoadModeSyntax для чисто
-// AST-проверок, LoadModeTypesInfo для проверок с информацией о типах.
+// newSingleAnalyzerPlugin wraps a single analyzer into a golangci-lint plugin:
+// one rule = one linter. loadMode — LoadModeSyntax for pure AST checks,
+// LoadModeTypesInfo for checks that need type information.
 func newSingleAnalyzerPlugin(a *analysis.Analyzer, loadMode string) func(settings any) (register.LinterPlugin, error) {
 	return func(_ any) (register.LinterPlugin, error) {
 		return &singleAnalyzerPlugin{analyzer: a, loadMode: loadMode}, nil
 	}
 }
 
-// newConfigurablePlugin — как newSingleAnalyzerPlugin, но анализатор
-// строится из настроек линтера в .golangci.yml (settings).
+// newConfigurablePlugin is like newSingleAnalyzerPlugin, but the analyzer
+// is built from the linter settings in .golangci.yml (settings).
 func newConfigurablePlugin[T any](
 	build func(T) *analysis.Analyzer,
 	loadMode string,
@@ -210,7 +220,7 @@ func (s *singleAnalyzerPlugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 	return []*analysis.Analyzer{s.analyzer}, nil
 }
 
-//nolint:gidnogetprefix // имя метода — контракт интерфейса register.LinterPlugin
+//nolint:gidnogetprefix // the method name is the register.LinterPlugin interface contract
 func (s *singleAnalyzerPlugin) GetLoadMode() string {
 	return s.loadMode
 }

@@ -1,5 +1,5 @@
-// Минимальный stub github.com/gofrs/uuid для eval: ruleguard проверяет
-// тип через Where(...Type.Is(`uuid.UUID`)), реальная библиотека не нужна.
+// A minimal stub of github.com/gofrs/uuid for the eval: ruleguard checks the
+// type via Where(...Type.Is(`uuid.UUID`)), the real library is not needed.
 package uuid
 
 type UUID [16]byte

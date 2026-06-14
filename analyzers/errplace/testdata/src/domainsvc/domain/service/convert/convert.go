@@ -1,5 +1,5 @@
-// Негатив (граница): типизированные ошибки gderror разрешены —
-// конвертеры используют NewUnhandledValueError при map-маппинге enum.
+// Negative (boundary): typed gderror errors are allowed —
+// converters use NewUnhandledValueError for enum map mapping.
 package convert
 
 import gderror "gitlab.gid.team/gid-data/tech/golang/libs/helper.git/errors"

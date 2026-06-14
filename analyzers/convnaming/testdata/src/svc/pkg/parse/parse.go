@@ -1,4 +1,4 @@
-// Неприменимость: вне слоёв dal/domain/server/event паттерн не проверяется.
+// Not applicable: outside the dal/domain/server/event layers the pattern is not checked.
 package parse
 
 type Config struct{ Raw string }

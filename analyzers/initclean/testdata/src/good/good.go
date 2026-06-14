@@ -1,17 +1,17 @@
-// Eval GID-180: негативные и граничные кейсы — диагностика не выводится.
+// Eval GID-180: negative and boundary cases — no diagnostic is emitted.
 package good
 
 import "os"
 
 var cfg = map[string]string{}
 
-// Негатив: конструирование мапы в init — детерминированно, ок.
+// Negative: constructing a map in init — deterministic, ok.
 func init() {
 	cfg["a"] = "1"
 	cfg["b"] = "2"
 }
 
-// Негатив: чтение env в init разрешено (это не I/O).
+// Negative: reading env in init is allowed (it is not I/O).
 func init() {
 	cfg["host"] = os.Getenv("HOST")
 	if v, ok := os.LookupEnv("PORT"); ok {
@@ -19,13 +19,13 @@ func init() {
 	}
 }
 
-// Негатив: go-statement в обычной функции — правило к не-init не применяется.
+// Negative: a go statement in an ordinary function — the rule does not apply to non-init.
 func StartWorker() {
 	go func() {}()
 }
 
-// Граничный (ограничение): хелпер вне init с os.Open, вызванный из init,
-// НЕ матчится — анализ внутрипроцедурный, тело хелпера не обходится как init.
+// Boundary (limitation): a helper outside init with os.Open, called from init,
+// is NOT matched — the analysis is intraprocedural, the helper's body is not walked as init.
 func loadFile() {
 	_, _ = os.Open("/etc/hosts")
 }

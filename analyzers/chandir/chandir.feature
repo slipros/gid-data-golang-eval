@@ -1,96 +1,96 @@
-# language: ru
+# language: en
 
-Функция: GID-189 — направление параметров-каналов (chan-direction)
-  Как разработчик
-  Я хочу, чтобы параметры-каналы в сигнатурах указывали направление (<-chan/chan<-)
-  Чтобы намерение (читать или писать в канал) было явным и защищённым типом
+Feature: GID-189 — direction of channel parameters (chan-direction)
+  As a developer
+  I want channel parameters in signatures to declare a direction (<-chan/chan<-)
+  So that the intent (read from or write to the channel) is explicit and type-protected
 
-  # Правило Google: "channel direction".
-  # Анализатор gidchandir, LoadMode Syntax (хватает AST):
-  #   параметр функции/метода/функционального литерала, чей тип — литеральный
-  #   *ast.ChanType с Dir == SEND|RECV (двунаправленный chan T), — матчим.
-  # Решение по функциональным литералам: МАТЧИМ (их параметры тоже сигнатура).
-  # Проверяются только Params, не Results.
-  # НЕ матчим: <-chan/chan<-, возвраты, поля структур, локальные переменные,
-  #   именованный тип-канал в параметре (это *ast.Ident), []chan T (*ast.ArrayType).
-  # Сгенерированный код (ast.IsGenerated) пропускается.
-  # Точечное отключение — стандартный //nolint:gidchandir.
+  # Google rule: "channel direction".
+  # Analyzer gidchandir, LoadMode Syntax (AST is enough):
+  #   a parameter of a function/method/function literal whose type is a literal
+  #   *ast.ChanType with Dir == SEND|RECV (bidirectional chan T) — matched.
+  # Decision on function literals: MATCHED (their parameters are a signature too).
+  # Only Params are checked, not Results.
+  # NOT matched: <-chan/chan<-, return values, struct fields, local variables,
+  #   a named channel type in a parameter (that is an *ast.Ident), []chan T (*ast.ArrayType).
+  # Generated code (ast.IsGenerated) is skipped.
+  # Targeted suppression — the standard //nolint:gidchandir.
 
-  # === Класс 1: позитивные (двунаправленный параметр-канал) ===
+  # === Class 1: positive (bidirectional channel parameter) ===
 
-  Сценарий: позитивный — функция с параметром chan T
-    Допустим объявление "func consume(ch chan int)"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-189: параметр-канал ch двунаправленный — укажите направление (<-chan для чтения, chan<- для записи)"
+  Scenario: positive — a function with a chan T parameter
+    Given the declaration "func consume(ch chan int)"
+    When the analyzer checks the file
+    Then the diagnostic "GID-189: channel parameter ch is bidirectional. Fix: declare a direction, <-chan to receive or chan<- to send." is reported
 
-  Сценарий: позитивный — метод с параметром chan T
-    Допустим метод "func (w worker) run(ch chan string)"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-189: параметр-канал ch двунаправленный — укажите направление (<-chan для чтения, chan<- для записи)"
+  Scenario: positive — a method with a chan T parameter
+    Given the method "func (w worker) run(ch chan string)"
+    When the analyzer checks the file
+    Then the diagnostic "GID-189: channel parameter ch is bidirectional. Fix: declare a direction, <-chan to receive or chan<- to send." is reported
 
-  Сценарий: позитивный — функциональный литерал с параметром chan T
-    Допустим литерал "func(ch chan int) { <-ch }"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-189: параметр-канал ch двунаправленный — укажите направление (<-chan для чтения, chan<- для записи)"
+  Scenario: positive — a function literal with a chan T parameter
+    Given the literal "func(ch chan int) { <-ch }"
+    When the analyzer checks the file
+    Then the diagnostic "GID-189: channel parameter ch is bidirectional. Fix: declare a direction, <-chan to receive or chan<- to send." is reported
 
-  Сценарий: позитивный — несколько имён в одной группе параметров
-    Допустим объявление "func multi(a, b chan int)"
-    Когда анализатор проверяет файл
-    Тогда выводится одна диагностика на группу "GID-189: параметр-канал a, b двунаправленный — укажите направление (<-chan для чтения, chan<- для записи)"
+  Scenario: positive — several names in one parameter group
+    Given the declaration "func multi(a, b chan int)"
+    When the analyzer checks the file
+    Then a single diagnostic per group is reported: "GID-189: channel parameter a, b is bidirectional. Fix: declare a direction, <-chan to receive or chan<- to send."
 
-  # === Класс 2: негативные (направление указано) ===
+  # === Class 2: negative (direction is declared) ===
 
-  Сценарий: негативный — канал только для чтения
-    Допустим объявление "func recvOnly(ch <-chan int)"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — receive-only channel
+    Given the declaration "func recvOnly(ch <-chan int)"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: негативный — канал только для записи
-    Допустим объявление "func sendOnly(ch chan<- int)"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — send-only channel
+    Given the declaration "func sendOnly(ch chan<- int)"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  # === Класс 3: граничные (не матчатся) ===
+  # === Class 3: boundary (not matched) ===
 
-  Сценарий: граничный — двунаправленный канал в возврате
-    Допустим объявление "func produce() chan int"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
-    # Владельцу канала бывает нужен двунаправленный — решает review.
+  Scenario: boundary — bidirectional channel in a return value
+    Given the declaration "func produce() chan int"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+    # The channel owner sometimes needs a bidirectional one — review decides.
 
-  Сценарий: граничный — поле структуры с типом chan T
-    Допустим тип "type holder struct { ch chan int }"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: boundary — a struct field of type chan T
+    Given the type "type holder struct { ch chan int }"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: граничный — локальная переменная-канал
-    Допустим выражение "var ch chan int"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: boundary — a local channel variable
+    Given the expression "var ch chan int"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: граничный — именованный тип-канал в параметре
-    Допустим "type Pipe chan int" и объявление "func namedParam(p Pipe)"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
-    # Именованный тип — осознанное решение; в AST параметра это *ast.Ident.
+  Scenario: boundary — a named channel type in a parameter
+    Given "type Pipe chan int" and the declaration "func namedParam(p Pipe)"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+    # A named type is a deliberate decision; in the parameter's AST it is an *ast.Ident.
 
-  Сценарий: граничный — срез каналов в параметре
-    Допустим объявление "func sliceParam(chs []chan int)"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
-    # []chan T — это *ast.ArrayType, а не прямой параметр-канал.
+  Scenario: boundary — a slice of channels in a parameter
+    Given the declaration "func sliceParam(chs []chan int)"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+    # []chan T is an *ast.ArrayType, not a direct channel parameter.
 
-  # === Класс 4: неприменимость ===
+  # === Class 4: non-applicability ===
 
-  Сценарий: неприменимость — файл без каналов в сигнатурах
-    Допустим пакет без единого параметра-канала
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: non-applicability — a file without channels in signatures
+    Given a package without a single channel parameter
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (RULES.md, GID-189)
-#  [x] Выбран слой: go/analysis (анализатор gidchandir в analyzers/chandir)
-#  [x] Заданы severity и сообщение ("GID-189: …")
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [ ] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (RULES.md, GID-189)
+#  [x] Layer chosen: go/analysis (analyzer gidchandir in analyzers/chandir)
+#  [x] Severity and message are defined ("GID-189: …")
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [ ] Rule enabled in .golangci.yml

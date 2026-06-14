@@ -1,5 +1,5 @@
-// Класс «граничный»: os.Exit внутри замыкания в main считается вызовом в main
-// (а не «вне main»). Единственный такой вызов — диагностики нет.
+// "Boundary" class: os.Exit inside a closure in main counts as a call in main
+// (not "outside main"). A single such call — no diagnostic.
 package main
 
 import "os"

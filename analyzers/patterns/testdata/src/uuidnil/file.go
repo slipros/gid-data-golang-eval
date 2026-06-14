@@ -2,19 +2,19 @@ package uuidnil
 
 import "github.com/gofrs/uuid"
 
-// Позитив: сравнение UUID с uuid.UUID{} запрещено (== и !=).
+// Positive: comparing a UUID with uuid.UUID{} is forbidden (== and !=).
 func bad(id uuid.UUID) (bool, bool) {
 	eq := id == uuid.UUID{} // want `GID-002: do not compare a UUID with uuid\.UUID\{\}\. Fix: replace "id == uuid\.UUID\{\}" with "id\.IsNil\(\)"\.`
 	ne := id != uuid.UUID{} // want `GID-002: .* Fix: replace "id != uuid\.UUID\{\}" with "!id\.IsNil\(\)"\.`
 	return eq, ne
 }
 
-// Негатив: канонический IsNil().
+// Negative: the canonical IsNil().
 func good(id uuid.UUID) bool {
 	return id.IsNil()
 }
 
-// Неприменимость: сравнение не-UUID типов.
+// Not applicable: comparing non-UUID types.
 func boundary(a, b int) bool {
 	return a == b
 }

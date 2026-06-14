@@ -1,4 +1,4 @@
-// Eval для GID-215 (no-inline-entity-literal) в domain-слое.
+// Eval for GID-215 (no-inline-entity-literal) in the domain layer.
 package service
 
 import (
@@ -7,7 +7,7 @@ import (
 	"svc/domain/model"
 )
 
-// --- Класс 1: позитивный (инлайн-заполнение entity запрещено) ---
+// --- Class 1: positive (inline-filling an entity is forbidden) ---
 
 func createSnapshot(name string) entity.CreateSnapshot {
 	return entity.CreateSnapshot{Name: name} // want `GID-215: inline-filling the entity type entity\.CreateSnapshot in the domain layer is forbidden\. Fix: put conversion in a convert package \(<Dst><Type>From<Src>\)`
@@ -25,23 +25,23 @@ func snapshotsFilter(name string) filter.Snapshots {
 	return filter.Snapshots{Name: name, Limit: 10} // want `GID-215: inline-filling the entity type filter\.Snapshots in the domain layer is forbidden`
 }
 
-// --- Класс 2: негативный (чистый код проходит) ---
+// --- Class 2: negative (clean code passes) ---
 
 func emptySnapshot() entity.Snapshot {
-	return entity.Snapshot{} // пустой литерал — zero value, разрешён.
+	return entity.Snapshot{} // empty literal — zero value, allowed.
 }
 
 func modelSnapshot(id, name string) model.Snapshot {
-	return model.Snapshot{ID: id, Name: name} // model в domain — норма.
+	return model.Snapshot{ID: id, Name: name} // model in domain is normal.
 }
 
 func modelCreate(name string) model.CreateSnapshot {
 	return model.CreateSnapshot{Name: name}
 }
 
-// --- Класс 3: граничный ---
+// --- Class 3: boundary ---
 
-// Вложенный entity-литерал внутри зафлаганного внешнего — одна диагностика.
+// A nested entity literal inside a flagged outer one — a single diagnostic.
 func nestedSlice() entity.Snapshots {
 	return entity.Snapshots{ // want `GID-215: inline-filling the entity type entity\.Snapshots in the domain layer is forbidden`
 		entity.Snapshot{ID: "a"},
@@ -49,9 +49,9 @@ func nestedSlice() entity.Snapshots {
 	}
 }
 
-// map[string]entity.X{...} — сам map-литерал не entity-тип (не флагается),
-// а вот значение entity.Snapshot{...} — флагается. Элемент без явного типа
-// ({ID: id}) тоже имеет тип entity.Snapshot и флагается как непустой литерал.
+// map[string]entity.X{...} — the map literal itself is not an entity type (not flagged),
+// but the value entity.Snapshot{...} is flagged. An element without an explicit type
+// ({ID: id}) also has type entity.Snapshot and is flagged as a non-empty literal.
 func snapshotMap(id string) map[string]entity.Snapshot {
 	return map[string]entity.Snapshot{
 		id: {ID: id}, // want `GID-215: inline-filling the entity type entity\.Snapshot in the domain layer is forbidden`

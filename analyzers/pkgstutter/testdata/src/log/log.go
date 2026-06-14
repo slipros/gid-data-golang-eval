@@ -1,11 +1,11 @@
-// Eval для GID-193: граничный кейс границы CamelCase-слова — пакет log.
+// Eval for GID-193: the CamelCase word-boundary case — package log.
 package log
 
-// Logger — имя пакета log является лишь префиксом слова "Logger", а не
-// отдельным CamelCase-словом: границы слова нет, заикания нет.
+// Logger — the package name log is only a prefix of the word "Logger", not a
+// separate CamelCase word: there is no word boundary, so no stutter.
 type Logger struct {
 	prefix string
 }
 
-// Log — точное совпадение с именем пакета без следующего слова: не матчится.
+// Log — an exact match of the package name with no next word: not matched.
 func Log(msg string) {}

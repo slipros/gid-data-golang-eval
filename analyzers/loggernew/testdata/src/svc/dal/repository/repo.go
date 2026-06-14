@@ -1,4 +1,4 @@
-// Eval GID-214: позитив — logrus.StandardLogger() в /dal/repository.
+// Eval GID-214: positive — logrus.StandardLogger() in /dal/repository.
 package repository
 
 import (
@@ -9,7 +9,7 @@ type Repo struct {
 	logger *logrus.Logger
 }
 
-// Позитивный кейс: StandardLogger() тоже запрещён вне composition root.
+// Positive case: StandardLogger() is also forbidden outside the composition root.
 func New() *Repo {
 	return &Repo{
 		logger: logrus.StandardLogger(), // want `GID-214: logrus.StandardLogger\(\) may be called only in the composition root \(main, internal/app\)\. Fix: pass a ready \*logrus\.Entry through the constructor`

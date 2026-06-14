@@ -1,5 +1,5 @@
-// Негатив (граница): вложенные пакеты /domain/model/* — полноправный
-// model-слой, объявление ошибок разрешено.
+// Negative (boundary): nested packages /domain/model/* are a full-fledged
+// model layer, declaring errors is allowed.
 package filter
 
 import "github.com/pkg/errors"

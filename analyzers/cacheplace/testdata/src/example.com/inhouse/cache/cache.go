@@ -1,4 +1,4 @@
-// Stub inhouse кэш-библиотеки для eval settings.packages.
+// Stub of an in-house cache library for the settings.packages eval.
 package cache
 
 type Store struct{}

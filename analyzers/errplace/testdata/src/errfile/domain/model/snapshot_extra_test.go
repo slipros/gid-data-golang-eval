@@ -1,4 +1,4 @@
-// Граница: *_test.go пропускается — объявление ошибки тут не нарушает GID-169.
+// Boundary: *_test.go is skipped — declaring an error here does not violate GID-169.
 package model
 
 import "github.com/pkg/errors"

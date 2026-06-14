@@ -1,81 +1,81 @@
-# language: ru
-# Спецификация правила GID-187 (no-util-package).
-# Линтер: gidutilpkg (go/analysis, LoadModeSyntax — типы не нужны).
+# language: en
+# Specification of rule GID-187 (no-util-package).
+# Linter: gidutilpkg (go/analysis, LoadModeSyntax — no types needed).
 
-Функция: GID-187 — запрет пакетов-свалок (util, utils, common, …)
-  Как разработчик backend-go сервиса
-  Я хочу, чтобы пакеты назывались по тому, что они предоставляют
-  Чтобы по имени пакета было понятно его назначение, а не «здесь лежит всё подряд»
+Feature: GID-187 — ban on junk-drawer packages (util, utils, common, …)
+  As a backend-go service developer
+  I want packages to be named after what they provide
+  So that the package name conveys its purpose rather than "everything goes here"
 
-  # Проверяется имя пакета (pass.Pkg.Name() == последний сегмент пути)
-  # регистронезависимо. Чёрный список по умолчанию:
+  # The package name is checked (pass.Pkg.Name() == the last path segment)
+  # case-insensitively. The default blacklist:
   #   util, utils, common, helper, helpers, shared, misc, lib, base.
-  # settings.names полностью замещает дефолт.
-  # Суффикс _test тестового пакета нормализуется (utils_test → utils).
-  # Один репорт на пакет — на package-клаузе первого не сгенерированного файла;
-  # сгенерированные файлы при выборе позиции пропускаются.
-  # Сравнение по полному имени: stringutil НЕ матчит util (это не суффикс).
+  # settings.names fully replaces the default.
+  # The _test suffix of a test package is normalized (utils_test → utils).
+  # One report per package — on the package clause of the first non-generated file;
+  # generated files are skipped when choosing the position.
+  # The comparison is by the full name: stringutil does NOT match util (it is not a suffix match).
 
-  # --- Позитивные кейсы (нарушение ловится) ---
+  # --- Positive cases (the violation is caught) ---
 
-  Сценарий: позитивный — пакет util
-    Допустим пакет с именем "util"
-    Когда анализатор проверяет пакет
-    Тогда выводится диагностика "GID-187: пакет \"util\" — свалка без зоны ответственности; назовите пакет по тому, что он предоставляет" на package-клаузе
+  Scenario: positive — the util package
+    Given a package named "util"
+    When the analyzer checks the package
+    Then the diagnostic "GID-187: package \"util\" is a junk drawer with no responsibility. Fix: name the package after what it provides" is reported on the package clause
 
-  Сценарий: позитивный — пакет helpers
-    Допустим пакет с именем "helpers"
-    Когда анализатор проверяет пакет
-    Тогда выводится диагностика "GID-187: пакет \"helpers\" …" на package-клаузе
+  Scenario: positive — the helpers package
+    Given a package named "helpers"
+    When the analyzer checks the package
+    Then the diagnostic "GID-187: package \"helpers\" …" is reported on the package clause
 
-  Сценарий: позитивный — пакет common
-    Допустим пакет с именем "common"
-    Когда анализатор проверяет пакет
-    Тогда выводится диагностика "GID-187: пакет \"common\" …" на package-клаузе
+  Scenario: positive — the common package
+    Given a package named "common"
+    When the analyzer checks the package
+    Then the diagnostic "GID-187: package \"common\" …" is reported on the package clause
 
-  # --- Негативные кейсы (чистый код проходит) ---
+  # --- Negative cases (clean code passes) ---
 
-  Сценарий: негативный — осмысленное имя convert
-    Допустим пакет с именем "convert"
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
+  Scenario: negative — the meaningful name convert
+    Given a package named "convert"
+    When the analyzer checks the package
+    Then no diagnostic is reported
 
-  Сценарий: негативный — stringutil (имя с суффиксом util не матчится)
-    Допустим пакет с именем "stringutil"
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
+  Scenario: negative — stringutil (a name with the util suffix is not matched)
+    Given a package named "stringutil"
+    When the analyzer checks the package
+    Then no diagnostic is reported
 
-  # --- Граничные кейсы (настройка/регистр) ---
+  # --- Boundary cases (configuration/case) ---
 
-  Сценарий: граничный — settings.names=["junk"] матчит junk
-    Допустим settings.names = ["junk"] и пакет с именем "junk"
-    Когда анализатор проверяет пакет
-    Тогда выводится диагностика "GID-187: пакет \"junk\" …" на package-клаузе
+  Scenario: boundary — settings.names=["junk"] matches junk
+    Given settings.names = ["junk"] and a package named "junk"
+    When the analyzer checks the package
+    Then the diagnostic "GID-187: package \"junk\" …" is reported on the package clause
 
-  Сценарий: граничный — settings.names=["junk"] НЕ матчит util
-    Допустим settings.names = ["junk"] и пакет с именем "util"
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
-    # (Кастомный список полностью замещает дефолт.)
+  Scenario: boundary — settings.names=["junk"] does NOT match util
+    Given settings.names = ["junk"] and a package named "util"
+    When the analyzer checks the package
+    Then no diagnostic is reported
+    # (The custom list fully replaces the default.)
 
-  Сценарий: граничный — регистр имени не влияет (UTIL → util)
-    Допустим пакет с именем в верхнем регистре, нормализуемым к "util"
-    Когда анализатор проверяет пакет
-    Тогда выводится диагностика "GID-187: …"
-    # (Сравнение регистронезависимо; в реальном Go имя пакета пишется в коде
-    #  как есть, поэтому покрыто нормализацией strings.ToLower.)
+  Scenario: boundary — the name case does not matter (UTIL → util)
+    Given a package with an uppercase name normalizing to "util"
+    When the analyzer checks the package
+    Then the diagnostic "GID-187: …" is reported
+    # (The comparison is case-insensitive; in real Go the package name is written in code
+    #  as is, so it is covered by strings.ToLower normalization.)
 
-  # --- Неприменимость (правило не действует) ---
+  # --- Non-applicability (the rule does not apply) ---
 
-  Сценарий: неприменимость — обычный доменный пакет model
-    Допустим пакет с именем "model"
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
+  Scenario: non-applicability — an ordinary domain package model
+    Given a package named "model"
+    When the analyzer checks the package
+    Then no diagnostic is reported
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (RULES.md, GID-187)
-#  [x] Выбран слой: go/analysis, LoadModeSyntax (типы не нужны — хватает имени пакета)
-#  [x] Заданы severity и сообщение ("GID-187: …")
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest (+ кастомный settings.names)
-#  [ ] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (RULES.md, GID-187)
+#  [x] Layer chosen: go/analysis, LoadModeSyntax (no types needed — the package name suffices)
+#  [x] Severity and message are defined ("GID-187: …")
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest (+ custom settings.names)
+#  [ ] Rule enabled in .golangci.yml

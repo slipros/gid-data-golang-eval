@@ -1,4 +1,4 @@
-// Stub github.com/sirupsen/logrus для eval GID-181.
+// Stub of github.com/sirupsen/logrus for the GID-181 eval.
 package logrus
 
 type Fields map[string]any
@@ -21,7 +21,7 @@ func (l *Logger) Fatal(args ...any)                      {}
 func (l *Logger) Fatalf(format string, args ...any)      {}
 func (l *Logger) Fatalln(args ...any)                    {}
 
-// Пакетные функции.
+// Package-level functions.
 func Info(args ...any)                  {}
 func Fatal(args ...any)                 {}
 func Fatalf(format string, args ...any) {}

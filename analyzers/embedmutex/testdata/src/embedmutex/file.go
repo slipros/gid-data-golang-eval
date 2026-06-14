@@ -1,4 +1,4 @@
-// Eval для GID-178 (запрет встраивания sync.Mutex/sync.RWMutex).
+// Eval for GID-178 (a ban on embedding sync.Mutex/sync.RWMutex).
 package embedmutex
 
 import (
@@ -7,49 +7,49 @@ import (
 	syncalias "sync"
 )
 
-// --- Позитивные кейсы (встраивание ловится) ---
+// --- Positive cases (embedding is caught) ---
 
-// Встроенный sync.Mutex.
+// An embedded sync.Mutex.
 type Cache struct {
 	sync.Mutex // want `GID-178: sync\.Mutex is embedded in the struct\. Fix: use a named mutex field \(mu sync\.Mutex\), otherwise Lock/Unlock leak into the type's API`
 	data       map[string]string
 }
 
-// Встроенный указатель *sync.RWMutex.
+// An embedded pointer *sync.RWMutex.
 type Registry struct {
 	*sync.RWMutex // want `GID-178: sync\.RWMutex is embedded in the struct\. Fix: use a named mutex field \(mu sync\.Mutex\), otherwise Lock/Unlock leak into the type's API`
 	items         []int
 }
 
-// Встраивание через алиас импорта пакета sync — детект по типу, не по тексту.
+// Embedding via an aliased import of the sync package — detected by type, not by text.
 type Aliased struct {
 	syncalias.Mutex // want `GID-178: sync\.Mutex is embedded in the struct\. Fix: use a named mutex field \(mu sync\.Mutex\), otherwise Lock/Unlock leak into the type's API`
 	n               int
 }
 
-// --- Негативные кейсы (чистый код проходит) ---
+// --- Negative cases (clean code passes) ---
 
-// Именованное неэкспортируемое поле — каноническая форма.
+// A named unexported field — the canonical form.
 type Good struct {
 	mu   sync.Mutex
 	data map[string]string
 }
 
-// Именованное поле-указатель тоже допустимо.
+// A named pointer field is also allowed.
 type GoodPtr struct {
 	mu *sync.RWMutex
 }
 
-// --- Граничные кейсы (похоже, но не матчится) ---
+// --- Edge cases (similar, but not matched) ---
 
-// Свой тип Mutex (не из пакета sync) — встраивание допустимо.
+// A custom Mutex type (not from the sync package) — embedding is allowed.
 type Mutex struct{}
 
 type WithOwnMutex struct {
-	Mutex // не sync.Mutex
+	Mutex // not sync.Mutex
 }
 
-// sync.WaitGroup — другой тип из sync, не мьютекс.
+// sync.WaitGroup — another type from sync, not a mutex.
 type WithWaitGroup struct {
 	sync.WaitGroup
 	done bool

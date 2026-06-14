@@ -1,7 +1,7 @@
-// Eval GID-171: фильтр прямо в model-слое — ок.
+// Eval of GID-171: a filter directly in the model layer — fine.
 package model
 
-// --- Негативный класс: чистый код проходит ---
+// --- Negative class: clean code passes ---
 
 type JobsFilter struct {
 	Status string

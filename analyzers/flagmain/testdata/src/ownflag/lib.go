@@ -1,10 +1,10 @@
-// Класс «граничный»: локальный пакет с именем flag — это НЕ stdlib "flag",
-// путь импорта другой, поэтому правило не срабатывает даже в библиотеке.
+// "Boundary" class: a local package named flag is NOT the stdlib "flag",
+// the import path differs, so the rule does not fire even in a library.
 package ownflag
 
 import "ownflag/flag"
 
 func use() {
-	flag.String("maxRetries") // имя не snake_case, но это чужой flag — диагностики нет
+	flag.String("maxRetries") // the name is not snake_case, but this is a foreign flag — no diagnostic
 	flag.Parse()
 }

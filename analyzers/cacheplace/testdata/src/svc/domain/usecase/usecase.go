@@ -1,4 +1,4 @@
-// Позитив (граница): in-memory LRU в usecase — тоже кэш, тоже запрещён.
+// Positive (edge): an in-memory LRU in a usecase is also a cache and also forbidden.
 package usecase
 
 import (

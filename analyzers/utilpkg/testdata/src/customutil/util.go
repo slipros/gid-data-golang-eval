@@ -1,5 +1,5 @@
-// Граничный кейс для settings.names=["junk"]: дефолтное имя util уже
-// НЕ в кастомном списке — диагностики нет.
+// Boundary case for settings.names=["junk"]: the default name util is no
+// longer on the custom list — no diagnostic.
 package util
 
 func Noop() {}

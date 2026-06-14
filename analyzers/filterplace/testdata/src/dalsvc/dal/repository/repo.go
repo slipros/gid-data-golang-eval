@@ -1,29 +1,29 @@
-// Eval GID-171: фильтры в /dal/** вне /dal/entity/filter.
+// Eval of GID-171: filters in /dal/** outside /dal/entity/filter.
 package repository
 
-// --- Позитивный класс: нарушение ловится ---
+// --- Positive class: the violation is caught ---
 
-// Суффикс *Filter — фильтр в repository, должен жить в /dal/entity/filter.
+// The *Filter suffix — a filter in repository, must live in /dal/entity/filter.
 type JobsFilter struct { // want `GID-171: filter "JobsFilter" must live in /dal/entity/filter\. Fix: move it there`
 	Status string
 }
 
-// Префикс Filter* — тоже фильтр.
+// The Filter* prefix — a filter too.
 type FilterStages struct { // want `GID-171: filter "FilterStages" must live in /dal/entity/filter\. Fix: move it there`
 	StageID string
 }
 
-// --- Граничный класс ---
+// --- Boundary class ---
 
-// FilterFunc — не struct (func-тип), правило не трогает.
+// FilterFunc — not a struct (a func type), the rule leaves it alone.
 type FilterFunc func(row string) bool
 
-// Filterable — слово Filter с продолжением строчной буквой, не имя-фильтр.
+// Filterable — the word Filter continued by a lowercase letter, not a filter name.
 type Filterable struct {
 	Enabled bool
 }
 
-// Обычная сущность без слова Filter — не трогаем.
+// An ordinary entity without the word Filter — untouched.
 type Job struct {
 	ID string
 }

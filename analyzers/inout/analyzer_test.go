@@ -12,7 +12,7 @@ func TestAnalyzer(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), inout.Analyzer, "svc/...")
 }
 
-// TestExclude — методы из settings.exclude не репортятся.
+// TestExclude — methods from settings.exclude are not reported.
 func TestExclude(t *testing.T) {
 	a := inout.NewAnalyzer(inout.Settings{
 		Exclude: []string{"Snapshot.SnapshotPtr"},

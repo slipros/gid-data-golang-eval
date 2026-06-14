@@ -1,77 +1,77 @@
-# language: ru
-# GID-216 — event-ctor-deps (линтер gideventctor). Источник: event.md.
+# language: en
+# GID-216 — event-ctor-deps (linter gideventctor). Source: event.md.
 
-Функция: GID-216 — зависимости конструкторов event-слоя
-  Как разработчик event-слоя
-  Я хочу, чтобы конструкторы consumer'ов принимали logrus-logger,
-  а конструкторы producer'ов — нет
-  Чтобы consumer собирал Entry с полями broker/consumer, а producer
-  пробрасывал ошибки вызывающему коду
+Feature: GID-216 — dependencies of event-layer constructors
+  As an event-layer developer
+  I want consumer constructors to take a logrus logger,
+  and producer constructors not to
+  So that the consumer builds an Entry with broker/consumer fields, and the producer
+  propagates errors to the calling code
 
-  Сценарий: consumer-конструктор без logger — нарушение (позитив)
-    Допустим пакет с сегментами event и consumer
-    И конструктор "func NewOrderConsumer(svc Service) *OrderConsumer"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-216" о том, что consumer принимает *logrus.Logger
+  Scenario: a consumer constructor without a logger — violation (positive)
+    Given a package with the segments event and consumer
+    And the constructor "func NewOrderConsumer(svc Service) *OrderConsumer"
+    When the analyzer checks the file
+    Then a "GID-216" diagnostic is reported saying that a consumer takes *logrus.Logger
 
-  Сценарий: producer-конструктор с *logrus.Logger — нарушение (позитив)
-    Допустим пакет с сегментами event и producer
-    И конструктор "func NewOrderProducer(log *logrus.Logger) *OrderProducer"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-216" о том, что producer не принимает logger
+  Scenario: a producer constructor with *logrus.Logger — violation (positive)
+    Given a package with the segments event and producer
+    And the constructor "func NewOrderProducer(log *logrus.Logger) *OrderProducer"
+    When the analyzer checks the file
+    Then a "GID-216" diagnostic is reported saying that a producer does not take a logger
 
-  Сценарий: consumer-конструктор с *logrus.Logger — ок (негатив)
-    Допустим пакет с сегментами event и consumer
-    И конструктор "func NewPaymentConsumer(log *logrus.Logger) *PaymentConsumer"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a consumer constructor with *logrus.Logger — ok (negative)
+    Given a package with the segments event and consumer
+    And the constructor "func NewPaymentConsumer(log *logrus.Logger) *PaymentConsumer"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: consumer-конструктор с *logrus.Entry — ок (негатив)
-    Допустим пакет с сегментами event и consumer
-    И конструктор "func NewRefundConsumer(log *logrus.Entry) *RefundConsumer"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a consumer constructor with *logrus.Entry — ok (negative)
+    Given a package with the segments event and consumer
+    And the constructor "func NewRefundConsumer(log *logrus.Entry) *RefundConsumer"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: producer-конструктор без logger — ок (негатив)
-    Допустим пакет с сегментами event и producer
-    И конструктор "func NewPaymentProducer(svc Service) *PaymentProducer"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a producer constructor without a logger — ok (negative)
+    Given a package with the segments event and producer
+    And the constructor "func NewPaymentProducer(svc Service) *PaymentProducer"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: schema-функция возвращает тип чужого пакета — не конструктор (граничный)
-    Допустим пакет с сегментами event и consumer
-    И функция "func NewOrderCreatedSchema() *registry.Schema" возвращает тип чужого пакета
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a schema function returns a foreign package type — not a constructor (boundary)
+    Given a package with the segments event and consumer
+    And the function "func NewOrderCreatedSchema() *registry.Schema" returns a type of a foreign package
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: неэкспортируемый хелпер — не конструктор (граничный)
-    Допустим пакет с сегментами event и consumer
-    И функция "func newHelper() *helper"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: an unexported helper — not a constructor (boundary)
+    Given a package with the segments event and consumer
+    And the function "func newHelper() *helper"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: валидатор в event/kafka/consumer/validate — не consumer (граничный)
-    Допустим пакет с сегментами event, consumer и validate
-    И конструктор "func NewOrderValidator() *OrderValidator"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a validator in event/kafka/consumer/validate — not a consumer (boundary)
+    Given a package with the segments event, consumer and validate
+    And the constructor "func NewOrderValidator() *OrderValidator"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: конструктор вне event-слоя — правило не применяется (неприменимость)
-    Допустим пакет в слое domain/service
-    И конструктор "func NewService() *Service"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a constructor outside the event layer — the rule does not apply (non-applicability)
+    Given a package in the domain/service layer
+    And the constructor "func NewService() *Service"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: конструктор из settings.exclude — пропускается (неприменимость)
-    Допустим пакет с сегментами event и consumer
-    И конструктор "func NewLegacyConsumer() *LegacyConsumer" числится в settings.exclude
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a constructor listed in settings.exclude — skipped (non-applicability)
+    Given a package with the segments event and consumer
+    And the constructor "func NewLegacyConsumer() *LegacyConsumer" is listed in settings.exclude
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (RULES.md)
-#  [x] Выбран слой: go/analysis (сложное — нужен types)
-#  [x] Заданы severity и сообщение
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [x] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (RULES.md)
+#  [x] Layer chosen: go/analysis (complex — types needed)
+#  [x] Severity and message are defined
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [x] Rule enabled in .golangci.yml

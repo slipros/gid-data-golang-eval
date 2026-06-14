@@ -1,12 +1,12 @@
-// Package modelmethod реализует правило GID-195: приватная функция в
-// service/usecase, принимающая единственное значение model-типа и не
-// зависящая от своего пакета, — это поведение модели: её место — публичный
-// метод этого типа в model-слое.
+// Package modelmethod implements rule GID-195: a private function in
+// service/usecase that takes a single value of a model type and does not
+// depend on its own package is model behaviour: it belongs as a public
+// method of that type in the model layer.
 //
-// Тот же случай — приватный метод service/usecase-структуры, который не
-// использует ресивер. Непереносимые кандидаты не задеваются: метод,
-// использующий ресивер; функция, ссылающаяся на package-level символы
-// своего пакета (включая типы пакета в результатах).
+// The same applies to a private method of a service/usecase struct that does
+// not use its receiver. Non-movable candidates are not flagged: a method
+// that uses its receiver; a function referencing package-level symbols of
+// its own package (including package types in the results).
 package modelmethod
 
 import (
@@ -23,23 +23,23 @@ import (
 
 const ruleID = "GID-195"
 
-// scopes — слои, где действует правило. Только корни слоя (pathseg.EndsWith):
-// подпакеты convert/ и т.п. не задеваются.
+// scopes — the layers where the rule applies. Layer roots only (pathseg.EndsWith):
+// subpackages like convert/ etc. are not affected.
 var scopes = [][]string{
 	{"domain", "service"},
 	{"domain", "usecase"},
 }
 
-// Analyzer — правило GID-195 с настройками по умолчанию.
+// Analyzer — rule GID-195 with default settings.
 var Analyzer = NewAnalyzer(Settings{})
 
-// Settings — настройки правила GID-195 из .golangci.yml.
+// Settings — settings of rule GID-195 from .golangci.yml.
 type Settings struct {
-	// Exclude — исключения: "Функция" или "Тип.Метод".
+	// Exclude — exclusions: "Function" or "Type.Method".
 	Exclude []string `json:"exclude"`
 }
 
-// NewAnalyzer строит анализатор GID-195 из настроек линтера (.golangci.yml).
+// NewAnalyzer builds the GID-195 analyzer from the linter settings (.golangci.yml).
 func NewAnalyzer(s Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name: "gidmodelmethod",
@@ -81,13 +81,13 @@ func checkFunc(pass *analysis.Pass, fn *ast.FuncDecl, s Settings) {
 	if !ok {
 		return
 	}
-	// Метод, использующий ресивер, непереносим — он легитимно
-	// принадлежит своей структуре.
+	// A method that uses its receiver is not movable — it legitimately
+	// belongs to its struct.
 	if fn.Recv != nil && usesReceiver(pass, fn) {
 		return
 	}
-	// Зависимость от package-level символов своего пакета (включая типы
-	// пакета в сигнатуре) — функцию нельзя перенести в model.
+	// Dependence on package-level symbols of its own package (including
+	// package types in the signature) — the function cannot be moved to model.
 	if dependsOnPackage(pass, fn) {
 		return
 	}
@@ -107,15 +107,15 @@ func checkFunc(pass *analysis.Pass, fn *ast.FuncDecl, s Settings) {
 		ruleID, fn.Name.Name, display)
 }
 
-// singleModelParam — единственный параметр функции вида T или *T,
-// где T — именованный тип model-слоя (struct, enum и т.п., не интерфейс).
+// singleModelParam — the function's single parameter of the form T or *T,
+// where T is a named type of the model layer (struct, enum, etc., not an interface).
 func singleModelParam(pass *analysis.Pass, fn *ast.FuncDecl) (*types.Named, bool) {
 	params := fn.Type.Params
 	if params == nil || len(params.List) != 1 {
 		return nil, false
 	}
 	field := params.List[0]
-	// func f(a, b *model.T) — два значения; variadic — слайс значений.
+	// func f(a, b *model.T) — two values; variadic — a slice of values.
 	if len(field.Names) > 1 {
 		return nil, false
 	}
@@ -130,7 +130,7 @@ func singleModelParam(pass *analysis.Pass, fn *ast.FuncDecl) (*types.Named, bool
 	if !ok {
 		return nil, false
 	}
-	// Интерфейсу метод не добавить — он не «владеет» поведением.
+	// A method cannot be added to an interface — it does not "own" behaviour.
 	if _, ok := named.Underlying().(*types.Interface); ok {
 		return nil, false
 	}
@@ -142,10 +142,10 @@ func singleModelParam(pass *analysis.Pass, fn *ast.FuncDecl) (*types.Named, bool
 	return named, true
 }
 
-// usesReceiver сообщает, обращается ли тело метода к ресиверу.
+// usesReceiver reports whether the method body accesses the receiver.
 func usesReceiver(pass *analysis.Pass, fn *ast.FuncDecl) bool {
 	if len(fn.Recv.List) == 0 || len(fn.Recv.List[0].Names) == 0 {
-		return false // безымянный ресивер
+		return false // unnamed receiver
 	}
 	recv := fn.Recv.List[0].Names[0]
 	if recv.Name == "_" {
@@ -165,8 +165,8 @@ func usesReceiver(pass *analysis.Pass, fn *ast.FuncDecl) bool {
 	return used
 }
 
-// dependsOnPackage сообщает, ссылается ли функция (сигнатура и тело)
-// на package-level символы своего пакета — такая функция непереносима.
+// dependsOnPackage reports whether the function (signature and body) refers
+// to package-level symbols of its own package — such a function is not movable.
 func dependsOnPackage(pass *analysis.Pass, fn *ast.FuncDecl) bool {
 	self := pass.TypesInfo.Defs[fn.Name]
 	depends := false
@@ -182,10 +182,10 @@ func dependsOnPackage(pass *analysis.Pass, fn *ast.FuncDecl) bool {
 			}
 			switch obj.(type) {
 			case *types.PkgName, *types.Label:
-				return true // импорты и метки — не зависимость
+				return true // imports and labels are not a dependency
 			}
-			// Package-level символ (Parent == scope пакета) либо член
-			// типа пакета — поле/метод (Parent == nil).
+			// A package-level symbol (Parent == package scope) or a member
+			// of a package type — a field/method (Parent == nil).
 			if obj.Parent() == pass.Pkg.Scope() || obj.Parent() == nil {
 				depends = true
 			}

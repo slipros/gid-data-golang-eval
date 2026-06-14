@@ -1,9 +1,9 @@
-// Package nopkgerrors не импортирует github.com/pkg/errors — правило неприменимо.
+// Package nopkgerrors does not import github.com/pkg/errors — the rule is inapplicable.
 package nopkgerrors
 
 import stderrors "errors"
 
-// std errors.New в теле функции — зона GID-146, не GID-136.
+// std errors.New in a function body — the domain of GID-146, not GID-136.
 func boom() error {
 	return stderrors.New("boom")
 }

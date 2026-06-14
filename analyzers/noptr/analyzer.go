@@ -1,10 +1,10 @@
-// Package noptr реализует правила о nullable-указателях:
+// Package noptr implements the rules about nullable pointers:
 //
-//   - GID-120: *uuid.UUID запрещён везде — пустота проверяется IsNil();
-//   - GID-121: в /domain/model поля структур не используют *time.Time и
-//     указатели на string-типы — zero-value выражает отсутствие
-//     (IsZero(), len == 0). Указатель оправдан только когда zero-value
-//     значим (например, *bool).
+//   - GID-120: *uuid.UUID is forbidden everywhere — emptiness is checked with IsNil();
+//   - GID-121: in /domain/model struct fields do not use *time.Time or
+//     pointers to string types — the zero value expresses absence
+//     (IsZero(), len == 0). A pointer is justified only when the zero value
+//     is meaningful (e.g. *bool).
 package noptr
 
 import (
@@ -21,7 +21,7 @@ const (
 	ruleZero = "GID-121"
 )
 
-// Analyzer — правило GID: см. Doc.
+// Analyzer — the GID rule: see Doc.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidnoptr",
 	Doc:  ruleUUID + "/" + ruleZero + ": forbid pointers where the type checks emptiness itself (uuid, time, string). Fix: use the value type",
@@ -42,7 +42,7 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-// checkUUIDPointers — GID-120: *uuid.UUID в любой типовой позиции.
+// checkUUIDPointers — GID-120: *uuid.UUID in any type position.
 func checkUUIDPointers(pass *analysis.Pass, file *ast.File) {
 	ast.Inspect(file, func(n ast.Node) bool {
 		star, ok := n.(*ast.StarExpr)
@@ -51,7 +51,7 @@ func checkUUIDPointers(pass *analysis.Pass, file *ast.File) {
 		}
 		tv, ok := pass.TypesInfo.Types[star]
 		if !ok || !tv.IsType() {
-			return true // разыменование, не тип
+			return true // a dereference, not a type
 		}
 		ptr, ok := tv.Type.(*types.Pointer)
 		if !ok {
@@ -65,7 +65,7 @@ func checkUUIDPointers(pass *analysis.Pass, file *ast.File) {
 	})
 }
 
-// checkModelFields — GID-121: указатели на time.Time/string-типы в полях model.
+// checkModelFields — GID-121: pointers to time.Time/string types in model fields.
 func checkModelFields(pass *analysis.Pass, file *ast.File) {
 	for _, decl := range file.Decls {
 		gd, ok := decl.(*ast.GenDecl)

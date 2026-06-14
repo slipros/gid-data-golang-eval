@@ -1,4 +1,4 @@
-// Stub стороннего валидатора для eval.
+// A stub of a third-party validator for the eval.
 package validator
 
 type Validate struct{}

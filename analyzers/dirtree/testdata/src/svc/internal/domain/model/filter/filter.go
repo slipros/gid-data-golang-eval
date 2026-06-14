@@ -1,5 +1,5 @@
-// Негатив (граница): internal/domain/model не ограничен ключом —
-// вложенные пакеты model/* разрешены.
+// Negative (edge): internal/domain/model is not restricted by a key —
+// nested model/* packages are allowed.
 package filter
 
 type Snapshots struct{}

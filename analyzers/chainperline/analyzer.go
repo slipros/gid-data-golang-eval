@@ -1,17 +1,17 @@
-// Package chainperline реализует правило GID-196: цепочка вызовов из
-// min-calls и более звеньев (по умолчанию 2) оформляется по одному вызову
-// на строке, включая первый:
+// Package chainperline implements rule GID-196: a call chain of min-calls
+// or more links (2 by default) is formatted with one call per line,
+// including the first:
 //
 //	q := builder.
 //		Select("id").
 //		From("snapshots").
 //		Where(cond)
 //
-// Звено цепочки — вызов метода/функции через селектор, чей получатель —
-// другой вызов (в т.ч. через промежуточные поля: a.B().c.D()). Конверсии
-// типов звеном не считаются. Logrus-цепочки — зона GID-156 (gidlogchain),
-// здесь пропускаются, чтобы не дублировать диагностику. Одиночный вызов
-// inline допустим; *_test.go и сгенерированный код не проверяются.
+// A chain link is a method/function call via a selector whose receiver is
+// another call (including through intermediate fields: a.B().c.D()). Type
+// conversions do not count as links. Logrus chains are the domain of GID-156
+// (gidlogchain) and are skipped here to avoid duplicating the diagnostic.
+// A single inline call is allowed; *_test.go and generated code are not checked.
 package chainperline
 
 import (
@@ -26,17 +26,17 @@ import (
 
 const ruleID = "GID-196"
 
-// Analyzer — правило GID-196 с настройками по умолчанию.
+// Analyzer — rule GID-196 with default settings.
 var Analyzer = NewAnalyzer(Settings{})
 
-// Settings — настройки правила GID-196 из .golangci.yml.
+// Settings — settings of rule GID-196 from .golangci.yml.
 type Settings struct {
-	// MinCalls — порог: цепочка из стольких вызовов обязана быть
-	// многострочной. 0 → дефолт (2).
+	// MinCalls — the threshold: a chain of this many calls must be
+	// multi-line. 0 → default (2).
 	MinCalls int `json:"min-calls"`
 }
 
-// NewAnalyzer строит анализатор GID-196 из настроек линтера (.golangci.yml).
+// NewAnalyzer builds the GID-196 analyzer from the linter settings (.golangci.yml).
 func NewAnalyzer(s Settings) *analysis.Analyzer {
 	const defaultMinCalls = 2
 	minCalls := s.MinCalls
@@ -57,8 +57,8 @@ func run(pass *analysis.Pass, minCalls int) (any, error) {
 		if ast.IsGenerated(file) || isTestFile(pass, file) {
 			continue
 		}
-		// Звенья уже разобранных цепочек не образуют свои цепочки;
-		// их аргументы при этом проверяются независимо.
+		// Links of already-processed chains do not form their own chains;
+		// their arguments are still checked independently.
 		visited := map[*ast.CallExpr]struct{}{}
 		ast.Inspect(file, func(n ast.Node) bool {
 			call, ok := n.(*ast.CallExpr)
@@ -73,7 +73,7 @@ func run(pass *analysis.Pass, minCalls int) (any, error) {
 				return true
 			}
 			if isLogrusChain(pass, sels) {
-				return true // зона GID-156
+				return true // the domain of GID-156
 			}
 			checkLines(pass, sels, base)
 			return true
@@ -82,9 +82,9 @@ func run(pass *analysis.Pass, minCalls int) (any, error) {
 	return nil, nil
 }
 
-// chain собирает цепочку вызовов от внешнего call вглубь. Возвращает
-// селекторы звеньев (от внешнего к внутреннему) и базовое выражение,
-// на котором начата цепочка.
+// chain collects the call chain from the outer call inward. It returns the
+// link selectors (from the outermost to the innermost) and the base expression
+// the chain starts on.
 func chain(
 	pass *analysis.Pass,
 	call *ast.CallExpr,
@@ -94,7 +94,7 @@ func chain(
 	for {
 		sel, ok := cur.Fun.(*ast.SelectorExpr)
 		if !ok || isConversion(pass, cur.Fun) {
-			return sels, cur // вызов функции либо конверсия — база цепочки
+			return sels, cur // a function call or a conversion — the base of the chain
 		}
 		visited[cur] = struct{}{}
 		sels = append(sels, sel)
@@ -106,8 +106,8 @@ func chain(
 	}
 }
 
-// innermostCall — ближайший вызов под выражением, сквозь промежуточные
-// поля и скобки (a.B().c → вызов B).
+// innermostCall — the nearest call under the expression, through intermediate
+// fields and parentheses (a.B().c → the call of B).
 func innermostCall(e ast.Expr) *ast.CallExpr {
 	for {
 		switch v := e.(type) {
@@ -137,8 +137,8 @@ func isLogrusChain(pass *analysis.Pass, sels []*ast.SelectorExpr) bool {
 	return false
 }
 
-// checkLines: строки вызовов строго возрастают, начиная со строки после
-// конца базового выражения, — каждый вызов на своей строке.
+// checkLines: the call lines strictly increase, starting from the line after
+// the end of the base expression — each call on its own line.
 func checkLines(pass *analysis.Pass, sels []*ast.SelectorExpr, base ast.Expr) {
 	prevLine := pass.Fset.Position(base.End()).Line
 	for i := len(sels) - 1; i >= 0; i-- {

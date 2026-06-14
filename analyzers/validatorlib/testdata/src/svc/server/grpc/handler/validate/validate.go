@@ -1,4 +1,4 @@
-// Негатив: validate-пакет использует validator.go — норма (grpc-запросы).
+// Negative: the validate package uses validator.go — the norm (grpc requests).
 package validate
 
 import (

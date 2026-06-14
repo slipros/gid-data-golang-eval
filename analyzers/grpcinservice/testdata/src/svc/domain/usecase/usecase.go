@@ -1,4 +1,4 @@
-// Негатив: обычные импорты domain-слоя не задеваются.
+// Negative: ordinary domain-layer imports are not touched.
 package usecase
 
 import "svc/domain/model"

@@ -1,4 +1,4 @@
-// Stub github.com/pkg/errors для eval GID-186.
+// Stub of github.com/pkg/errors for the GID-186 eval.
 package errors
 
 import stderrors "errors"

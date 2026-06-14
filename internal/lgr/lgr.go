@@ -1,5 +1,5 @@
-// Package lgr — распознавание типов и вызовов logrus
-// (github.com/sirupsen/logrus) для logger-правил.
+// Package lgr — recognition of logrus types and calls
+// (github.com/sirupsen/logrus) for logger rules.
 package lgr
 
 import (
@@ -10,7 +10,7 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
-// terminalMethods — методы logrus, выводящие сообщение в лог.
+// terminalMethods — logrus methods that emit a message to the log.
 var terminalMethods = map[string]struct{}{
 	"Trace": {}, "Tracef": {}, "Traceln": {},
 	"Debug": {}, "Debugf": {}, "Debugln": {},
@@ -24,10 +24,10 @@ var terminalMethods = map[string]struct{}{
 	"Log": {}, "Logf": {}, "Logln": {},
 }
 
-// IsType сообщает, относится ли тип к пакету logrus
-// (*logrus.Entry, *logrus.Logger, logrus.FieldLogger и т.п.).
+// IsType reports whether the type belongs to the logrus package
+// (*logrus.Entry, *logrus.Logger, logrus.FieldLogger, etc.).
 func IsType(t types.Type) bool {
-	// pkgPath — путь пакета logrus.
+	// pkgPath — the logrus package path.
 	const pkgPath = "github.com/sirupsen/logrus"
 	switch tt := t.(type) {
 	case *types.Pointer:
@@ -42,7 +42,7 @@ func IsType(t types.Type) bool {
 	return false
 }
 
-// IsMethodSel сообщает, является ли селектор вызовом метода logrus-типа.
+// IsMethodSel reports whether the selector is a call to a method of a logrus type.
 func IsMethodSel(pass *analysis.Pass, sel *ast.SelectorExpr) bool {
 	fn, ok := pass.TypesInfo.ObjectOf(sel.Sel).(*types.Func)
 	if !ok {
@@ -56,8 +56,8 @@ func IsMethodSel(pass *analysis.Pass, sel *ast.SelectorExpr) bool {
 	return IsType(recv.Type())
 }
 
-// IsTerminal сообщает, является ли вызов терминальным logrus-вызовом
-// (Info/Error/...), и возвращает имя метода.
+// IsTerminal reports whether the call is a terminal logrus call
+// (Info/Error/...), and returns the method name.
 func IsTerminal(pass *analysis.Pass, call *ast.CallExpr) (string, bool) {
 	sel, ok := call.Fun.(*ast.SelectorExpr)
 	if !ok {
@@ -72,9 +72,9 @@ func IsTerminal(pass *analysis.Pass, call *ast.CallExpr) (string, bool) {
 	return sel.Sel.Name, true
 }
 
-// Chain собирает цепочку logrus-вызовов от терминального call вглубь:
-// терминал + все последовательные With*-методы. Возвращает селекторы
-// (от терминала к началу) и базовое выражение, на котором начата цепочка.
+// Chain collects the chain of logrus calls from the terminal call inward:
+// the terminal plus all consecutive With* methods. Returns the selectors
+// (from the terminal toward the start) and the base expression on which the chain begins.
 func Chain(pass *analysis.Pass, call *ast.CallExpr) (sels []*ast.SelectorExpr, base ast.Expr) {
 	cur := ast.Expr(call)
 	for {
@@ -98,7 +98,7 @@ func Chain(pass *analysis.Pass, call *ast.CallExpr) (sels []*ast.SelectorExpr, b
 	return sels, sels[len(sels)-1].X
 }
 
-// ChainNames возвращает имена методов цепочки.
+// ChainNames returns the method names of the chain.
 func ChainNames(sels []*ast.SelectorExpr) []string {
 	names := make([]string, 0, len(sels))
 	for _, s := range sels {

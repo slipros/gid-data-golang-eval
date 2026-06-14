@@ -1,5 +1,5 @@
-// Eval для GID-134 (interface-near-consumer). Потребитель — слой
-// /domain/service.
+// Eval for GID-134 (interface-near-consumer). The consumer is the
+// /domain/service layer.
 package service
 
 import (
@@ -10,50 +10,50 @@ import (
 	"svc/server/grpc"
 )
 
-// LocalRepository — интерфейс, объявленный в этом же пакете рядом с
-// потребителем. Использование — норма.
+// LocalRepository — an interface declared in this same package next to the
+// consumer. Its use is the norm.
 type LocalRepository interface {
 	Job(id string) (model.Job, error)
 }
 
-// --- Позитивный класс: интерфейс из чужого «своего» пакета сервиса ---
+// --- Positive class: an interface from another "own" service package ---
 
-// Поле структуры: интерфейс из чужого server-пакета.
+// A struct field: an interface from a foreign server package.
 type Service struct {
 	notifier grpc.Notifier // want `GID-134: interface Notifier is declared in svc/server/grpc\. Fix: define the interface next to its consumer \(exceptions: libraries and /domain/model for service/usecase\)`
 	local    LocalRepository
 }
 
-// Параметр функции: интерфейс из чужого server-пакета.
+// A function parameter: an interface from a foreign server package.
 func (s *Service) Register(n grpc.Notifier) {} // want `GID-134: interface Notifier is declared in svc/server/grpc`
 
-// Результат функции: интерфейс из чужого server-пакета.
+// A function result: an interface from a foreign server package.
 func (s *Service) Notifier() grpc.Notifier { return nil } // want `GID-134: interface Notifier is declared in svc/server/grpc`
 
-// --- Негативный класс: чистый код ---
+// --- Negative class: clean code ---
 
-// Интерфейс из model-слоя у потребителя service — ОК.
+// An interface from the model layer at a service consumer — OK.
 func (s *Service) WithRepo(r model.JobRepository) {}
 
-// Интерфейс из того же пакета — ОК.
+// An interface from the same package — OK.
 func (s *Service) WithLocal(l LocalRepository) {}
 
-// Библиотечный интерфейс stdlib (io.Reader) — ОК.
+// A stdlib library interface (io.Reader) — OK.
 func (s *Service) Read(r io.Reader) {}
 
-// Интерфейс внешней библиотеки — ОК.
+// An external library interface — OK.
 func (s *Service) Encode(e extlib.Encoder) {}
 
-// --- Класс неприменимости ---
+// --- Inapplicability class ---
 
-// error — не задевается (нет пакета объявления).
+// error — untouched (no declaring package).
 func (s *Service) Do() error { return nil }
 
-// Анонимный интерфейс — не именованный, не задевается.
+// An anonymous interface — not named, untouched.
 func (s *Service) Anon(x interface{ Foo() }) {}
 
-// any / interface{} — не задевается.
+// any / interface{} — untouched.
 func (s *Service) Any(v any) {}
 
-// Не-интерфейсные типы (struct, string) — не задеваются.
+// Non-interface types (struct, string) — untouched.
 func (s *Service) Plain(j model.Job, name string) {}

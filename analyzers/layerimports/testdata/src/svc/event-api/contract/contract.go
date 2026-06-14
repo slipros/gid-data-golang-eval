@@ -1,5 +1,5 @@
-// Граничный (GID-170): сегмент "event-api" содержит подстроку "event",
-// но как сегмент пути не равен "event" — под правило не подпадает.
+// Boundary (GID-170): the segment "event-api" contains the substring "event",
+// but as a path segment is not equal to "event" — it does not fall under the rule.
 package contract
 
 type SnapshotContract struct {

@@ -1,7 +1,7 @@
-// Eval GID-211: enum в корне /dal/entity вместо /dal/entity/enum.
+// Eval GID-211: an enum in the root of /dal/entity instead of /dal/entity/enum.
 package entity
 
-// --- Позитивный класс: string-enum с const в /dal/entity — нарушение ---
+// --- Positive class: a string enum with const in /dal/entity — a violation ---
 
 type Status string // want `GID-211: enum Status must live in /dal/entity/enum \(one file named after the entity\)\. Fix: move it there`
 
@@ -10,11 +10,11 @@ const (
 	StatusInactive Status = "inactive"
 )
 
-// --- Негативный класс: string-тип без const — не enum, не флагается ---
+// --- Negative class: a string type without const — not an enum, not flagged ---
 
 type RawJSON string
 
-// --- Граничный класс: alias на string с const — зона GID-123, не GID-211 ---
+// --- Boundary class: an alias to string with const — GID-123 zone, not GID-211 ---
 
 type Code = string
 
@@ -23,7 +23,7 @@ const (
 	CodeB Code = "b"
 )
 
-// --- Граничный класс: именованный int-тип с const — не string-enum ---
+// --- Boundary class: a named int type with const — not a string enum ---
 
 type Priority int
 
@@ -32,7 +32,7 @@ const (
 	PriorityHigh Priority = 2
 )
 
-// --- Обычная сущность без enum — не трогаем ---
+// --- An ordinary entity without an enum — left alone ---
 
 type Job struct {
 	ID string

@@ -1,24 +1,24 @@
-// Package errwrap реализует правила обработки ошибок по слоям:
+// Package errwrap implements the per-layer error handling rules:
 //
-//   - GID-176 (giderrwrap): ошибки извне оборачиваются errors.Wrap.
-//     На границе приложения (/client/** и /dal/repository) ошибка из
-//     внешнего вызова не пробрасывается как есть (return err) и не
-//     обогащается без контекста (WithStack/WithMessage) — нужен Wrap:
-//     он собирает стек И добавляет обязательный контекст. Внутри
-//     приложения (/domain/**) для уже пришедшей нестатичной ошибки
-//     Wrap запрещён (стек собран на границе) — контекст добавляется
-//     WithMessage. Возврат статичной ошибки (package-level var, именованный
-//     error-тип) на границе — не нарушение GID-176 (это зона GID-177).
+//   - GID-176 (giderrwrap): errors from outside are wrapped with errors.Wrap.
+//     At the application boundary (/client/** and /dal/repository) an error
+//     from an external call is neither passed through as is (return err) nor
+//     enriched without context (WithStack/WithMessage) — Wrap is required:
+//     it collects the stack AND adds the mandatory context. Inside the
+//     application (/domain/**), Wrap is forbidden for an already received
+//     non-static error (the stack was collected at the boundary) — context is
+//     added with WithMessage. Returning a static error (package-level var, a
+//     named error type) at the boundary is not a GID-176 violation (that is GID-177 territory).
 //
-//   - GID-177 (gidstaticerr): статичные ошибки оборачиваются WithStack.
-//     Возврат статичной ошибки (package-level error-var ErrSome или
-//     композит-литерал/адрес именованного error-типа BigError{}/&BigError{})
-//     без обёртки лишён стека — нужен errors.WithStack (или errors.Wrap,
-//     если требуется контекст). Обёрнутая ошибка (WithStack/Wrap) — ок.
-//     Объявления самих var не задеваются (это не return).
+//   - GID-177 (gidstaticerr): static errors are wrapped with WithStack.
+//     Returning a static error (a package-level error var ErrSome or a
+//     composite literal / address of a named error type BigError{}/&BigError{})
+//     without a wrapper lacks a stack — errors.WithStack is required (or
+//     errors.Wrap if context is needed). A wrapped error (WithStack/Wrap) is fine.
+//     The var declarations themselves are not touched (they are not returns).
 //
-// pkg/errors определяется по import-пути github.com/pkg/errors.
-// Сгенерированный код (ast.IsGenerated) пропускается.
+// pkg/errors is detected by the import path github.com/pkg/errors.
+// Generated code (ast.IsGenerated) is skipped.
 package errwrap
 
 import (
@@ -38,27 +38,27 @@ const (
 	ruleIDStatic = "GID-177"
 )
 
-// boundaryScopes — граничные слои для GID-176 (часть 1): внешний вызов.
+// boundaryScopes — boundary layers for GID-176 (part 1): an external call.
 var boundaryScopes = [][]string{
 	{"client"},
 	{"dal", "repository"},
 }
 
-// WrapAnalyzer — GID-176 с настройками по умолчанию (без исключений).
+// WrapAnalyzer — GID-176 with default settings (no exclusions).
 var WrapAnalyzer = NewWrapAnalyzer(Settings{})
 
-// StaticAnalyzer — GID-177 с настройками по умолчанию (без исключений).
+// StaticAnalyzer — GID-177 with default settings (no exclusions).
 var StaticAnalyzer = NewStaticAnalyzer(Settings{})
 
-// Settings — настройки линтеров из .golangci.yml.
+// Settings — linter settings from .golangci.yml.
 type Settings struct {
-	// Exclude — имена конструкторов/ошибок-исключений, которые сами
-	// собирают стек (например, gderror.NewUnhandledValueError):
-	// "Функция" или "Пакет.Функция".
+	// Exclude — names of constructor/error exclusions that collect
+	// the stack themselves (for example, gderror.NewUnhandledValueError):
+	// "Function" or "Package.Function".
 	Exclude []string `json:"exclude"`
 }
 
-// NewWrapAnalyzer строит анализатор GID-176.
+// NewWrapAnalyzer builds the GID-176 analyzer.
 func NewWrapAnalyzer(s Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name: "giderrwrap",
@@ -68,7 +68,7 @@ func NewWrapAnalyzer(s Settings) *analysis.Analyzer {
 	}
 }
 
-// NewStaticAnalyzer строит анализатор GID-177.
+// NewStaticAnalyzer builds the GID-177 analyzer.
 func NewStaticAnalyzer(s Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name: "gidstaticerr",
@@ -108,8 +108,8 @@ func runWrap(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-// checkBoundaryPassThrough — GID-176 часть 1: на границе нельзя
-// пробрасывать нестатичную ошибку из вызова без Wrap.
+// checkBoundaryPassThrough — GID-176 part 1: at the boundary a non-static
+// error from a call must not be passed through without Wrap.
 func checkBoundaryPassThrough(pass *analysis.Pass, fn *ast.FuncDecl) {
 	callErrs := localCallErrors(pass, fn)
 	ast.Inspect(fn.Body, func(n ast.Node) bool {
@@ -119,7 +119,7 @@ func checkBoundaryPassThrough(pass *analysis.Pass, fn *ast.FuncDecl) {
 		}
 		for _, res := range ret.Results {
 			expr := res
-			// errors.WithStack(err) / errors.WithMessage(err) — обёртка без контекста.
+			// errors.WithStack(err) / errors.WithMessage(err) — a wrapper without context.
 			if call, ok := expr.(*ast.CallExpr); ok {
 				name := pkgErrorsCallName(pass, call)
 				if name == "WithStack" || name == "WithMessage" {
@@ -131,7 +131,7 @@ func checkBoundaryPassThrough(pass *analysis.Pass, fn *ast.FuncDecl) {
 					}
 					continue
 				}
-				// errors.Wrap / иной вызов — ок (Wrap уже правильный).
+				// errors.Wrap / any other call — fine (Wrap is already correct).
 				continue
 			}
 			if isLocalCallErr(pass, expr, callErrs) {
@@ -144,7 +144,7 @@ func checkBoundaryPassThrough(pass *analysis.Pass, fn *ast.FuncDecl) {
 	})
 }
 
-// checkDomainWrap — GID-176 часть 2: в /domain/** Wrap нестатичной ошибки запрещён.
+// checkDomainWrap — GID-176 part 2: in /domain/** wrapping a non-static error with Wrap is forbidden.
 func checkDomainWrap(pass *analysis.Pass, file *ast.File) {
 	ast.Inspect(file, func(n ast.Node) bool {
 		call, ok := n.(*ast.CallExpr)
@@ -157,11 +157,11 @@ func checkDomainWrap(pass *analysis.Pass, file *ast.File) {
 		if len(call.Args) == 0 {
 			return true
 		}
-		// Статичная ошибка (model.ErrX, &BigError{}) — Wrap разрешён.
+		// A static error (model.ErrX, &BigError{}) — Wrap is allowed.
 		if isStaticError(pass, call.Args[0]) {
 			return true
 		}
-		// Нестатичная (локальная переменная из вызова и т.п.) — запрещён.
+		// A non-static one (a local variable from a call, etc.) — forbidden.
 		if isErrorExpr(pass, call.Args[0]) {
 			pass.Reportf(call.Pos(),
 				"%s: the stack is already collected at the boundary. Fix: use errors.WithMessage instead of errors.Wrap for an incoming error",
@@ -199,13 +199,13 @@ func runStatic(pass *analysis.Pass, s Settings) (any, error) {
 }
 
 func checkStaticReturn(pass *analysis.Pass, s Settings, expr ast.Expr) {
-	// Уже обёрнуто (WithStack/Wrap/иной вызов pkg/errors) — ок.
+	// Already wrapped (WithStack/Wrap/another pkg/errors call) — fine.
 	if call, ok := expr.(*ast.CallExpr); ok {
 		name := pkgErrorsCallName(pass, call)
 		if name == "WithStack" || name == "Wrap" || name == "Wrapf" {
 			return
 		}
-		// Конструктор-исключение (сам собирает стек) — ок.
+		// An excluded constructor (collects the stack itself) — fine.
 		if isExcludedCtor(pass, call, s.Exclude) {
 			return
 		}
@@ -218,7 +218,7 @@ func checkStaticReturn(pass *analysis.Pass, s Settings, expr ast.Expr) {
 	}
 }
 
-// ===== общие хелперы =====
+// ===== shared helpers =====
 
 func inBoundary(pkgPath string) bool {
 	for _, scope := range boundaryScopes {
@@ -229,8 +229,8 @@ func inBoundary(pkgPath string) bool {
 	return false
 }
 
-// pkgErrorsCallName возвращает имя функции github.com/pkg/errors,
-// если call — её вызов; иначе "".
+// pkgErrorsCallName returns the name of the github.com/pkg/errors function
+// if call invokes it; otherwise "".
 func pkgErrorsCallName(pass *analysis.Pass, call *ast.CallExpr) string {
 	const pkgErrorsPath = "github.com/pkg/errors"
 	fn := typeutil.Callee(pass.TypesInfo, call)
@@ -276,8 +276,8 @@ func funcReturnsError(pass *analysis.Pass, fn *ast.FuncDecl) bool {
 	return false
 }
 
-// localCallErrors собирает локальные переменные функции, значение
-// которых получено из вызова и реализует error (err := f(); a, err := f()).
+// localCallErrors collects the function's local variables whose value
+// comes from a call and implements error (err := f(); a, err := f()).
 func localCallErrors(pass *analysis.Pass, fn *ast.FuncDecl) map[types.Object]struct{} {
 	out := map[types.Object]struct{}{}
 	ast.Inspect(fn.Body, func(n ast.Node) bool {
@@ -285,7 +285,7 @@ func localCallErrors(pass *analysis.Pass, fn *ast.FuncDecl) map[types.Object]str
 		if !ok {
 			return true
 		}
-		// Источник — ровно один вызов в правой части.
+		// The source is exactly one call on the right-hand side.
 		if len(assign.Rhs) != 1 {
 			return true
 		}
@@ -321,8 +321,8 @@ func isLocalCallErr(pass *analysis.Pass, expr ast.Expr, callErrs map[types.Objec
 	return ok
 }
 
-// isErrorExpr сообщает, что выражение имеет тип error и не является
-// статичной ошибкой (package-level var / именованный error-литерал).
+// isErrorExpr reports that the expression has type error and is not
+// a static error (package-level var / named error literal).
 func isErrorExpr(pass *analysis.Pass, expr ast.Expr) bool {
 	tv, ok := pass.TypesInfo.Types[expr]
 	if !ok {
@@ -331,8 +331,8 @@ func isErrorExpr(pass *analysis.Pass, expr ast.Expr) bool {
 	return isErrorType(tv.Type) && !isStaticError(pass, expr)
 }
 
-// isStaticError: package-level var типа error (ErrSome) либо
-// композит-литерал / адрес именованного error-типа (BigError{}, &BigError{}).
+// isStaticError: a package-level var of type error (ErrSome) or a
+// composite literal / address of a named error type (BigError{}, &BigError{}).
 func isStaticError(pass *analysis.Pass, expr ast.Expr) bool {
 	switch e := expr.(type) {
 	case *ast.Ident, *ast.SelectorExpr:
@@ -363,14 +363,14 @@ func isNamedErrorType(pass *analysis.Pass, cl *ast.CompositeLit) bool {
 	if _, ok := t.(*types.Named); !ok {
 		return false
 	}
-	// Тип должен реализовывать error сам по себе или по указателю.
+	// The type must implement error by itself or via a pointer.
 	if isErrorType(t) {
 		return true
 	}
 	return isErrorType(types.NewPointer(t))
 }
 
-// exprIdent извлекает целевой идентификатор из Ident или SelectorExpr.
+// exprIdent extracts the target identifier from an Ident or SelectorExpr.
 func exprIdent(e ast.Expr) *ast.Ident {
 	switch x := e.(type) {
 	case *ast.Ident:

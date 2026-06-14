@@ -1,12 +1,12 @@
-// Package logctx реализует правило GID-155: вывод в лог сопровождается
-// контекстом и ошибкой.
+// Package logctx implements rule GID-155: a log output is accompanied by
+// context and an error.
 //
-//   - в функции с параметром context.Context лог-вызов обязан содержать
-//     WithContext в цепочке;
-//   - лог уровня Error* обязан содержать WithError.
+//   - in a function with a context.Context parameter, a log call must contain
+//     WithContext in the chain;
+//   - an Error*-level log must contain WithError.
 //
-// «WithError если есть error в области видимости» в общем виде требует
-// анализа потока — детерминированная часть привязана к уровню Error.
+// "WithError if there is an error in scope" in the general case requires flow
+// analysis — the deterministic part is tied to the Error level.
 package logctx
 
 import (
@@ -22,7 +22,7 @@ import (
 
 const ruleID = "GID-155"
 
-// Analyzer — правило GID-155: log calls include WithContext (when ctx is present) and WithError (at Error level). Fix: add WithContext(ctx)/WithError(err).
+// Analyzer — rule GID-155: log calls include WithContext (when ctx is present) and WithError (at Error level). Fix: add WithContext(ctx)/WithError(err).
 var Analyzer = &analysis.Analyzer{
 	Name: "gidlogctx",
 	Doc:  ruleID + ": log calls include WithContext (when ctx is present) and WithError (at Error level). Fix: add WithContext(ctx)/WithError(err)",
@@ -45,8 +45,8 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-// walkFunc обходит тело функции; вложенные функции-литералы проверяются
-// со своим набором параметров (наличие ctx — у ближайшей функции).
+// walkFunc traverses a function body; nested function literals are checked
+// with their own set of parameters (the presence of ctx is that of the nearest function).
 func walkFunc(pass *analysis.Pass, fnType *ast.FuncType, body *ast.BlockStmt) {
 	hasCtx := funcHasCtx(pass, fnType)
 	ast.Inspect(body, func(n ast.Node) bool {
@@ -68,8 +68,8 @@ func checkCall(pass *analysis.Pass, call *ast.CallExpr, hasCtx bool) {
 	}
 	sels, _ := lgr.Chain(pass, call)
 	names := lgr.ChainNames(sels)
-	// Диагностика на имени терминального метода — у многострочной цепочки
-	// позиция call указывает на её первую строку.
+	// The diagnostic is on the terminal method name — for a multi-line chain
+	// the call position points to its first line.
 	pos := sels[0].Sel.Pos()
 	if hasCtx && !slices.Contains(names, "WithContext") {
 		pass.Reportf(pos,

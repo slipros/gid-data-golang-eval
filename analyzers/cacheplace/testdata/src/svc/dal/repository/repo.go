@@ -1,5 +1,5 @@
-// Негатив: кэширующий репозиторий в /dal/repository — здесь кэшу и место.
-// Оборачивает основной репозиторий прямой ссылкой, без интерфейса.
+// Negative: a caching repository in /dal/repository — this is where the cache belongs.
+// It wraps the main repository by a direct reference, without an interface.
 package repository
 
 import (
@@ -10,9 +10,9 @@ type Snapshot struct{}
 
 func (s *Snapshot) Snapshot(id string) (string, error) { return id, nil }
 
-// CachedSnapshot — вся магия с кэшом живёт здесь.
+// CachedSnapshot — all the cache magic lives here.
 type CachedSnapshot struct {
-	repo  *Snapshot // прямая ссылка на основной репозиторий
+	repo  *Snapshot // a direct reference to the main repository
 	cache *redis.Client
 }
 

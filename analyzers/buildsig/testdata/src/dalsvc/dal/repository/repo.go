@@ -1,18 +1,18 @@
-// Eval GID-212: squirrel вне build-пакета (/dal/repository) запрещён;
-// произвольные сигнатуры функций вне build не флагаются (неприменимость).
+// Eval GID-212: squirrel outside a build package (/dal/repository) is banned;
+// arbitrary function signatures outside build are not flagged (not applicable).
 package repository
 
 import (
 	"github.com/Masterminds/squirrel" // want `GID-212: squirrel is allowed only in repository build packages \(/dal/repository/build\)\. Fix: move squirrel usage into /dal/repository/build`
 )
 
-// --- Класс неприменимости: проверка сигнатуры не действует вне build ---
+// --- Not-applicable class: the signature check does not apply outside build ---
 
-// Экспортируемая функция с произвольной сигнатурой в /dal/repository — не флагается.
+// An exported function with an arbitrary signature in /dal/repository — not flagged.
 func DoStuff(id string) (int, error) { return 0, nil }
 
-// Функция без результатов вне build — не флагается.
+// A function without results outside build — not flagged.
 func Reset() {}
 
-// squirrel импортирован выше — пойман как нарушение импорта.
+// squirrel is imported above — caught as an import violation.
 func use() squirrel.SelectBuilder { return squirrel.Select("id") }

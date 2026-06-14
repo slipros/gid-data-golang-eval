@@ -1,8 +1,8 @@
-// Неприменимость: лист-пакет без импортов своего модуля — правило не
-// срабатывает (нет родительского импорта).
+// Not applicable: a leaf package without imports from its own module — the
+// rule does not fire (no parent import).
 package child
 
-// Leaf — тип дочернего пакета.
+// Leaf — a type of the child package.
 type Leaf struct {
 	Name string
 }

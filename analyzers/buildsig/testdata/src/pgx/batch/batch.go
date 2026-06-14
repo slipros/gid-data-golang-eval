@@ -1,5 +1,5 @@
-// Stub пакета с типом Batch для eval (имитирует pgx.Batch и т.п.).
+// Stub of a package with a Batch type for eval (mimics pgx.Batch and the like).
 package batch
 
-// Batch — заглушка пакетной операции.
+// Batch — a stub of a batch operation.
 type Batch struct{}

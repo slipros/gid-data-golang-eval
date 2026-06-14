@@ -1,5 +1,5 @@
-// Позитив (GID-224): валидатор лезет в dal — запрещено;
-// негатив: model валидатору разрешён.
+// Positive (GID-224): the validator reaches into dal — forbidden;
+// negative: model is allowed for the validator.
 package validate
 
 import (
@@ -10,10 +10,10 @@ import (
 
 type Snapshot struct{}
 
-// Негатив: model — норма.
+// Negative: model is fine.
 func (v *Snapshot) Validate(in model.Snapshot) error {
 	return nil
 }
 
-// Позитив выше: entity валидатору недоступен.
+// Positive above: entity is not available to the validator.
 func (v *Snapshot) leak(in entity.Snapshot) {}

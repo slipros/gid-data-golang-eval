@@ -1,10 +1,10 @@
-// Функциональная группа HTTP-метрик — отдельный файл.
+// The functional group of HTTP metrics — a separate file.
 package metric
 
-// HTTPMetrics — группа метрик HTTP-подсистемы.
+// HTTPMetrics — the metrics group of the HTTP subsystem.
 type HTTPMetrics struct {
 	Requests int
 }
 
-// Register регистрирует HTTP-метрики.
+// Register registers the HTTP metrics.
 func (m HTTPMetrics) Register() error { return nil }

@@ -1,4 +1,4 @@
-// Stub сгенерированного pb-пакета: импортирует grpc — значит gRPC-backed.
+// Stub of a generated pb package: it imports grpc — hence gRPC-backed.
 package orderpb
 
 import "google.golang.org/grpc"

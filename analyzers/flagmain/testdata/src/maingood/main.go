@@ -1,4 +1,4 @@
-// Класс «негатив»: в main имена флагов в snake_case, flag.Parse разрешён.
+// "Negative" class: in main the flag names are in snake_case, flag.Parse is allowed.
 package main
 
 import (

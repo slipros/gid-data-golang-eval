@@ -1,4 +1,4 @@
-// Неприменимость: convert-подпакет не является корнем service-слоя.
+// Not applicable: the convert subpackage is not the root of the service layer.
 package convert
 
 import "svc/domain/model"

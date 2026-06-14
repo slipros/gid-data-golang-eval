@@ -4,7 +4,7 @@ package svc
 
 import "github.com/pkg/errors"
 
-// errors.New в теле функции сгенерированного файла — пропускается (ast.IsGenerated).
+// errors.New in a function body of a generated file — skipped (ast.IsGenerated).
 func generatedLoad() error {
 	return errors.New("generated runtime")
 }

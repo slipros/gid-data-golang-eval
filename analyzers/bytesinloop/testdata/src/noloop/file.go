@@ -1,4 +1,4 @@
-// Неприменимость: файл без циклов и конверсий — диагностика не выводится.
+// Not applicable: a file without loops and conversions — no diagnostic is emitted.
 package noloop
 
 func greet(name string) string {

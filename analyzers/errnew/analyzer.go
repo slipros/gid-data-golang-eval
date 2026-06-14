@@ -1,20 +1,20 @@
-// Package errnew реализует правило GID-136 (линтер giderrnew):
-// errors.New из github.com/pkg/errors допустим только в объявлении
-// package-level var — статичные ошибки объявляются заранее (ErrX), а
-// не конструируются в рантайме.
+// Package errnew implements rule GID-136 (linter giderrnew):
+// errors.New from github.com/pkg/errors is allowed only in a
+// package-level var declaration — static errors are declared up front
+// (ErrX), not constructed at runtime.
 //
-// Вызов errors.New внутри тела функции, метода или func-литерала —
-// диагностика. Объявление package-level var (включая var-блоки)
-// ErrX = errors.New("...") — норма.
+// A call to errors.New inside the body of a function, method or
+// func literal is a diagnostic. A package-level var declaration
+// (including var blocks) ErrX = errors.New("...") is the norm.
 //
-// Вне зоны правила:
-//   - errors.Errorf — динамический контекст легитимен, его место
-//     регулируют GID-144/GID-145;
-//   - стандартный errors.New — он уже запрещён GID-146;
-//   - errors.New из любого другого (не github.com/pkg/errors) пакета.
+// Out of scope:
+//   - errors.Errorf — dynamic context is legitimate; its placement
+//     is governed by GID-144/GID-145;
+//   - the standard errors.New — it is already forbidden by GID-146;
+//   - errors.New from any other (non github.com/pkg/errors) package.
 //
-// pkg/errors определяется по import-пути github.com/pkg/errors через
-// TypesInfo. Сгенерированный код (ast.IsGenerated) пропускается.
+// pkg/errors is detected by the import path github.com/pkg/errors via
+// TypesInfo. Generated code (ast.IsGenerated) is skipped.
 package errnew
 
 import (
@@ -27,7 +27,7 @@ import (
 
 const ruleID = "GID-136"
 
-// Analyzer — правило GID-136: errors.New (pkg/errors) только в package-level var.
+// Analyzer — rule GID-136: errors.New (pkg/errors) only in a package-level var.
 var Analyzer = &analysis.Analyzer{
 	Name: "giderrnew",
 	Doc:  ruleID + ": errors.New (pkg/errors) only in a package-level var, not at runtime. Fix: declare a package-level var ErrX",
@@ -44,12 +44,12 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-// checkFile обходит тела всех функций, методов и func-литералов файла и
-// репортит в них вызовы errors.New из pkg/errors. Вызовы вне тел функций
-// (package-level var ErrX = errors.New(...)) не задеваются.
+// checkFile walks the bodies of all functions, methods and func literals in
+// the file and reports calls to errors.New from pkg/errors inside them. Calls
+// outside function bodies (package-level var ErrX = errors.New(...)) are untouched.
 //
-// Тело func-литерала — рантайм даже когда сам литерал записан в
-// package-level var: errors.New там вычисляется при вызове литерала.
+// A func literal body is runtime even when the literal itself is assigned to a
+// package-level var: errors.New there is evaluated when the literal is called.
 func checkFile(pass *analysis.Pass, file *ast.File) {
 	var bodies []*ast.BlockStmt
 
@@ -67,8 +67,8 @@ func checkFile(pass *analysis.Pass, file *ast.File) {
 
 	for _, body := range bodies {
 		ast.Inspect(body, func(n ast.Node) bool {
-			// Не спускаемся во вложенный func-литерал — его тело обходится
-			// отдельной итерацией, иначе вызов отрепортится дважды.
+			// Do not descend into a nested func literal — its body is walked
+			// in a separate iteration, otherwise the call would be reported twice.
 			if _, ok := n.(*ast.FuncLit); ok {
 				return false
 			}
@@ -86,7 +86,7 @@ func checkFile(pass *analysis.Pass, file *ast.File) {
 	}
 }
 
-// isPkgErrorsNew сообщает, является ли call вызовом errors.New из
+// isPkgErrorsNew reports whether call is a call to errors.New from
 // github.com/pkg/errors.
 func isPkgErrorsNew(pass *analysis.Pass, call *ast.CallExpr) bool {
 	const pkgErrorsPath = "github.com/pkg/errors"

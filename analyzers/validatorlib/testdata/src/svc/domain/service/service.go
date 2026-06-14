@@ -1,4 +1,4 @@
-// Позитив: сторонний валидатор запрещён в любом пакете.
+// Positive: a third-party validator is forbidden in any package.
 package service
 
 import (

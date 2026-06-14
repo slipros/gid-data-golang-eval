@@ -1,4 +1,4 @@
-// Неприменимость: файл без каналов в сигнатурах — диагностика не выводится.
+// Not applicable: a file without channels in signatures — no diagnostic is emitted.
 package nochan
 
 func add(a, b int) int {

@@ -12,8 +12,8 @@ import (
 
 const ruleIDBased = "GID-123"
 
-// BasedAnalyzer реализует GID-123: enum — именованный тип на основе string,
-// не голый string/int. Действует только в /domain/model/** и /dal/entity/**.
+// BasedAnalyzer implements GID-123: an enum is a named string-based type,
+// not a bare string/int. Applies only in /domain/model/** and /dal/entity/**.
 var BasedAnalyzer = &analysis.Analyzer{
 	Name: "gidenumbased",
 	Doc:  ruleIDBased + ": an enum must be a named type based on string, not a bare string/int. Fix: declare a named string type",
@@ -47,21 +47,21 @@ func runBased(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-// checkTypeDecl ловит alias на basic-тип и int-enum (≥2 const-значений).
+// checkTypeDecl catches an alias to a basic type and an int-enum (≥2 const values).
 func checkTypeDecl(pass *analysis.Pass, gd *ast.GenDecl, intEnums map[*types.Named]struct{}) {
 	for _, spec := range gd.Specs {
 		ts, ok := spec.(*ast.TypeSpec)
 		if !ok {
 			continue
 		}
-		// Проверка 1: alias на basic string/int.
+		// Check 1: alias to a basic string/int.
 		if ts.Assign != token.NoPos && isBasicStringOrInt(pass.TypesInfo.TypeOf(ts.Type)) {
 			pass.Reportf(ts.Name.Pos(),
 				"%s: enum %s must be a named type, not an alias (type %s = ...)",
 				ruleIDBased, ts.Name.Name, ts.Name.Name)
 			continue
 		}
-		// Проверка 2: именованный int-тип с ≥2 const-значениями.
+		// Check 2: a named int type with ≥2 const values.
 		obj, ok := pass.TypesInfo.Defs[ts.Name].(*types.TypeName)
 		if !ok {
 			continue
@@ -77,8 +77,8 @@ func checkTypeDecl(pass *analysis.Pass, gd *ast.GenDecl, intEnums map[*types.Nam
 	}
 }
 
-// checkUntypedStringConstGroup ловит группу из ≥2 нетипизированных string-const
-// в одном const-блоке (один GenDecl). Репорт один раз на группу.
+// checkUntypedStringConstGroup catches a group of ≥2 untyped string consts
+// in one const block (a single GenDecl). Reports once per group.
 func checkUntypedStringConstGroup(pass *analysis.Pass, gd *ast.GenDecl) {
 	var firstPos token.Pos
 	count := 0
@@ -95,9 +95,9 @@ func checkUntypedStringConstGroup(pass *analysis.Pass, gd *ast.GenDecl) {
 			if !ok {
 				continue
 			}
-			// Нетипизированный string == universe string (не именованный
-			// тип). Дефолтный тип нетипизированной const — Basic String;
-			// явная нетипизированная — UntypedString.
+			// Untyped string == universe string (not a named
+			// type). The default type of an untyped const is Basic String;
+			// an explicit untyped one is UntypedString.
 			basic, ok := c.Type().(*types.Basic)
 			if !ok {
 				continue
@@ -117,7 +117,7 @@ func checkUntypedStringConstGroup(pass *analysis.Pass, gd *ast.GenDecl) {
 	}
 }
 
-// intEnumTypes — именованные типы пакета с underlying integer и ≥2 const-значений.
+// intEnumTypes — the package's named types with an underlying integer and ≥2 const values.
 func intEnumTypes(pass *analysis.Pass) map[*types.Named]struct{} {
 	counts := map[*types.Named]int{}
 	for _, obj := range pass.TypesInfo.Defs {
@@ -148,7 +148,7 @@ func intEnumTypes(pass *analysis.Pass) map[*types.Named]struct{} {
 	return out
 }
 
-// isBasicStringOrInt сообщает, является ли тип universe string или integer.
+// isBasicStringOrInt reports whether the type is a universe string or integer.
 func isBasicStringOrInt(t types.Type) bool {
 	basic, ok := t.(*types.Basic)
 	if !ok {

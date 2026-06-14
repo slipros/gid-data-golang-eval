@@ -1,7 +1,7 @@
-// Package extlib — внешняя библиотека (путь без слой-сегментов сервиса).
+// Package extlib — an external library (a path without service layer segments).
 package extlib
 
-// Encoder — интерфейс внешней библиотеки. Использование разрешено.
+// Encoder — an external library interface. Its use is allowed.
 type Encoder interface {
 	Encode(v any) error
 }

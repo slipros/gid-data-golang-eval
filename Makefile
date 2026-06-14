@@ -1,33 +1,33 @@
 .PHONY: build build-install install eval lint lint-fast install-hook clean
 
-## build: собрать кастомный бинарь custom-gcl (требует golangci-lint v2.9.0)
+## build: build the custom-gcl binary (requires golangci-lint v2.9.0)
 build:
 	golangci-lint custom
 
-## build-install: собрать бинарь напрямую через go build (без golangci-lint custom)
+## build-install: build the binary directly via go build (without golangci-lint custom)
 build-install:
 	go build -o ./bin/custom-gcl ./cmd/custom-gcl
 
-## install: поставить custom-gcl в $GOBIN через go install (для всех проектов)
+## install: install custom-gcl into $GOBIN via go install (for all projects)
 install:
 	go install ./cmd/custom-gcl
 
-## eval: прогнать eval всех правил (analysistest + testdata)
+## eval: run evals for all rules (analysistest + testdata)
 eval:
 	go test ./...
 
-## lint: пересобрать custom-gcl и прогнать на репозитории
+## lint: rebuild custom-gcl and run it on the repository
 lint: build lint-fast
 
-## lint-fast: прогнать уже собранный custom-gcl (без пересборки)
+## lint-fast: run the already built custom-gcl (no rebuild)
 lint-fast:
 	./bin/custom-gcl run ./...
 
-## install-hook: поставить git pre-commit hook с локальной проверкой
+## install-hook: install a git pre-commit hook with the local check
 install-hook:
-	@printf '#!/bin/sh\n# Локальный гейт правил (см. RULES.md).\nexec make -s lint-fast\n' > .git/hooks/pre-commit
+	@printf '#!/bin/sh\n# Local rule gate (see RULES.md).\nexec make -s lint-fast\n' > .git/hooks/pre-commit
 	@chmod +x .git/hooks/pre-commit
-	@echo "pre-commit hook установлен (.git/hooks/pre-commit)"
+	@echo "pre-commit hook installed (.git/hooks/pre-commit)"
 
 clean:
 	rm -rf bin

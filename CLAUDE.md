@@ -1,50 +1,50 @@
 # CLAUDE.md
 
-Кастомный плагин golangci-lint (module plugin system), переносящий правила внутреннего
-стайлгайда gid.team (skill `go-styleguide`) в детерминированный линтер. Каждое правило
-имеет ID `GID-NNN` и зарегистрировано в [RULES.md](RULES.md).
+A custom golangci-lint plugin (module plugin system) that ports the rules of the internal
+gid.team styleguide (skill `go-styleguide`) into a deterministic linter. Every rule
+has an ID `GID-NNN` and is registered in [RULES.md](RULES.md).
 
-## Команды
+## Commands
 
 ```bash
-make build         # собрать бинарь bin/custom-gcl (golangci-lint custom)
-make eval          # прогнать eval всех правил (go test ./...)
-make lint-fast     # проверить код репозитория собранным бинарём
-go test ./analyzers/<slug>/...   # eval одного правила
+make build         # build the bin/custom-gcl binary (golangci-lint custom)
+make eval          # run the eval of all rules (go test ./...)
+make lint-fast     # check the repository code with the built binary
+go test ./analyzers/<slug>/...   # eval of a single rule
 ```
 
-Сборка требует golangci-lint **v2.9.0** — версия зафиксирована в `.custom-gcl.yml`.
-Версии зависимостей пинятся под golangci v2.9.0 — не обновлять без проверки сборки.
+The build requires golangci-lint **v2.9.0** — the version is pinned in `.custom-gcl.yml`.
+Dependency versions are pinned to golangci v2.9.0 — do not upgrade without verifying the build.
 
-## Структура
+## Structure
 
-- `analyzers/<slug>/` — go/analysis-анализаторы: одно правило (или группа смежных GID-ID) = один линтер `gid<slug>`
-- `ruleguard/rules.go` — простые паттерн-правила (gocritic → ruleguard), слой 1
-- `plugin.go` — регистрация всех анализаторов в plugin system
-- `internal/pathseg` — матчинг слоёв по сегментам пути (`/domain/model`, `/dal/entity`, …)
-- `internal/exclude` — разбор `settings.exclude` (`Метод` | `Тип.Метод`)
-- `.golangci.yml` — эталонный конфиг: каждый линтер с `desc` и примерами настроек
-- `RULES.md` — реестр правил со статусами; единственный источник истины по правилам
+- `analyzers/<slug>/` — go/analysis analyzers: one rule (or a group of related GID-IDs) = one linter `gid<slug>`
+- `analyzers/patterns/` — simple AST patterns (GID-001…008), layer 1
+- `plugin.go` — registration of all analyzers in the plugin system
+- `internal/pathseg` — matching layers by path segments (`/domain/model`, `/dal/entity`, …)
+- `internal/exclude` — parsing of `settings.exclude` (`Method` | `Type.Method`)
+- `.golangci.yml` — the reference config: each linter with a `desc` and example settings
+- `RULES.md` — the rule registry with statuses; the single source of truth on rules
 
-## Жёсткие требования
+## Hard requirements
 
-1. **Каждое правило обязано иметь eval.** Правило не считается готовым без
-   `analysistest` + `testdata/src/...` с `// want`, покрывающего 4 класса кейсов:
-   позитивный, негативный, граничный, неприменимость (шаблон — `rule_template.feature`).
-2. Процесс добавления правила (конец RULES.md): строка реестра → `.feature`-спека →
-   реализация → eval → включение в `.golangci.yml` → обновить статус в RULES.md.
-3. UUID — только `github.com/gofrs/uuid` (мы сами форсируем это правилом GID-137).
-4. Ошибки — только `github.com/pkg/errors` (GID-146).
-5. eval-фикстуры в `testdata/` намеренно нарушают правила — не «чинить» их.
+1. **Every rule must have an eval.** A rule is not considered done without
+   `analysistest` + `testdata/src/...` with `// want`, covering 4 case classes:
+   positive, negative, boundary, non-applicability (template — `rule_template.feature`).
+2. The process for adding a rule (end of RULES.md): registry row → `.feature` spec →
+   implementation → eval → enable in `.golangci.yml` → update the status in RULES.md.
+3. UUID — only `github.com/gofrs/uuid` (we enforce this ourselves with rule GID-137).
+4. Errors — only `github.com/pkg/errors` (GID-146).
+5. eval fixtures in `testdata/` deliberately violate the rules — do not "fix" them.
 
-## Конвенции анализаторов
+## Analyzer conventions
 
-- Имя линтера: `gid<slug>` без дефисов (`gidnogetprefix`).
-- Настройки через `settings` в `.golangci.yml`; точечные исключения через
-  `//nolint:<линтер>`; централизованные — `settings.exclude` / `settings.tree` /
-  `settings.tags` и т.п.
-- Слой пакета определяется по сегментам пути через `internal/pathseg`,
-  не по строковому `strings.Contains`.
-- Диагностики и `description`/`Doc` формулируются **на английском** в формате
-  `<problem>. Fix: <example>.` — каждое сообщение содержит валидный пример
-  исправления. Соответственно `// want` в testdata пишутся на английском.
+- Linter name: `gid<slug>` without hyphens (`gidnogetprefix`).
+- Settings via `settings` in `.golangci.yml`; pinpoint exclusions via
+  `//nolint:<linter>`; centralized ones — `settings.exclude` / `settings.tree` /
+  `settings.tags`, etc.
+- The package layer is determined by path segments through `internal/pathseg`,
+  not by a string `strings.Contains`.
+- Diagnostics and `description`/`Doc` are formulated **in English** in the format
+  `<problem>. Fix: <example>.` — each message contains a valid fix
+  example. Accordingly, the `// want` comments in testdata are written in English.

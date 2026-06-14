@@ -1,4 +1,4 @@
-// Неприменимость: обычный доменный пакет — правило не действует.
+// Not applicable: an ordinary domain package — the rule does not apply.
 package model
 
 type Hello struct{}

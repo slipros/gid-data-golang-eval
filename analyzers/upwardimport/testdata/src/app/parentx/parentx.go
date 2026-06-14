@@ -1,12 +1,12 @@
-// Граничный: "app/parentx" НЕ является дочерним для "app/parent" — префикс
-// считается по сегментам пути, а не по строке. Строка "app/parent" является
-// строковым префиксом "app/parentx", но НЕ сегментным (нет "app/parent/").
-// Диагностики быть не должно.
+// Boundary: "app/parentx" is NOT a child of "app/parent" — the prefix is
+// computed by path segments, not by string. The string "app/parent" is a
+// string prefix of "app/parentx", but NOT a segment-wise one (no "app/parent/").
+// There must be no diagnostic.
 package parentx
 
-import "app/parent" // ок: parentx не дочерний для parent (префикс по сегментам)
+import "app/parent" // ok: parentx is not a child of parent (segment-wise prefix)
 
-// Holder использует тип из не-родительского пакета parent.
+// Holder uses a type from the non-parent package parent.
 type Holder struct {
 	Root parent.Root
 }

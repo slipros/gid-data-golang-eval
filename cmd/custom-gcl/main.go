@@ -1,18 +1,18 @@
-// Команда custom-gcl — полноценный golangci-lint v2.9.0 со встроенными
-// gid*-линтерами этого репозитория.
+// Command custom-gcl is a full golangci-lint v2.9.0 with the gid* linters
+// of this repository built in.
 //
-// Это альтернатива сборке через `golangci-lint custom` (.custom-gcl.yml):
-// бинарь ставится напрямую и не требует клонирования golangci-lint —
+// It is an alternative to building via `golangci-lint custom` (.custom-gcl.yml):
+// the binary is installed directly and does not require cloning golangci-lint —
 //
 //	go install github.com/slipros/gid-data-golang-eval/cmd/custom-gcl@latest
 //
-// Запуск идентичен обычному golangci-lint (нужен .golangci.yml с включёнными
-// gid*-линтерами и ruleguard/rules.go рядом):
+// Usage is identical to regular golangci-lint (a .golangci.yml with the gid*
+// linters enabled is all you need):
 //
 //	custom-gcl run ./...
 //
-// Версия golangci-lint фиксирована в go.mod (v2.9.0) — должна совпадать
-// с версией из .custom-gcl.yml.
+// The golangci-lint version is pinned in go.mod (v2.9.0) — it must match
+// the version in .custom-gcl.yml.
 package main
 
 import (
@@ -22,10 +22,10 @@ import (
 	"github.com/golangci/golangci-lint/v2/pkg/commands"
 	"github.com/golangci/golangci-lint/v2/pkg/exitcodes"
 
-	// Регистрирует все gid*-линтеры через init() пакета gidrules.
-	// Точка сборки бинаря обязана импортировать корневой пакет —
-	// тот же контракт, что у сгенерированного `golangci-lint custom`.
-	//nolint:gidupwardimport // composition root плагина импортирует корень по контракту plugin system
+	// Registers all gid* linters via the gidrules package init().
+	// The binary's build entry point must import the root package —
+	// the same contract as the generated `golangci-lint custom`.
+	//nolint:gidupwardimport // the plugin composition root imports the root per the plugin system contract
 	_ "github.com/slipros/gid-data-golang-eval"
 )
 

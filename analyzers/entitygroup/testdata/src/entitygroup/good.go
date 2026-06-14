@@ -1,5 +1,5 @@
-// Негатив: канонический порядок — type, конструктор, методы;
-// блоки сущностей последовательны.
+// Negative: the canonical order — type, constructor, methods;
+// the entity blocks are sequential.
 package entitygroup
 
 import "context"
@@ -22,5 +22,5 @@ type Download struct {
 
 func (d *Download) ID() string { return d.id }
 
-// Неприменимость: функции без сущности порядок не ограничивают.
+// Not applicable: functions without an entity do not constrain the order.
 func helper(s string) string { return s }

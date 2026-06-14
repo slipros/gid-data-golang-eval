@@ -1,7 +1,7 @@
-// Eval для GID-126: неприменимость и граничные «похожие, но не Options» кейсы.
+// Eval for GID-126: non-applicability and boundary "similar but not Options" cases.
 package model
 
-// --- Неприменимость: пакет без Options-типов ---
+// --- Not applicable: a package without Options types ---
 
 type Job struct {
 	ID   int
@@ -10,15 +10,15 @@ type Job struct {
 
 var DefaultJob = Job{Name: "default"}
 
-// --- Граничный: не-struct типы с именем Options не задеваются ---
-// (alias на сущностный тип и interface — не голый struct Options)
+// --- Boundary: non-struct types named Options are not affected ---
+// (an alias to an entity type and an interface — not a bare struct Options)
 
 type entOptions struct {
 	Retries int
 }
 
-type Options = entOptions // alias — не задеваем
+type Options = entOptions // an alias — not affected
 
-type OptionsProvider interface { // interface, не struct — не задеваем
+type OptionsProvider interface { // an interface, not a struct — not affected
 	Opts() entOptions
 }

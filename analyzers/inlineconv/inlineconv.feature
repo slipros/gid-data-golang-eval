@@ -1,95 +1,95 @@
-# language: ru
+# language: en
 
-Функция: GID-215 — конвертация model ↔ entity живёт только в convert-пакетах (no-inline-entity-literal)
-  Как разработчик
-  Я хочу, чтобы инлайн-заполнение entity-типов в domain-слое было запрещено
-  Чтобы вся конвертация model ↔ entity жила в пакете convert (<Dst><Type>From<Src>)
+Feature: GID-215 — model ↔ entity conversion lives only in convert packages (no-inline-entity-literal)
+  As a developer
+  I want inline filling of entity types in the domain layer to be forbidden
+  So that all model ↔ entity conversion lives in the convert package (<Dst><Type>From<Src>)
 
-  # Один анализатор inlineconv → линтер gidinlineconv, LoadModeTypesInfo.
-  # Источник: service.md «Конвертация всегда выполняется через пакет convert».
-  # Scope: пакеты domain-слоя (pathseg.Contains(pkgPath, "domain")), КРОМЕ пакетов
-  # с сегментом convert. Тип литерала определяется через TypesInfo: именованный
-  # тип (struct или именованный слайс) из пакета entity-слоя
-  # (pathseg.Contains(пакет типа, "dal", "entity"), включая filter/enum).
-  # Пустой литерал (entity.Snapshot{}) — zero value, разрешён.
-  # Флагается только внешний (outermost) entity-литерал — внутрь не спускаемся.
-  # _test.go и сгенерированный код (ast.IsGenerated) пропускаются.
+  # One analyzer inlineconv → linter gidinlineconv, LoadModeTypesInfo.
+  # Source: service.md "Conversion is always performed via the convert package".
+  # Scope: domain-layer packages (pathseg.Contains(pkgPath, "domain")), EXCEPT packages
+  # with a convert segment. The literal type is resolved via TypesInfo: a named
+  # type (a struct or a named slice) from a package of the entity layer
+  # (pathseg.Contains(the type's package, "dal", "entity"), including filter/enum).
+  # An empty literal (entity.Snapshot{}) is a zero value, allowed.
+  # Only the outermost entity literal is flagged — we do not descend inside.
+  # _test.go and generated code (ast.IsGenerated) are skipped.
 
-  # --- Класс 1: позитивный (нарушение ловится) ---
+  # --- Class 1: positive (the violation is caught) ---
 
-  Сценарий: позитивный — entity.CreateSnapshot{Field: ...} в /domain/service
-    Допустим "return entity.CreateSnapshot{Name: name}" в пакете /domain/service
-    Когда анализатор gidinlineconv проверяет файл
-    Тогда выводится диагностика "GID-215: инлайн-заполнение entity-типа entity.CreateSnapshot в domain-слое запрещено — конвертация живёт в convert-пакете (<Dst><Type>From<Src>)"
+  Scenario: positive — entity.CreateSnapshot{Field: ...} in /domain/service
+    Given "return entity.CreateSnapshot{Name: name}" in the /domain/service package
+    When the gidinlineconv analyzer checks the file
+    Then the diagnostic "GID-215: inline-filling the entity type entity.CreateSnapshot in the domain layer is forbidden. Fix: put conversion in a convert package (<Dst><Type>From<Src>)" is reported
 
-  Сценарий: позитивный — &entity.Snapshot{Field: ...}
-    Допустим "return &entity.Snapshot{ID: id}" в пакете /domain/service
-    Когда анализатор gidinlineconv проверяет файл
-    Тогда выводится диагностика "GID-215: инлайн-заполнение entity-типа entity.Snapshot в domain-слое запрещено"
+  Scenario: positive — &entity.Snapshot{Field: ...}
+    Given "return &entity.Snapshot{ID: id}" in the /domain/service package
+    When the gidinlineconv analyzer checks the file
+    Then the diagnostic "GID-215: inline-filling the entity type entity.Snapshot in the domain layer is forbidden" is reported
 
-  Сценарий: позитивный — именованный entity-слайс с элементами
-    Допустим "return entity.Snapshots{{ID: \"a\"}, {ID: \"b\"}}" в пакете /domain/service
-    Когда анализатор gidinlineconv проверяет файл
-    Тогда выводится диагностика "GID-215: инлайн-заполнение entity-типа entity.Snapshots в domain-слое запрещено"
+  Scenario: positive — a named entity slice with elements
+    Given "return entity.Snapshots{{ID: \"a\"}, {ID: \"b\"}}" in the /domain/service package
+    When the gidinlineconv analyzer checks the file
+    Then the diagnostic "GID-215: inline-filling the entity type entity.Snapshots in the domain layer is forbidden" is reported
 
-  Сценарий: позитивный — filter-структура из /dal/entity/filter с полями
-    Допустим "return filter.Snapshots{Name: name, Limit: 10}" в пакете /domain/service
-    Когда анализатор gidinlineconv проверяет файл
-    Тогда выводится диагностика "GID-215: инлайн-заполнение entity-типа filter.Snapshots в domain-слое запрещено"
+  Scenario: positive — a filter struct from /dal/entity/filter with fields
+    Given "return filter.Snapshots{Name: name, Limit: 10}" in the /domain/service package
+    When the gidinlineconv analyzer checks the file
+    Then the diagnostic "GID-215: inline-filling the entity type filter.Snapshots in the domain layer is forbidden" is reported
 
-  # --- Класс 2: негативный (чистый код проходит) ---
+  # --- Class 2: negative (clean code passes) ---
 
-  Сценарий: негативный — пустой entity-литерал (zero value)
-    Допустим "return entity.Snapshot{}" в пакете /domain/service
-    Когда анализатор gidinlineconv проверяет файл
-    Тогда диагностика не выводится
-    # Пустой литерал — zero value, не инлайн-конвертация.
+  Scenario: negative — an empty entity literal (zero value)
+    Given "return entity.Snapshot{}" in the /domain/service package
+    When the gidinlineconv analyzer checks the file
+    Then no diagnostic is reported
+    # An empty literal is a zero value, not an inline conversion.
 
-  Сценарий: негативный — литерал model-типа с полями
-    Допустим "return model.Snapshot{ID: id, Name: name}" в пакете /domain/service
-    Когда анализатор gidinlineconv проверяет файл
-    Тогда диагностика не выводится
-    # model в domain — норма; правило только про entity-типы.
+  Scenario: negative — a model-type literal with fields
+    Given "return model.Snapshot{ID: id, Name: name}" in the /domain/service package
+    When the gidinlineconv analyzer checks the file
+    Then no diagnostic is reported
+    # model in domain is the norm; the rule is only about entity types.
 
-  Сценарий: негативный — entity-литерал внутри convert-пакета сервиса
-    Допустим "return entity.CreateSnapshot{Name: in.Name}" в пакете /domain/service/convert
-    Когда анализатор gidinlineconv проверяет файл
-    Тогда диагностика не выводится
-    # convert-пакет — место конвертации, инлайн entity разрешён.
+  Scenario: negative — an entity literal inside the service's convert package
+    Given "return entity.CreateSnapshot{Name: in.Name}" in the /domain/service/convert package
+    When the gidinlineconv analyzer checks the file
+    Then no diagnostic is reported
+    # The convert package is the place for conversion, inline entity is allowed.
 
-  # --- Класс 3: граничный ---
+  # --- Class 3: boundary ---
 
-  Сценарий: граничный — вложенный литерал внутри зафлаганного внешнего
-    Допустим "entity.Snapshots{entity.Snapshot{ID: \"a\"}, entity.Snapshot{ID: \"b\"}}" в пакете /domain/service
-    Когда анализатор gidinlineconv проверяет файл
-    Тогда выводится ровно одна диагностика — на внешний литерал entity.Snapshots
-    # Внутрь зафлаганного литерала анализатор не спускается.
+  Scenario: boundary — a nested literal inside a flagged outer one
+    Given "entity.Snapshots{entity.Snapshot{ID: \"a\"}, entity.Snapshot{ID: \"b\"}}" in the /domain/service package
+    When the gidinlineconv analyzer checks the file
+    Then exactly one diagnostic is reported — on the outer literal entity.Snapshots
+    # The analyzer does not descend inside a flagged literal.
 
-  Сценарий: граничный — map[string]entity.X{ key: entity.X{...} }
-    Допустим "map[string]entity.Snapshot{id: entity.Snapshot{ID: id}}" в пакете /domain/service
-    Когда анализатор gidinlineconv проверяет файл
-    Тогда выводится диагностика на значение entity.Snapshot, но не на map-литерал
-    # Сам map-литерал — не именованный entity-тип (не флагается); флагается
-    # значение entity.Snapshot, в т.ч. элемент без явного типа ({ID: id}).
+  Scenario: boundary — map[string]entity.X{ key: entity.X{...} }
+    Given "map[string]entity.Snapshot{id: entity.Snapshot{ID: id}}" in the /domain/service package
+    When the gidinlineconv analyzer checks the file
+    Then a diagnostic is reported on the entity.Snapshot value, but not on the map literal
+    # The map literal itself is not a named entity type (not flagged); the
+    # entity.Snapshot value is flagged, including an element without an explicit type ({ID: id}).
 
-  # --- Класс 4: неприменимость ---
+  # --- Class 4: non-applicability ---
 
-  Сценарий: неприменимость — entity-литерал в /dal/repository
-    Допустим "return entity.Snapshot{ID: id}" в пакете /dal/repository
-    Когда анализатор gidinlineconv проверяет файл
-    Тогда диагностика не выводится
-    # /dal/repository не входит в domain-слой — не зона правила.
+  Scenario: non-applicability — an entity literal in /dal/repository
+    Given "return entity.Snapshot{ID: id}" in the /dal/repository package
+    When the gidinlineconv analyzer checks the file
+    Then no diagnostic is reported
+    # /dal/repository is not part of the domain layer — outside the rule's scope.
 
-  Сценарий: неприменимость — _test.go
-    Допустим "return entity.Snapshot{ID: id}" в файле service_test.go
-    Когда анализатор gidinlineconv проверяет файл
-    Тогда диагностика не выводится
-    # Тестовые файлы пропускаются.
+  Scenario: non-applicability — _test.go
+    Given "return entity.Snapshot{ID: id}" in the file service_test.go
+    When the gidinlineconv analyzer checks the file
+    Then no diagnostic is reported
+    # Test files are skipped.
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (RULES.md, GID-215)
-#  [x] Выбран слой: go/analysis (пакет inlineconv: gidinlineconv), LoadModeTypesInfo
-#  [x] Задано сообщение ("GID-215: …")
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [ ] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (RULES.md, GID-215)
+#  [x] Layer chosen: go/analysis (package inlineconv: gidinlineconv), LoadModeTypesInfo
+#  [x] Message is defined ("GID-215: …")
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [ ] Rule enabled in .golangci.yml

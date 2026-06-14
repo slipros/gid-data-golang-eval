@@ -1,4 +1,4 @@
-// Класс «неприменимость»: библиотечный пакет, не использующий flag.
+// "Inapplicability" class: a library package that does not use flag.
 package cleanlib
 
 import "strings"

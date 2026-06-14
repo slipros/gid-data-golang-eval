@@ -2,7 +2,7 @@
 
 package service
 
-// Интерфейсы сгенерированных файлов не проверяются.
+// Interfaces of generated files are not checked.
 
 type GeneratedClient interface {
 	Call(payload string) error

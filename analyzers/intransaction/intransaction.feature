@@ -1,121 +1,121 @@
-# language: ru
+# language: en
 
-Функция: GID-175 — конвенция работы с транзакциями (in-transaction)
-  Как разработчик
-  Я хочу, чтобы тип транзакции жил в /domain/model (InTransactionFunc),
-  а connection с этой сигнатурой передавался в конструктор напрямую
-  Чтобы service/usecase использовали единый именованный тип, а не оборачивали транзакцию методами
+Feature: GID-175 — the transaction-handling convention (in-transaction)
+  As a developer
+  I want the transaction type to live in /domain/model (InTransactionFunc),
+  and a connection with this signature to be passed into the constructor directly
+  So that service/usecase use a single named type instead of wrapping the transaction in methods
 
-  # Каноническая форма в /domain/model:
+  # The canonical form in /domain/model:
   #   type InTransactionFunc func(ctx context.Context, fn func(ctx context.Context) error) error
   #   type InTransactionWithReturnFunc[T any] func(ctx context.Context, fn func(ctx context.Context) (T, error)) (T, error)
   #
-  # Анализатор gidintransaction, LoadModeTypesInfo. Сигнатура матчится структурно через go/types:
+  # Analyzer gidintransaction, LoadModeTypesInfo. The signature is matched structurally via go/types:
   #   plain:      params (context.Context, func(context.Context) error) -> error
   #   withReturn: params (context.Context, func(context.Context) (T, error)) -> (T, error)
-  # context.Context распознаётся по типу (пакет context, имя Context). Сгенерированный код пропускается.
+  # context.Context is recognized by type (package context, name Context). Generated code is skipped.
   #
-  # Проверки:
-  #   1. Объявление tx-типа вне /domain/model.
-  #   2. Нейминг tx-типа в /domain/model.
-  #   3. Анонимная tx-сигнатура в /domain/service и /domain/usecase (поле/параметр).
-  #   4. Tx-метод структуры в /dal/repository и /domain/service.
+  # Checks:
+  #   1. A tx-type declaration outside /domain/model.
+  #   2. Naming of the tx type in /domain/model.
+  #   3. An anonymous tx signature in /domain/service and /domain/usecase (field/parameter).
+  #   4. A tx method on a struct in /dal/repository and /domain/service.
 
-  # === Класс 1: объявление tx-типа вне /domain/model (проверка 1) ===
+  # === Class 1: a tx-type declaration outside /domain/model (check 1) ===
 
-  Сценарий: позитивный — именованный tx-тип объявлен вне model
-    Допустим пакет вне "/domain/model" (например "/internal/pkg/helper") с типом "type Tx func(ctx context.Context, fn func(ctx context.Context) error) error"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-175: тип транзакции живёт в /domain/model (InTransactionFunc)" на типе "Tx"
+  Scenario: positive — a named tx type declared outside model
+    Given a package outside "/domain/model" (e.g. "/internal/pkg/helper") with the type "type Tx func(ctx context.Context, fn func(ctx context.Context) error) error"
+    When the analyzer checks the file
+    Then the diagnostic "GID-175: the transaction type must live in /domain/model (InTransactionFunc)" is reported on the type "Tx"
 
-  Сценарий: позитивный — generic-вариант tx-типа вне model
-    Допустим пакет вне "/domain/model" с типом "type TxR[T any] func(ctx context.Context, fn func(ctx context.Context) (T, error)) (T, error)"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-175: тип транзакции живёт в /domain/model (InTransactionFunc)" на типе "TxR"
+  Scenario: positive — a generic tx-type variant outside model
+    Given a package outside "/domain/model" with the type "type TxR[T any] func(ctx context.Context, fn func(ctx context.Context) (T, error)) (T, error)"
+    When the analyzer checks the file
+    Then the diagnostic "GID-175: the transaction type must live in /domain/model (InTransactionFunc)" is reported on the type "TxR"
 
-  # === Класс 2: нейминг tx-типа в /domain/model (проверка 2) ===
+  # === Class 2: naming of the tx type in /domain/model (check 2) ===
 
-  Сценарий: позитивный — tx-тип в model назван не InTransactionFunc
-    Допустим пакет в "/domain/model" с типом "type RunInTx func(ctx context.Context, fn func(ctx context.Context) error) error"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-175: тип транзакции называется InTransactionFunc / InTransactionWithReturnFunc" на типе "RunInTx"
+  Scenario: positive — a tx type in model is not named InTransactionFunc
+    Given a package in "/domain/model" with the type "type RunInTx func(ctx context.Context, fn func(ctx context.Context) error) error"
+    When the analyzer checks the file
+    Then the diagnostic "GID-175: the transaction type must be named InTransactionFunc / InTransactionWithReturnFunc" is reported on the type "RunInTx"
 
-  Сценарий: позитивный — generic-tx-тип в model назван не InTransactionWithReturnFunc
-    Допустим пакет в "/domain/model" с типом "type WithTxResult[T any] func(ctx context.Context, fn func(ctx context.Context) (T, error)) (T, error)"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-175: тип транзакции называется InTransactionFunc / InTransactionWithReturnFunc" на типе "WithTxResult"
+  Scenario: positive — a generic tx type in model is not named InTransactionWithReturnFunc
+    Given a package in "/domain/model" with the type "type WithTxResult[T any] func(ctx context.Context, fn func(ctx context.Context) (T, error)) (T, error)"
+    When the analyzer checks the file
+    Then the diagnostic "GID-175: the transaction type must be named InTransactionFunc / InTransactionWithReturnFunc" is reported on the type "WithTxResult"
 
-  # === Класс 3: анонимная tx-сигнатура в service/usecase (проверка 3) ===
+  # === Class 3: an anonymous tx signature in service/usecase (check 3) ===
 
-  Сценарий: позитивный — анонимная tx-сигнатура в поле структуры сервиса
-    Допустим пакет в "/domain/service" со структурой с полем "tx func(ctx context.Context, fn func(ctx context.Context) error) error"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-175: используйте именованный тип model.InTransactionFunc" на поле "tx"
+  Scenario: positive — an anonymous tx signature in a service struct field
+    Given a package in "/domain/service" with a struct having the field "tx func(ctx context.Context, fn func(ctx context.Context) error) error"
+    When the analyzer checks the file
+    Then the diagnostic "GID-175: use the named type model.InTransactionFunc" is reported on the field "tx"
 
-  Сценарий: позитивный — анонимная tx-сигнатура в параметре конструктора
-    Допустим пакет в "/domain/service" с конструктором, принимающим параметр "tx func(ctx context.Context, fn func(ctx context.Context) error) error"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-175: используйте именованный тип model.InTransactionFunc" на параметре "tx"
+  Scenario: positive — an anonymous tx signature in a constructor parameter
+    Given a package in "/domain/service" with a constructor taking the parameter "tx func(ctx context.Context, fn func(ctx context.Context) error) error"
+    When the analyzer checks the file
+    Then the diagnostic "GID-175: use the named type model.InTransactionFunc" is reported on the parameter "tx"
 
-  Сценарий: позитивный — анонимная generic-tx-сигнатура в параметре функции usecase
-    Допустим пакет в "/domain/usecase" с функцией, принимающей параметр "run func(ctx context.Context, fn func(ctx context.Context) (string, error)) (string, error)"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-175: используйте именованный тип model.InTransactionFunc" на параметре "run"
+  Scenario: positive — an anonymous generic tx signature in a usecase function parameter
+    Given a package in "/domain/usecase" with a function taking the parameter "run func(ctx context.Context, fn func(ctx context.Context) (string, error)) (string, error)"
+    When the analyzer checks the file
+    Then the diagnostic "GID-175: use the named type model.InTransactionFunc" is reported on the parameter "run"
 
-  # === Класс 4: tx-метод на repo/service (проверка 4) ===
+  # === Class 4: a tx method on repo/service (check 4) ===
 
-  Сценарий: позитивный — tx-метод на репозитории (имя любое)
-    Допустим пакет в "/dal/repository" со структурой и методом "func (r *JobRepository) InTx(ctx context.Context, fn func(ctx context.Context) error) error"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-175: репозиторий/сервис не оборачивает транзакцию методом — InTransactionFunc передаётся в конструктор напрямую от connection" на методе "InTx"
+  Scenario: positive — a tx method on a repository (any name)
+    Given a package in "/dal/repository" with a struct and the method "func (r *JobRepository) InTx(ctx context.Context, fn func(ctx context.Context) error) error"
+    When the analyzer checks the file
+    Then the diagnostic "GID-175: a repository/service must not wrap a transaction in a method — InTransactionFunc is passed into the constructor directly from the connection" is reported on the method "InTx"
 
-  Сценарий: позитивный — tx-метод на сервисе (имя любое)
-    Допустим пакет в "/domain/service" со структурой и методом "func (s *JobService) Transaction(ctx context.Context, fn func(ctx context.Context) error) error"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-175: репозиторий/сервис не оборачивает транзакцию методом" на методе "Transaction"
+  Scenario: positive — a tx method on a service (any name)
+    Given a package in "/domain/service" with a struct and the method "func (s *JobService) Transaction(ctx context.Context, fn func(ctx context.Context) error) error"
+    When the analyzer checks the file
+    Then the diagnostic "GID-175: a repository/service must not wrap a transaction in a method" is reported on the method "Transaction"
 
-  # === Негативные кейсы (чистый код) ===
+  # === Negative cases (clean code) ===
 
-  Сценарий: негативный — каноническая модель InTransactionFunc / InTransactionWithReturnFunc
-    Допустим пакет в "/domain/model" с типами "InTransactionFunc" и "InTransactionWithReturnFunc[T any]" канонической формы
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — the canonical model InTransactionFunc / InTransactionWithReturnFunc
+    Given a package in "/domain/model" with the types "InTransactionFunc" and "InTransactionWithReturnFunc[T any]" of the canonical form
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: негативный — сервис с полем именованного типа model.InTransactionFunc
-    Допустим пакет в "/domain/service" со структурой с полем "tx model.InTransactionFunc" и конструктором, принимающим "tx model.InTransactionFunc"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — a service with a field of the named type model.InTransactionFunc
+    Given a package in "/domain/service" with a struct having the field "tx model.InTransactionFunc" and a constructor taking "tx model.InTransactionFunc"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  # === Граничные кейсы (похожая, но другая сигнатура — не флагуем) ===
+  # === Boundary cases (a similar but different signature — not flagged) ===
 
-  Сценарий: граничный — callback с дополнительным аргументом
-    Допустим тип "func(ctx context.Context, fn func(ctx context.Context, id int) error) error"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: boundary — a callback with an extra argument
+    Given the type "func(ctx context.Context, fn func(ctx context.Context, id int) error) error"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: граничный — без ctx первым параметром
-    Допустим тип "func(fn func(ctx context.Context) error) error"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: boundary — without ctx as the first parameter
+    Given the type "func(fn func(ctx context.Context) error) error"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: граничный — callback возвращает не error
-    Допустим метод "func (r *JobRepository) NotInTx(ctx context.Context, fn func(ctx context.Context) (int, error)) error"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: boundary — the callback does not return error
+    Given the method "func (r *JobRepository) NotInTx(ctx context.Context, fn func(ctx context.Context) (int, error)) error"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  # === Неприменимость ===
+  # === Non-applicability ===
 
-  Сценарий: неприменимость — анонимная tx-сигнатура вне service/usecase (в main)
-    Допустим пакет "main" с функцией, принимающей параметр "tx func(ctx context.Context, fn func(ctx context.Context) error) error"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
-    # (Проверка 3 действует только в /domain/service и /domain/usecase.
-    #  Проверка 1 ловит лишь именованные объявления типов, а не анонимные параметры.)
+  Scenario: non-applicability — an anonymous tx signature outside service/usecase (in main)
+    Given the package "main" with a function taking the parameter "tx func(ctx context.Context, fn func(ctx context.Context) error) error"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+    # (Check 3 applies only in /domain/service and /domain/usecase.
+    #  Check 1 catches only named type declarations, not anonymous parameters.)
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (RULES.md, GID-175)
-#  [x] Выбран слой: go/analysis (анализатор gidintransaction в analyzers/intransaction)
-#  [x] Заданы severity и сообщение ("GID-175: …")
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [ ] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (RULES.md, GID-175)
+#  [x] Layer chosen: go/analysis (analyzer gidintransaction in analyzers/intransaction)
+#  [x] Severity and message are defined ("GID-175: …")
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [ ] Rule enabled in .golangci.yml

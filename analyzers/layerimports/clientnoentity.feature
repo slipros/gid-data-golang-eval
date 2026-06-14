@@ -1,34 +1,34 @@
-# language: ru
+# language: en
 
-Функция: GID-172 — client не импортирует dal-слой
-  Как архитектор сервиса
-  Я хочу, чтобы пакеты /client/** не импортировали /dal/**
-  Чтобы у клиента были свои типы и он ничего не знал о entity/repository
+Feature: GID-172 — client does not import the dal layer
+  As a service architect
+  I want /client/** packages not to import /dal/**
+  So that the client has its own types and knows nothing about entity/repository
 
-  Сценарий: client импортирует dal/entity — нарушение
-    Допустим пакет "svc/client/snapshot" импортирует "svc/dal/entity"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-172" на импорте "svc/dal/entity"
+  Scenario: client imports dal/entity — violation
+    Given the package "svc/client/snapshot" imports "svc/dal/entity"
+    When the analyzer checks the file
+    Then a "GID-172" diagnostic is reported on the import "svc/dal/entity"
 
-  Сценарий: client импортирует dal/repository — нарушение
-    Допустим пакет "svc/client/snapshot" импортирует "svc/dal/repository"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-172" на импорте "svc/dal/repository"
+  Scenario: client imports dal/repository — violation
+    Given the package "svc/client/snapshot" imports "svc/dal/repository"
+    When the analyzer checks the file
+    Then a "GID-172" diagnostic is reported on the import "svc/dal/repository"
 
-  Сценарий: client импортирует domain/model — ок
-    Допустим пакет "svc/client/billing" импортирует "svc/domain/model"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: client imports domain/model — ok
+    Given the package "svc/client/billing" imports "svc/domain/model"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: client импортирует сторонний пакет — правило не применяется
-    Допустим пакет "svc/client/billing" импортирует "strconv"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: client imports a third-party package — the rule does not apply
+    Given the package "svc/client/billing" imports "strconv"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр PRD (раздел 5)
-#  [x] Выбран слой: go/analysis (нужны сегменты import-пути)
-#  [x] Заданы severity и сообщение
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [ ] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the PRD registry (section 5)
+#  [x] Layer chosen: go/analysis (import-path segments are needed)
+#  [x] Severity and message are defined
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [ ] Rule enabled in .golangci.yml

@@ -1,8 +1,8 @@
-// Eval для GID-216: конструктор из settings.exclude не флагается
-// (неприменимость через настройки).
+// Eval for GID-216: a constructor from settings.exclude is not flagged
+// (inapplicability via settings).
 package consumer
 
-// LegacyConsumer — consumer без logger, но числится в settings.exclude.
+// LegacyConsumer — a consumer without a logger, but listed in settings.exclude.
 type LegacyConsumer struct{}
 
 func NewLegacyConsumer() *LegacyConsumer {

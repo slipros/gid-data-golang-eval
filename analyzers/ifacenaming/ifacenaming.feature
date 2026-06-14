@@ -1,52 +1,52 @@
-# language: ru
+# language: en
 
-Функция: GID-173 — интерфейсы зависимостей именуются с префиксом сущности
-  Как разработчик
-  Я хочу, чтобы интерфейс зависимости назывался с префиксом сущности (HelloRepository, HelloConnection)
-  Чтобы по имени интерфейса было видно, зависимостью какой сущности он является, а не голую роль
+Feature: GID-173 — dependency interfaces are named with an entity prefix
+  As a developer
+  I want a dependency interface to be named with an entity prefix (HelloRepository, HelloConnection)
+  So that the interface name shows which entity it is a dependency of, not just a bare role
 
-  # Scope: пакеты в слоях /domain/service, /domain/usecase, /dal/repository,
-  # /server/**, /event/**. Словарь голых ролей по умолчанию:
+  # Scope: packages in the layers /domain/service, /domain/usecase, /dal/repository,
+  # /server/**, /event/**. The default dictionary of bare roles:
   # Repository, Service, Client, Connection, Producer, Consumer, Validator,
-  # Storage, Cache. Настраивается через settings.names. Сгенерированный код
-  # (ast.IsGenerated) пропускается.
+  # Storage, Cache. Configurable via settings.names. Generated code
+  # (ast.IsGenerated) is skipped.
 
-  Сценарий: голая роль Repository в /domain/service — нарушение (позитивный)
-    Допустим в пакете "/domain/service" объявлен "type Repository interface { ... }"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-173" на имени типа "Repository"
+  Scenario: the bare role Repository in /domain/service — violation (positive)
+    Given "type Repository interface { ... }" is declared in the "/domain/service" package
+    When the analyzer checks the file
+    Then a "GID-173" diagnostic is reported on the type name "Repository"
 
-  Сценарий: голая роль Connection в /dal/repository — нарушение (позитивный)
-    Допустим в пакете "/dal/repository" объявлен "type Connection interface { ... }"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-173" на имени типа "Connection"
+  Scenario: the bare role Connection in /dal/repository — violation (positive)
+    Given "type Connection interface { ... }" is declared in the "/dal/repository" package
+    When the analyzer checks the file
+    Then a "GID-173" diagnostic is reported on the type name "Connection"
 
-  Сценарий: интерфейс с префиксом сущности — ок (негативный)
-    Допустим в пакете "/domain/service" объявлен "type HelloRepository interface { ... }"
-    И объявлен "type SnapshotConnection interface { ... }"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: an interface with an entity prefix — ok (negative)
+    Given "type HelloRepository interface { ... }" is declared in the "/domain/service" package
+    And "type SnapshotConnection interface { ... }" is declared
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: тип-структура с именем роли — правило не применяется (граничный)
-    Допустим в пакете "/dal/repository" объявлен "type Repository struct { ... }"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a struct type with a role name — the rule does not apply (boundary)
+    Given "type Repository struct { ... }" is declared in the "/dal/repository" package
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: имя содержит роль как суффикс, но не равно ей точно — ок (граничный)
-    Допустим в пакете "/domain/service" объявлен "type RepositoryFactory interface { ... }"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: the name contains a role as a suffix but is not exactly equal to it — ok (boundary)
+    Given "type RepositoryFactory interface { ... }" is declared in the "/domain/service" package
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: голая роль вне scope — правило не применяется (неприменимость)
-    Допустим в пакете "/domain/model" объявлен "type Repository interface { ... }"
-    И в пакете "/internal/foo" объявлен "type Repository interface { ... }"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a bare role out of scope — the rule does not apply (non-applicability)
+    Given "type Repository interface { ... }" is declared in the "/domain/model" package
+    And "type Repository interface { ... }" is declared in the "/internal/foo" package
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (RULES.md, GID-173)
-#  [x] Выбран слой: go/analysis (нужен слой пакета по пути + AST типов)
-#  [x] Заданы severity и сообщение
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [ ] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (RULES.md, GID-173)
+#  [x] Layer chosen: go/analysis (the package layer by path + type AST are needed)
+#  [x] Severity and message are defined
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [ ] Rule enabled in .golangci.yml

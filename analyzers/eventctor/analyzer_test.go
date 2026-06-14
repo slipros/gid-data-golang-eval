@@ -12,7 +12,7 @@ func TestAnalyzer(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), eventctor.Analyzer, "svc/...")
 }
 
-// TestExclude — конструкторы из settings.exclude не репортятся.
+// TestExclude — constructors from settings.exclude are not reported.
 func TestExclude(t *testing.T) {
 	a := eventctor.NewAnalyzer(eventctor.Settings{
 		Exclude: []string{"NewLegacyConsumer"},

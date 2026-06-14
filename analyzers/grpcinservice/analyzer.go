@@ -1,16 +1,16 @@
-// Package grpcinservice реализует правило GID-160: service вызывает gRPC
-// через repository, а не напрямую. В /domain/service и /domain/usecase
-// запрещены импорты:
+// Package grpcinservice implements rule GID-160: a service calls gRPC
+// through a repository, not directly. In /domain/service and /domain/usecase
+// the following imports are forbidden:
 //
-//   - google.golang.org/grpc — прямое использование соединений;
-//   - пакетов, которые сами импортируют google.golang.org/grpc —
-//     это ловит сгенерированные pb-стабы и gRPC-клиенты.
+//   - google.golang.org/grpc — direct use of connections;
+//   - packages that themselves import google.golang.org/grpc —
+//     this catches generated pb stubs and gRPC clients.
 //
-// Для этого правила бывают исключения — иногда gRPC вызывается прямо
-// в service:
-//   - точечно: //nolint:gidgrpcinservice
-//   - централизованно: settings.exclude — список import-путей,
-//     разрешённых в domain-слое.
+// This rule has exceptions — sometimes gRPC is called directly
+// in a service:
+//   - pointwise: //nolint:gidgrpcinservice
+//   - centrally: settings.exclude — a list of import paths
+//     allowed in the domain layer.
 package grpcinservice
 
 import (
@@ -34,16 +34,16 @@ var scopes = [][]string{
 	{"domain", "usecase"},
 }
 
-// Analyzer — вариант без исключений.
+// Analyzer — variant without exclusions.
 var Analyzer = NewAnalyzer(Settings{})
 
-// Settings — настройки линтера из .golangci.yml.
+// Settings — linter settings from .golangci.yml.
 type Settings struct {
-	// Exclude — import-пути, разрешённые в domain-слое (исключения правила).
+	// Exclude — import paths allowed in the domain layer (rule exceptions).
 	Exclude []string `json:"exclude"`
 }
 
-// NewAnalyzer строит анализатор GID-160 из настроек линтера (.golangci.yml).
+// NewAnalyzer builds the GID-160 analyzer from the linter settings (.golangci.yml).
 func NewAnalyzer(s Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name: "gidgrpcinservice",
@@ -85,8 +85,8 @@ func run(pass *analysis.Pass, s Settings) (any, error) {
 	return nil, nil
 }
 
-// grpcBackedImports — прямые импорты пакета, которые сами импортируют
-// google.golang.org/grpc (pb-стабы, gRPC-клиенты).
+// grpcBackedImports — the package's direct imports that themselves import
+// google.golang.org/grpc (pb stubs, gRPC clients).
 func grpcBackedImports(pkg *types.Package) map[string]bool {
 	out := map[string]bool{}
 	for _, imp := range pkg.Imports() {

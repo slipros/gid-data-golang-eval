@@ -8,12 +8,12 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/cacheplace"
 )
 
-// TestAnalyzer — дефолтный список кэш-библиотек.
+// TestAnalyzer — the default list of cache libraries.
 func TestAnalyzer(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), cacheplace.Analyzer, "svc/...")
 }
 
-// TestCustomPackages — settings.packages заменяет дефолтный список.
+// TestCustomPackages — settings.packages replaces the default list.
 func TestCustomPackages(t *testing.T) {
 	a := cacheplace.NewAnalyzer(cacheplace.Settings{
 		Packages: []string{"example.com/inhouse/cache"},

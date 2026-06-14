@@ -1,43 +1,43 @@
-# language: ru
+# language: en
 
-Функция: GID-131 — дочерний пакет не импортирует родительский
-  Как архитектор сервиса
-  Я хочу, чтобы дочерний пакет не импортировал родительский
-  Чтобы зависимости шли вниз: общее выносится вниз, а родитель импортирует
-  детей, а не наоборот
+Feature: GID-131 — a child package does not import its parent
+  As a service architect
+  I want a child package not to import its parent package
+  So that dependencies flow downward: shared code is pushed down, and the parent imports
+  the children, not the other way around
 
-  Сценарий: дочерний пакет импортирует родителя — нарушение
-    Допустим пакет "app/parent/badchild" импортирует "app/parent"
-    И "app/parent" является строгим префиксом "app/parent/badchild" по сегментам
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-131" на импорте "app/parent"
+  Scenario: a child package imports its parent — violation
+    Given the package "app/parent/badchild" imports "app/parent"
+    And "app/parent" is a strict segment-wise prefix of "app/parent/badchild"
+    When the analyzer checks the file
+    Then a "GID-131" diagnostic is reported on the import "app/parent"
 
-  Сценарий: родитель импортирует ребёнка — правильное направление, ок
-    Допустим пакет "app/parent" импортирует "app/parent/child"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: the parent imports a child — the correct direction, ok
+    Given the package "app/parent" imports "app/parent/child"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: дочерний пакет импортирует соседа — не родитель, ок
-    Допустим пакет "app/parent/badchild" импортирует "app/parent/other"
-    И "app/parent/other" не является префиксом "app/parent/badchild"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a child package imports a sibling — not the parent, ok
+    Given the package "app/parent/badchild" imports "app/parent/other"
+    And "app/parent/other" is not a prefix of "app/parent/badchild"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: "app/parentx" не дочерний для "app/parent" — префикс по сегментам
-    Допустим пакет "app/parentx" импортирует "app/parent"
-    И "app/parent" является строковым, но не сегментным префиксом "app/parentx"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: "app/parentx" is not a child of "app/parent" — the prefix is segment-wise
+    Given the package "app/parentx" imports "app/parent"
+    And "app/parent" is a string prefix but not a segment-wise prefix of "app/parentx"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: лист-пакет без импортов своего модуля — правило не применяется
-    Допустим пакет "app/parent/child" не импортирует свой модуль
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a leaf package without imports of its own module — the rule does not apply
+    Given the package "app/parent/child" does not import its own module
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (RULES.md, строка GID-131)
-#  [x] Выбран слой: go/analysis (нужен pass.Pkg.Path(), сегменты import-пути)
-#  [x] Заданы severity и сообщение
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [ ] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (RULES.md, the GID-131 row)
+#  [x] Layer chosen: go/analysis (pass.Pkg.Path() and import-path segments are needed)
+#  [x] Severity and message are defined
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [ ] Rule enabled in .golangci.yml

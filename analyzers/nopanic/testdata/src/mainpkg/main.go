@@ -1,4 +1,4 @@
-// Неприменимость: в main panic разрешён (bootstrap).
+// Not applicable: panic is allowed in main (bootstrap).
 package main
 
 func main() {

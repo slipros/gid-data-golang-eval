@@ -1,4 +1,4 @@
-// Eval для GID-195: usecase — тоже scope правила.
+// Eval for GID-195: usecase is also in the rule's scope.
 package usecase
 
 import "svc/domain/model"

@@ -1,32 +1,32 @@
-// Package chandir реализует правило GID-189 (Google: channel direction):
-// параметр функции/метода с типом двунаправленного канала chan T обязан
-// указывать направление — <-chan T для чтения или chan<- T для записи.
-// Двунаправленный канал в сигнатуре скрывает намерение вызывающего и
-// допускает ошибочное использование (чтение из канала, который должен
-// только заполняться, и наоборот).
+// Package chandir implements rule GID-189 (Google: channel direction):
+// a function/method parameter typed as a bidirectional channel chan T must
+// declare a direction — <-chan T for receiving or chan<- T for sending.
+// A bidirectional channel in a signature hides the caller's intent and
+// allows erroneous usage (reading from a channel that should only be
+// filled, and vice versa).
 //
-// Что матчится:
-//   - параметр функции func f(ch chan int);
-//   - параметр метода func (s S) m(ch chan int);
-//   - параметр функционального литерала func(ch chan int) { ... }.
-//     Матчим именно литеральный chan T в позиции параметра.
+// What is matched:
+//   - a function parameter func f(ch chan int);
+//   - a method parameter func (s S) m(ch chan int);
+//   - a function literal parameter func(ch chan int) { ... }.
+//     We match specifically a literal chan T in parameter position.
 //
-// Что НЕ матчится:
-//   - направленные каналы <-chan T / chan<- T — направление уже указано;
-//   - возвращаемые значения (func f() chan T) — владельцу канала бывает
-//     нужен двунаправленный, решение за review;
-//   - поля структур (chan T) — направление задаётся при передаче в функцию;
-//   - локальные переменные (var ch chan T) — это создание канала;
-//   - параметр с именованным типом-каналом (type Pipe chan int; func f(p Pipe)) —
-//     именованный тип в позиции параметра это *ast.Ident, а не литеральный
-//     *ast.ChanType; именование канала — осознанное решение;
-//   - срезы/массивы каналов ([]chan T) — это *ast.ArrayType, а не прямой
-//     параметр-канал.
+// What is NOT matched:
+//   - directional channels <-chan T / chan<- T — the direction is already declared;
+//   - return values (func f() chan T) — the channel owner sometimes needs a
+//     bidirectional one, left to review;
+//   - struct fields (chan T) — the direction is set when passing to a function;
+//   - local variables (var ch chan T) — that is channel creation;
+//   - a parameter with a named channel type (type Pipe chan int; func f(p Pipe)) —
+//     a named type in parameter position is an *ast.Ident, not a literal
+//     *ast.ChanType; naming a channel is a deliberate decision;
+//   - slices/arrays of channels ([]chan T) — that is an *ast.ArrayType, not a
+//     direct channel parameter.
 //
-// LoadMode — Syntax: достаточно AST (*ast.ChanType с Dir == SEND|RECV в
-// позиции параметра), типовая информация не требуется.
-// Сгенерированный код (ast.IsGenerated) пропускается.
-// Точечное отключение — стандартный //nolint:gidchandir.
+// LoadMode — Syntax: the AST is enough (*ast.ChanType with Dir == SEND|RECV in
+// parameter position), type information is not required.
+// Generated code (ast.IsGenerated) is skipped.
+// Targeted opt-out — the standard //nolint:gidchandir.
 package chandir
 
 import (
@@ -38,7 +38,7 @@ import (
 
 const ruleID = "GID-189"
 
-// Analyzer — правило GID-189: параметры-каналы в сигнатурах указывают направление (<-chan/chan<-).
+// Analyzer — rule GID-189: channel parameters in signatures declare a direction (<-chan/chan<-).
 var Analyzer = &analysis.Analyzer{
 	Name: "gidchandir",
 	Doc:  ruleID + ": channel parameters must declare a direction (<-chan/chan<-). Fix: use <-chan to receive or chan<- to send.",
@@ -63,9 +63,9 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-// checkParams проверяет список параметров сигнатуры: матчим только
-// прямой параметр литерального типа chan T без направления (Dir == SEND|RECV).
-// Возвращаемые значения (ft.Results) намеренно не проверяются.
+// checkParams checks the signature's parameter list: we match only a
+// direct parameter of the literal type chan T without a direction (Dir == SEND|RECV).
+// Return values (ft.Results) are deliberately not checked.
 func checkParams(pass *analysis.Pass, ft *ast.FuncType) {
 	if ft == nil || ft.Params == nil {
 		return
@@ -73,10 +73,10 @@ func checkParams(pass *analysis.Pass, ft *ast.FuncType) {
 	for _, field := range ft.Params.List {
 		ch, ok := field.Type.(*ast.ChanType)
 		if !ok {
-			continue // именованный тип, []chan T, обычный тип — не наш случай.
+			continue // a named type, []chan T, an ordinary type — not our case.
 		}
 		if ch.Dir != (ast.SEND | ast.RECV) {
-			continue // <-chan T или chan<- T — направление уже указано.
+			continue // <-chan T or chan<- T — the direction is already declared.
 		}
 		name := paramName(field)
 		pass.Reportf(field.Type.Pos(),
@@ -86,11 +86,11 @@ func checkParams(pass *analysis.Pass, ft *ast.FuncType) {
 	}
 }
 
-// paramName возвращает имя параметра для диагностики. Для безымянного
-// параметра (редкий случай в сигнатурах) — обобщённое описание.
+// paramName returns the parameter name for the diagnostic. For an unnamed
+// parameter (a rare case in signatures) — a generic description.
 func paramName(field *ast.Field) string {
 	if len(field.Names) == 0 {
-		return "без имени"
+		return "unnamed"
 	}
 	names := make([]string, 0, len(field.Names))
 	for _, n := range field.Names {

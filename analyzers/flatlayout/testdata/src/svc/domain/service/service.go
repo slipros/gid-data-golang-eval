@@ -1,4 +1,4 @@
-// Негатив: корень слоя — ок.
+// Negative: the layer root — fine.
 package service
 
 type Snapshot struct{}

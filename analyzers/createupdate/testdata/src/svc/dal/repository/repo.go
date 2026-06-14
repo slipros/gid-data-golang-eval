@@ -1,4 +1,4 @@
-// Eval для GID-112 (repo).
+// Eval for GID-112 (repo).
 package repository
 
 import "context"
@@ -7,18 +7,18 @@ type Snapshot struct{ ID string }
 
 type Job struct{}
 
-// --- Позитив: Create возвращает данные ---
+// --- Positive: Create returns data ---
 
 func (j *Job) CreateJob(ctx context.Context, name string) (Snapshot, error) { // want `GID-112: method "CreateJob" creates/updates state and must return only error`
 	return Snapshot{}, nil
 }
 
-// Граничный кейс: Update без error вовсе.
+// Edge case: Update without error at all.
 func (j *Job) UpdateJobStatus(ctx context.Context, status string) Snapshot { // want `GID-112: method "UpdateJobStatus" creates/updates state and must return only error`
 	return Snapshot{}
 }
 
-// --- Негатив: только error ---
+// --- Negative: only error ---
 
 func (j *Job) CreateJobs(ctx context.Context, names []string) error {
 	return nil
@@ -28,12 +28,12 @@ func (j *Job) UpdateJob(ctx context.Context, id string) error {
 	return nil
 }
 
-// Граничный кейс: Created — не глагол Create.
+// Edge case: Created is not the verb Create.
 func (j *Job) CreatedJobs(ctx context.Context) ([]Snapshot, error) {
 	return nil, nil
 }
 
-// Неприменимость: получение — не создание/обновление.
+// Not applicable: fetching is not creating/updating.
 func (j *Job) Job(ctx context.Context, id string) (Snapshot, error) {
 	return Snapshot{}, nil
 }

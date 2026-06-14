@@ -1,7 +1,7 @@
-// Eval для GID-193: неприменимость — пакет main не проверяется (bootstrap).
+// Eval for GID-193: not applicable — package main is not checked (bootstrap).
 package main
 
-// MainOptions в обычном пакете было бы нарушением, но пакет main исключён.
+// MainOptions would be a violation in an ordinary package, but package main is excluded.
 type MainOptions struct {
 	Addr string
 }

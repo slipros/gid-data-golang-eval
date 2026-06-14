@@ -1,14 +1,14 @@
-// Package model — слой /domain/model. Интерфейсы отсюда разрешены
-// потребителям service/usecase.
+// Package model — the /domain/model layer. Interfaces from here are allowed
+// for service/usecase consumers.
 package model
 
-// Job — обычная сущность model.
+// Job — an ordinary model entity.
 type Job struct {
 	ID string
 }
 
-// JobRepository — интерфейс зависимости, объявленный в model-слое.
-// Разрешён в service и usecase, запрещён в остальных слоях.
+// JobRepository — a dependency interface declared in the model layer.
+// Allowed in service and usecase, forbidden in the other layers.
 type JobRepository interface {
 	Job(id string) (Job, error)
 }

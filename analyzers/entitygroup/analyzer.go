@@ -1,7 +1,7 @@
-// Package entitygroup реализует правило GID-157: код сущности — единый
-// блок. Все функции сущности лежат в файле её объявления, в порядке
-// type -> конструктор New<Entity> -> методы. Функции разных сущностей
-// не перемешиваются в одну кучу.
+// Package entitygroup implements rule GID-157: an entity's code is a single
+// block. All of an entity's functions live in the file of its declaration, in
+// the order type -> the New<Entity> constructor -> methods. Functions of
+// different entities are not mixed into one pile.
 package entitygroup
 
 import (
@@ -19,14 +19,14 @@ const (
 	kindMethod
 )
 
-// Analyzer — правило GID-157: код сущности — единый блок: type, конструктор, методы.
+// Analyzer — rule GID-157: an entity's code is a single block: type, constructor, methods.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidentitygroup",
 	Doc:  ruleID + ": an entity's code must be one block (type, constructor, methods) without interleaving entities. Fix: keep the entity's declarations together",
 	Run:  run,
 }
 
-// ownedDecl — декларация, принадлежащая сущности.
+// ownedDecl — a declaration belonging to an entity.
 type ownedDecl struct {
 	entity string
 	kind   declKind
@@ -51,7 +51,7 @@ func checkFile(pass *analysis.Pass, file *ast.File, typeFile map[string]*ast.Fil
 
 	typeIdx := map[string]int{}
 	ctorIdx := map[string]int{}
-	//nolint:gidallptr // плагин не зависит от внутренней библиотеки gdhelper
+	//nolint:gidallptr // the plugin does not depend on the internal gdhelper library
 	for i, d := range owned {
 		switch d.kind {
 		case kindType:
@@ -61,8 +61,8 @@ func checkFile(pass *analysis.Pass, file *ast.File, typeFile map[string]*ast.Fil
 		}
 	}
 
-	// Методы и конструктор — в файле объявления сущности.
-	//nolint:gidallptr // плагин не зависит от внутренней библиотеки gdhelper
+	// Methods and the constructor live in the entity's declaration file.
+	//nolint:gidallptr // the plugin does not depend on the internal gdhelper library
 	for _, d := range owned {
 		if d.kind == kindType {
 			continue
@@ -75,8 +75,8 @@ func checkFile(pass *analysis.Pass, file *ast.File, typeFile map[string]*ast.Fil
 		}
 	}
 
-	// Порядок внутри файла: type -> конструктор -> методы.
-	//nolint:gidallptr // плагин не зависит от внутренней библиотеки gdhelper
+	// The order inside a file: type -> constructor -> methods.
+	//nolint:gidallptr // the plugin does not depend on the internal gdhelper library
 	for i, d := range owned {
 		ti, hasType := typeIdx[d.entity]
 		switch d.kind {
@@ -97,10 +97,10 @@ func checkFile(pass *analysis.Pass, file *ast.File, typeFile map[string]*ast.Fil
 		}
 	}
 
-	// Перемешивание: блок сущности непрерывен.
+	// Interleaving: the entity block must be contiguous.
 	seen := map[string]struct{}{}
 	last := ""
-	//nolint:gidallptr // плагин не зависит от внутренней библиотеки gdhelper
+	//nolint:gidallptr // the plugin does not depend on the internal gdhelper library
 	for _, d := range owned {
 		if d.entity == last {
 			continue
@@ -115,7 +115,7 @@ func checkFile(pass *analysis.Pass, file *ast.File, typeFile map[string]*ast.Fil
 	}
 }
 
-// ownedDecls — последовательность деклараций файла с их сущностями.
+// ownedDecls — the sequence of the file's declarations with their entities.
 func ownedDecls(file *ast.File, typeFile map[string]*ast.File) []ownedDecl {
 	var out []ownedDecl
 	for _, decl := range file.Decls {
@@ -147,7 +147,7 @@ func ownedDecls(file *ast.File, typeFile map[string]*ast.File) []ownedDecl {
 	return out
 }
 
-// structFiles — файл объявления каждой структуры пакета.
+// structFiles — the declaration file of each struct in the package.
 func structFiles(pass *analysis.Pass) map[string]*ast.File {
 	out := map[string]*ast.File{}
 	for _, file := range pass.Files {

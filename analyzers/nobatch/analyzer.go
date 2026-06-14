@@ -1,7 +1,7 @@
-// Package nobatch реализует правило GID-102: слово Batch в именах методов
-// не используется (go-styleguide, «Именование методов»). Метод, работающий
-// с несколькими сущностями, называется как для одной, но во множественном
-// числе: CreateJob -> CreateJobs, а не CreateBatchJobs / BatchCreate.
+// Package nobatch implements rule GID-102: the word Batch is not used in
+// method names (go-styleguide, "Method naming"). A method working with
+// multiple entities is named like the single-entity one, but in the plural:
+// CreateJob -> CreateJobs, not CreateBatchJobs / BatchCreate.
 package nobatch
 
 import (
@@ -13,7 +13,7 @@ import (
 
 const ruleID = "GID-102"
 
-// Analyzer — правило GID-102: the word Batch is forbidden in method names. Fix: use a plural instead (CreateJob -> CreateJobs).
+// Analyzer — rule GID-102: the word Batch is forbidden in method names. Fix: use a plural instead (CreateJob -> CreateJobs).
 var Analyzer = &analysis.Analyzer{
 	Name: "gidnobatch",
 	Doc:  ruleID + ": the word Batch is forbidden in method names. Fix: use a plural instead (CreateJob -> CreateJobs)",

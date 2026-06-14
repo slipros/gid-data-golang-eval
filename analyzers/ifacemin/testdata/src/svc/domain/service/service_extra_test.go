@@ -1,5 +1,5 @@
-// Использование из тестов не считается: SnapshotProbe.Ping всё равно
-// нарушает GID-197.
+// Use from tests does not count: SnapshotProbe.Ping still
+// violates GID-197.
 package service
 
 func pingAll(p prober) error {

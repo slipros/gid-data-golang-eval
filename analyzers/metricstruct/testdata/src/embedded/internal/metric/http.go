@@ -1,10 +1,10 @@
-// Группа HTTP — отдельный файл.
+// The HTTP group — a separate file.
 package metric
 
-// HTTPMetrics — группа HTTP.
+// HTTPMetrics — the HTTP group.
 type HTTPMetrics struct {
 	Requests int
 }
 
-// Register группы HTTP.
+// Register of the HTTP group.
 func (m HTTPMetrics) Register() error { return nil }

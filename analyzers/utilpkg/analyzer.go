@@ -1,16 +1,16 @@
-// Package utilpkg реализует правило GID-187 (no-util-package): имена пакетов
-// вроде util/utils/common/helper/helpers/shared/misc/lib/base запрещены.
-// Такой пакет — свалка без зоны ответственности: по имени нельзя понять, что
-// он предоставляет. Пакет называют по тому, что в нём лежит (например, parse,
-// retry, money).
+// Package utilpkg implements rule GID-187 (no-util-package): package names
+// like util/utils/common/helper/helpers/shared/misc/lib/base are forbidden.
+// Such a package is a junk drawer with no area of responsibility: the name
+// does not tell what it provides. A package is named after what it contains
+// (e.g. parse, retry, money).
 //
-// Проверяется имя пакета (pass.Pkg.Name(), что совпадает с последним сегментом
-// пути) — регистронезависимо. Суффикс _test у тестового пакета нормализуется
-// (utils_test → utils). Один репорт на пакет: на package-клаузе первого
-// (не сгенерированного) файла. Словарь имён настраивается settings.names
-// и полностью замещает дефолтный список.
+// The package name is checked (pass.Pkg.Name(), which matches the last path
+// segment) — case-insensitively. The _test suffix of a test package is
+// normalized (utils_test → utils). One report per package: on the package
+// clause of the first (non-generated) file. The name dictionary is configured
+// via settings.names and fully replaces the default list.
 //
-// LoadMode — Syntax: типы не нужны, хватает имени пакета и AST.
+// LoadMode — Syntax: no types needed, the package name and the AST suffice.
 package utilpkg
 
 import (
@@ -22,16 +22,16 @@ import (
 
 const ruleID = "GID-187"
 
-// Analyzer — вариант с дефолтным чёрным списком имён.
+// Analyzer — the variant with the default name blacklist.
 var Analyzer = NewAnalyzer(Settings{})
 
-// Settings — настройки линтера из .golangci.yml.
+// Settings — the linter settings from .golangci.yml.
 type Settings struct {
-	// Names — чёрный список имён пакетов (заменяет дефолтный список).
+	// Names — the blacklist of package names (replaces the default list).
 	Names []string `json:"names"`
 }
 
-// NewAnalyzer строит анализатор GID-187 из настроек линтера (.golangci.yml).
+// NewAnalyzer builds the GID-187 analyzer from the linter settings (.golangci.yml).
 func NewAnalyzer(s Settings) *analysis.Analyzer {
 	names := resolveNames(s)
 	blacklist := make(map[string]struct{}, len(names))
@@ -71,7 +71,7 @@ func run(pass *analysis.Pass, blacklist map[string]struct{}) (any, error) {
 		return nil, nil
 	}
 
-	// Один репорт на пакет — на package-клаузе первого не сгенерированного файла.
+	// One report per package — on the package clause of the first non-generated file.
 	for _, file := range pass.Files {
 		if ast.IsGenerated(file) {
 			continue
@@ -84,8 +84,8 @@ func run(pass *analysis.Pass, blacklist map[string]struct{}) (any, error) {
 	return nil, nil
 }
 
-// normalize приводит имя пакета к нижнему регистру и снимает суффикс _test
-// у тестовых пакетов (utils_test → utils).
+// normalize lowercases the package name and strips the _test suffix
+// of test packages (utils_test → utils).
 func normalize(name string) string {
 	name = strings.ToLower(name)
 	return strings.TrimSuffix(name, "_test")

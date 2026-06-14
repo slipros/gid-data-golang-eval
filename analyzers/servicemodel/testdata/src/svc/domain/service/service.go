@@ -1,4 +1,4 @@
-// Eval для GID-151 (service-model API).
+// Eval for GID-151 (service-model API).
 package service
 
 import (
@@ -10,7 +10,7 @@ import (
 
 type Snapshot struct{}
 
-// --- Позитивные кейсы: entity в сигнатуре экспортируемого метода ---
+// --- Positive cases: an entity in an exported method signature ---
 
 func (s *Snapshot) CreateSnapshot(ctx context.Context, in *entity.CreateSnapshot) error { // want `GID-151: method "CreateSnapshot" uses the entity type entity\.CreateSnapshot \(parameter\)\. Fix: the service API takes and returns model, convert to entity internally`
 	return nil
@@ -20,20 +20,20 @@ func (s *Snapshot) SnapshotRaw(ctx context.Context, id string) (entity.Snapshot,
 	return entity.Snapshot{}, nil
 }
 
-// Граничный кейс: entity спрятана в слайсе именованного типа.
+// Boundary case: the entity is hidden in a named slice type.
 func (s *Snapshot) SnapshotsRaw(ctx context.Context) (entity.Snapshots, error) { // want `GID-151: method "SnapshotsRaw" uses the entity type entity\.Snapshots \(result\)`
 	return nil, nil
 }
 
-// Граничный кейс: entity внутри мапы.
+// Boundary case: an entity inside a map.
 func (s *Snapshot) SnapshotsByID(ctx context.Context) (map[string]*entity.Snapshot, error) { // want `GID-151: method "SnapshotsByID" uses the entity type entity\.Snapshot \(result\)`
 	return nil, nil
 }
 
-// --- Негативные кейсы: API на model ---
+// --- Negative cases: an API on model ---
 
 func (s *Snapshot) Snapshot(ctx context.Context, id string) (model.Snapshot, error) {
-	var out entity.Snapshot // entity внутри тела — норма
+	var out entity.Snapshot // an entity inside the body is the norm
 	return fromEntity(&out), nil
 }
 
@@ -41,7 +41,7 @@ func (s *Snapshot) Create(ctx context.Context, in *model.CreateSnapshot) error {
 	return nil
 }
 
-// --- Неприменимость: неэкспортируемые хелперы (конвертация) ---
+// --- Not applicable: unexported helpers (conversion) ---
 
 func (s *Snapshot) toEntity(in *model.CreateSnapshot) entity.CreateSnapshot {
 	return entity.CreateSnapshot{Name: in.Name}

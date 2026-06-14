@@ -1,4 +1,4 @@
-// Класс «неприменимость»: пакет без единого make(map) — анализатору нечего ловить.
+// "Non-applicability" class: a package without a single make(map) — nothing for the analyzer to catch.
 package nomap
 
 func sum(src []int) int {

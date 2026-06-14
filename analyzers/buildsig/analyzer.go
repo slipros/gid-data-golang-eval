@@ -1,23 +1,23 @@
-// Package buildsig реализует правило GID-212 (build-signature): контракт
-// build-функций репозитория.
+// Package buildsig implements rule GID-212 (build-signature): the contract
+// of repository build functions.
 //
-// Источник: repo.md.
+// Source: repo.md.
 //
-// Проверки:
+// Checks:
 //
-//  1. Сигнатура результата. В пакетах /dal/repository/build/** экспортируемые
-//     функции (FuncDecl без получателя) обязаны возвращать ЛИБО
-//     (string, []any, error) — одиночный запрос (sql, args, err), ЛИБО
-//     (*<...>.Batch, error) — batch-операция (матч по имени именованного типа
-//     Batch, пакет любой). Любая другая сигнатура результата → диагностика.
-//     Неэкспортируемые функции-хелперы build-пакета не проверяются.
+//  1. Result signature. In /dal/repository/build/** packages, exported
+//     functions (FuncDecl without a receiver) must return EITHER
+//     (string, []any, error) — a single query (sql, args, err), OR
+//     (*<...>.Batch, error) — a batch operation (matched by the name of the
+//     named type Batch, any package). Any other result signature → diagnostic.
+//     Unexported helper functions of the build package are not checked.
 //
-//  2. Бан импорта squirrel. Импорт github.com/Masterminds/squirrel разрешён
-//     только в пакетах /dal/repository/build/**. В любом другом пакете импорт
-//     squirrel → диагностика.
+//  2. Ban on the squirrel import. Importing github.com/Masterminds/squirrel is
+//     allowed only in /dal/repository/build/** packages. In any other package
+//     a squirrel import → diagnostic.
 //
-// Сигнатуры распознаются структурно через go/types (LoadModeTypesInfo).
-// Сгенерированный код пропускается.
+// Signatures are recognized structurally via go/types (LoadModeTypesInfo).
+// Generated code is skipped.
 package buildsig
 
 import (
@@ -32,7 +32,7 @@ import (
 
 const ruleID = "GID-212"
 
-// Analyzer — правило GID-212: контракт build-функций репозитория.
+// Analyzer — rule GID-212: the contract of repository build functions.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidbuildsig",
 	Doc: ruleID + ": build functions return (string, []any, error) or (*batch.Batch, error); " +
@@ -48,12 +48,12 @@ func run(pass *analysis.Pass) (any, error) {
 			continue
 		}
 
-		// Проверка 2: импорт squirrel разрешён только в build-пакетах.
+		// Check 2: the squirrel import is allowed only in build packages.
 		if !inBuild {
 			checkSquirrelImports(pass, file)
 		}
 
-		// Проверка 1: сигнатура результата экспортируемых build-функций.
+		// Check 1: the result signature of exported build functions.
 		if inBuild {
 			checkBuildSignatures(pass, file)
 		}
@@ -61,7 +61,7 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-// checkSquirrelImports флагует импорт squirrel вне build-пакета.
+// checkSquirrelImports flags a squirrel import outside a build package.
 func checkSquirrelImports(pass *analysis.Pass, file *ast.File) {
 	const (
 		squirrelPkg = "github.com/Masterminds/squirrel"
@@ -78,14 +78,14 @@ func checkSquirrelImports(pass *analysis.Pass, file *ast.File) {
 	}
 }
 
-// checkBuildSignatures проверяет результат экспортируемых функций без получателя.
+// checkBuildSignatures checks the result of exported functions without a receiver.
 func checkBuildSignatures(pass *analysis.Pass, file *ast.File) {
 	for _, decl := range file.Decls {
 		fn, ok := decl.(*ast.FuncDecl)
 		if !ok {
 			continue
 		}
-		// Методы (есть получатель) и неэкспортируемые хелперы не проверяем.
+		// Methods (with a receiver) and unexported helpers are not checked.
 		if fn.Recv != nil || !fn.Name.IsExported() {
 			continue
 		}
@@ -106,7 +106,7 @@ func checkBuildSignatures(pass *analysis.Pass, file *ast.File) {
 	}
 }
 
-// isSingleQuerySig — результат (string, []any, error).
+// isSingleQuerySig — result (string, []any, error).
 func isSingleQuerySig(sig *types.Signature) bool {
 	res := sig.Results()
 	if res.Len() != 3 {
@@ -122,8 +122,8 @@ func isSingleQuerySig(sig *types.Signature) bool {
 	return isError(errRes.Type())
 }
 
-// isBatchSig — результат (*<...>.Batch, error): указатель на именованный тип
-// с именем Batch (пакет любой).
+// isBatchSig — result (*<...>.Batch, error): a pointer to a named type
+// with the name Batch (any package).
 func isBatchSig(sig *types.Signature) bool {
 	const batchType = "Batch"
 	res := sig.Results()
@@ -142,7 +142,7 @@ func isString(t types.Type) bool {
 	return ok && b.Kind() == types.String
 }
 
-// isSliceOfAny — []any (срез с пустым интерфейсом в качестве элемента).
+// isSliceOfAny — []any (a slice with the empty interface as the element).
 func isSliceOfAny(t types.Type) bool {
 	sl, ok := t.Underlying().(*types.Slice)
 	if !ok {
@@ -162,7 +162,7 @@ func isError(t types.Type) bool {
 	return obj != nil && obj.Pkg() == nil && obj.Name() == "error"
 }
 
-// isPtrToNamed — указатель на именованный тип с заданным именем.
+// isPtrToNamed — a pointer to a named type with the given name.
 func isPtrToNamed(t types.Type, name string) bool {
 	ptr, ok := t.(*types.Pointer)
 	if !ok {

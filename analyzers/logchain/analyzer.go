@@ -1,5 +1,5 @@
-// Package logchain реализует правило GID-156: цепочка logrus-вызовов
-// не пишется inline — каждый вызов на своей строке, включая первый:
+// Package logchain implements rule GID-156: a chain of logrus calls
+// is not written inline — each call on its own line, including the first:
 //
 //	c.logger.
 //		WithContext(ctx).
@@ -7,7 +7,7 @@
 //		WithField("some", field).
 //		Info("some text")
 //
-// Одиночный вызов (logger.Info("x")) под правило не попадает.
+// A single call (logger.Info("x")) does not fall under the rule.
 package logchain
 
 import (
@@ -20,7 +20,7 @@ import (
 
 const ruleID = "GID-156"
 
-// Analyzer — правило GID-156: цепочка logrus из ≥2 вызовов — по вызову на строке.
+// Analyzer — rule GID-156: a logrus chain of >=2 calls — one call per line.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidlogchain",
 	Doc:  ruleID + ": a logrus chain puts each call on its own line, including the first. Fix: break each call onto a new line",
@@ -50,9 +50,9 @@ func run(pass *analysis.Pass) (any, error) {
 func checkChain(pass *analysis.Pass, call *ast.CallExpr) {
 	sels, base := lgr.Chain(pass, call)
 	if len(sels) < 2 {
-		return // одиночный вызов — inline допустим
+		return // a single call — inline is allowed
 	}
-	// sels идут от терминала вглубь; проверяем в порядке исходника.
+	// sels go from the terminal inward; we check in source order.
 	prevLine := pass.Fset.Position(base.End()).Line
 	for i := len(sels) - 1; i >= 0; i-- {
 		line := pass.Fset.Position(sels[i].Sel.Pos()).Line

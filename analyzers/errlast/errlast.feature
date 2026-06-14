@@ -1,93 +1,93 @@
-# language: ru
+# language: en
 
-Функция: GID-190 — error в результатах функций (error-last)
-  Как разработчик
-  Я хочу, чтобы error был последним результатом и возвращался как интерфейс
-  Чтобы соблюдать конвенцию Google и не попадать в typed-nil ловушку
+Feature: GID-190 — error in function results (error-last)
+  As a developer
+  I want error to be the last result and to be returned as an interface
+  So that the Google convention is followed and the typed-nil trap is avoided
 
-  # Источник: Google best practices (errors).
-  # Анализатор giderrlast, LoadMode TypesInfo. Две проверки результатов
-  # функций и методов (pass.TypesInfo):
-  #   1. среди результатов есть тип error и после него идут другие
-  #      результаты → error должен быть последним;
-  #   2. результат — КОНКРЕТНЫЙ тип, реализующий error (именованный тип
-  #      или указатель на него: *MyError / MyError), а не интерфейс error.
-  #      Конкретный тип в interface-позиции даёт typed-nil ловушку.
-  #      Проверка через types.Implements на типе результата и на указателе
-  #      на него; интерфейс error берётся из types.Universe.
-  # НЕ матчатся проверкой 2:
-  #   - сам интерфейс error;
-  #   - интерфейсы, расширяющие error (кастомный error-интерфейс — осознанно);
-  #   - функции-конструкторы ошибок в файлах error.go / errors.go
-  #     (там конкретный тип легитимен — это конструкторы).
-  # Сгенерированный код (ast.IsGenerated) пропускается.
-  # Точечное отключение — стандартный //nolint:giderrlast.
+  # Source: Google best practices (errors).
+  # Analyzer giderrlast, LoadMode TypesInfo. Two checks of the results
+  # of functions and methods (pass.TypesInfo):
+  #   1. the results contain the error type followed by other
+  #      results → error must be the last one;
+  #   2. a result is a CONCRETE type implementing error (a named type
+  #      or a pointer to it: *MyError / MyError), not the error interface.
+  #      A concrete type in an interface position causes a typed-nil trap.
+  #      Checked via types.Implements on the result type and on a pointer
+  #      to it; the error interface is taken from types.Universe.
+  # NOT matched by check 2:
+  #   - the error interface itself;
+  #   - interfaces extending error (a custom error interface is deliberate);
+  #   - error constructor functions in error.go / errors.go files
+  #     (a concrete type is legitimate there — those are constructors).
+  # Generated code (ast.IsGenerated) is skipped.
+  # Targeted suppression — the standard //nolint:giderrlast.
 
-  # === Класс 1: позитивные (нарушения) ===
+  # === Class 1: positive (violations) ===
 
-  Сценарий: позитивный — error не последний (error, int)
-    Допустим функцию "func f() (error, int)"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-190: error должен быть последним возвращаемым значением"
+  Scenario: positive — error is not last (error, int)
+    Given the function "func f() (error, int)"
+    When the analyzer checks the file
+    Then the diagnostic "GID-190: error must be the last return value. Fix: move it to the end" is reported
 
-  Сценарий: позитивный — конкретный error-тип *MyError
-    Допустим функцию "func g() *MyError" где *MyError реализует error
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-190: возвращайте интерфейс error, не *errlast.MyError — конкретный тип в interface-позиции даёт typed-nil ловушку"
+  Scenario: positive — the concrete error type *MyError
+    Given the function "func g() *MyError" where *MyError implements error
+    When the analyzer checks the file
+    Then the diagnostic "GID-190: return the error interface, not *errlast.MyError. Fix: a concrete type in the error position causes a typed-nil trap" is reported
 
-  Сценарий: позитивный — метод с (err error, ok bool)
-    Допустим метод "func (t T) Do() (err error, ok bool)"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-190: error должен быть последним возвращаемым значением"
+  Scenario: positive — a method with (err error, ok bool)
+    Given the method "func (t T) Do() (err error, ok bool)"
+    When the analyzer checks the file
+    Then the diagnostic "GID-190: error must be the last return value. Fix: move it to the end" is reported
 
-  # === Класс 2: негативные (чистый код) ===
+  # === Class 2: negative (clean code) ===
 
-  Сценарий: негативный — (int, error)
-    Допустим функцию "func ok1() (int, error)"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — (int, error)
+    Given the function "func ok1() (int, error)"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: негативный — (T, error) где T — обычная struct
-    Допустим функцию "func ok2() (T, error)" где T — struct без метода Error
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — (T, error) where T is an ordinary struct
+    Given the function "func ok2() (T, error)" where T is a struct without an Error method
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: негативный — единственный результат error
-    Допустим функцию "func e() error"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — error as the only result
+    Given the function "func e() error"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  # === Класс 3: граничные ===
+  # === Class 3: boundary ===
 
-  Сценарий: граничный — кастомный error-интерфейс не матчится
-    Допустим объявление "type ErrIface interface { error; Code() int }" и функцию "func h() ErrIface"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
-    # ErrIface — интерфейс, расширяющий error; осознанное решение автора.
+  Scenario: boundary — a custom error interface is not matched
+    Given the declaration "type ErrIface interface { error; Code() int }" and the function "func h() ErrIface"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+    # ErrIface is an interface extending error; a deliberate decision of the author.
 
-  Сценарий: граничный — конструктор NewMyError() *MyError в errors.go
-    Допустим в файле errors.go функцию "func NewMyError() *MyError"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
-    # Конструкторы ошибок в error.go/errors.go легитимно возвращают конкретный тип.
+  Scenario: boundary — the constructor NewMyError() *MyError in errors.go
+    Given the function "func NewMyError() *MyError" in the file errors.go
+    When the analyzer checks the file
+    Then no diagnostic is reported
+    # Error constructors in error.go/errors.go legitimately return a concrete type.
 
-  Сценарий: граничный — единственный результат (error)
-    Допустим функцию "func single() error"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
-    # error на единственной (последней) позиции — норма.
+  Scenario: boundary — the only result is (error)
+    Given the function "func single() error"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+    # error in the only (last) position is the norm.
 
-  # === Класс 4: неприменимость ===
+  # === Class 4: non-applicability ===
 
-  Сценарий: неприменимость — функция без error в результатах
-    Допустим функцию "func plain() (int, string)"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: non-applicability — a function without error in the results
+    Given the function "func plain() (int, string)"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (RULES.md, GID-190)
-#  [x] Выбран слой: go/analysis (анализатор giderrlast в analyzers/errlast)
-#  [x] Заданы severity и сообщение ("GID-190: …")
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [ ] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (RULES.md, GID-190)
+#  [x] Layer chosen: go/analysis (analyzer giderrlast in analyzers/errlast)
+#  [x] Severity and message are defined ("GID-190: …")
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [ ] Rule enabled in .golangci.yml

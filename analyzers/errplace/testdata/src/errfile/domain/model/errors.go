@@ -1,4 +1,4 @@
-// Негатив: errors.go — разрешённый файл, объявления ошибок здесь — ок.
+// Negative: errors.go is an allowed file, error declarations here are fine.
 package model
 
 import "github.com/pkg/errors"

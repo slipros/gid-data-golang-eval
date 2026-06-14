@@ -1,168 +1,168 @@
-# language: ru
+# language: en
 
-Функция: GID-176 / GID-177 — обработка ошибок по слоям (errwrap)
-  Как разработчик
-  Я хочу, чтобы ошибки с границы приложения собирали стек и контекст (Wrap),
-  внутри приложения нестатичные ошибки обогащались без повторного стека (WithMessage),
-  а статичные ошибки при возврате всегда несли стек (WithStack)
-  Чтобы трассировка ошибки была полной, а стек собирался ровно один раз — на границе
+Feature: GID-176 / GID-177 — error handling by layer (errwrap)
+  As a developer
+  I want errors from the application boundary to collect a stack and context (Wrap),
+  non-static errors inside the application to be enriched without a second stack (WithMessage),
+  and static errors to always carry a stack when returned (WithStack)
+  So that the error trace is complete and the stack is collected exactly once — at the boundary
 
-  # Два анализатора в одном пакете errwrap (как errplace), LoadModeTypesInfo:
-  #   - WrapAnalyzer  → линтер giderrwrap  (GID-176)
-  #   - StaticAnalyzer → линтер gidstaticerr (GID-177)
-  # pkg/errors распознаётся по import-пути github.com/pkg/errors (стаб в testdata).
-  # Сгенерированный код (ast.IsGenerated) пропускается.
-  # Слой матчится по сегментам пути через internal/pathseg.
+  # Two analyzers in one errwrap package (like errplace), LoadModeTypesInfo:
+  #   - WrapAnalyzer  → linter giderrwrap  (GID-176)
+  #   - StaticAnalyzer → linter gidstaticerr (GID-177)
+  # pkg/errors is recognized by the import path github.com/pkg/errors (a stub in testdata).
+  # Generated code (ast.IsGenerated) is skipped.
+  # The layer is matched by path segments via internal/pathseg.
 
   # ============================================================
   # GID-176 (giderrwrap)
   # ============================================================
 
-  # === Часть 1: граница приложения (/client/** и /dal/repository) ===
-  # Функция, возвращающая error, не пробрасывает нестатичную ошибку из вызова.
+  # === Part 1: the application boundary (/client/** and /dal/repository) ===
+  # A function returning error must not pass through a non-static error from a call.
 
-  # --- Класс 1: позитивный (нарушение ловится) ---
+  # --- Class 1: positive (the violation is caught) ---
 
-  Сценарий: позитивный — pass-through ошибки из вызова на границе
-    Допустим пакет в "/dal/repository" с функцией, возвращающей error, где "err := r.call(); return err"
-    Когда анализатор giderrwrap проверяет файл
-    Тогда выводится диагностика "GID-176: оберните errors.Wrap — ошибка с границы приложения должна собрать стек и контекст" на "err"
+  Scenario: positive — pass-through of an error from a call at the boundary
+    Given a package in "/dal/repository" with a function returning error where "err := r.call(); return err"
+    When the giderrwrap analyzer checks the file
+    Then the diagnostic "GID-176: wrap with errors.Wrap. Fix: an error from the app boundary must collect stack and context" is reported on "err"
 
-  Сценарий: позитивный — pass-through в мультивозврате (return n, err)
-    Допустим пакет в "/dal/repository" с функцией "n, err := r.callRow(); return n, err"
-    Когда анализатор giderrwrap проверяет файл
-    Тогда выводится диагностика "GID-176: оберните errors.Wrap …" на "err"
+  Scenario: positive — pass-through in a multi-value return (return n, err)
+    Given a package in "/dal/repository" with the function "n, err := r.callRow(); return n, err"
+    When the giderrwrap analyzer checks the file
+    Then the diagnostic "GID-176: wrap with errors.Wrap …" is reported on "err"
 
-  Сценарий: позитивный — WithStack/WithMessage не добавляют контекст
-    Допустим пакет в "/dal/repository" с "err := r.call(); return errors.WithStack(err)" (и аналогично WithMessage)
-    Когда анализатор giderrwrap проверяет файл
-    Тогда выводится диагностика "GID-176: ошибка с границы приложения оборачивается errors.Wrap — собрать стек и контекст (WithStack контекста не добавляет)"
+  Scenario: positive — WithStack/WithMessage add no context
+    Given a package in "/dal/repository" with "err := r.call(); return errors.WithStack(err)" (and likewise WithMessage)
+    When the giderrwrap analyzer checks the file
+    Then the diagnostic "GID-176: an error from the app boundary must be wrapped with errors.Wrap. Fix: collect stack and context (WithStack adds no context)" is reported
 
-  Сценарий: позитивный — граница /client
-    Допустим пакет в "/client" с функцией "err := c.do(); return err"
-    Когда анализатор giderrwrap проверяет файл
-    Тогда выводится диагностика "GID-176: оберните errors.Wrap …" на "err"
+  Scenario: positive — the /client boundary
+    Given a package in "/client" with the function "err := c.do(); return err"
+    When the giderrwrap analyzer checks the file
+    Then the diagnostic "GID-176: wrap with errors.Wrap …" is reported on "err"
 
-  # --- Класс 2: негативный (чистый код проходит) ---
+  # --- Class 2: negative (clean code passes) ---
 
-  Сценарий: негативный — ошибка из вызова обёрнута Wrap
-    Допустим пакет в "/dal/repository" с "err := r.call(); return errors.Wrap(err, \"select\")"
-    Когда анализатор giderrwrap проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — the error from a call is wrapped with Wrap
+    Given a package in "/dal/repository" with "err := r.call(); return errors.Wrap(err, \"select\")"
+    When the giderrwrap analyzer checks the file
+    Then no diagnostic is reported
 
-  # --- Класс 3: граничный (похоже на нарушение, но допустимо) ---
+  # --- Class 3: boundary (looks like a violation but is allowed) ---
 
-  Сценарий: граничный — возврат статичной ошибки на границе (зона GID-177)
-    Допустим пакет в "/dal/repository" с "if err != nil { return entity.ErrNotFound }"
-    Когда анализатор giderrwrap проверяет файл
-    Тогда диагностика не выводится
-    # Возврат package-level error-var — не pass-through; это обмен ошибки, проверяется GID-177.
+  Scenario: boundary — returning a static error at the boundary (the domain of GID-177)
+    Given a package in "/dal/repository" with "if err != nil { return entity.ErrNotFound }"
+    When the giderrwrap analyzer checks the file
+    Then no diagnostic is reported
+    # Returning a package-level error var is not pass-through; it is an error exchange, checked by GID-177.
 
-  # --- Класс 4: неприменимость ---
+  # --- Class 4: non-applicability ---
 
-  Сценарий: неприменимость — функция без error в результатах
-    Допустим пакет в "/dal/repository" с функцией, возвращающей int (без error)
-    Когда анализатор giderrwrap проверяет файл
-    Тогда диагностика не выводится
+  Scenario: non-applicability — a function without error in the results
+    Given a package in "/dal/repository" with a function returning int (no error)
+    When the giderrwrap analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: неприменимость — не граничный слой (pkg/util)
-    Допустим пакет в "/pkg/util" с "err := w.call(); return err"
-    Когда анализатор giderrwrap проверяет файл
-    Тогда диагностика не выводится
-    # Часть 1 действует только в /client/** и /dal/repository.
+  Scenario: non-applicability — not a boundary layer (pkg/util)
+    Given a package in "/pkg/util" with "err := w.call(); return err"
+    When the giderrwrap analyzer checks the file
+    Then no diagnostic is reported
+    # Part 1 applies only in /client/** and /dal/repository.
 
-  # === Часть 2: внутри приложения (/domain/**) ===
-  # errors.Wrap пришедшей нестатичной ошибки запрещён — стек уже собран на границе.
+  # === Part 2: inside the application (/domain/**) ===
+  # errors.Wrap of an incoming non-static error is forbidden — the stack was already collected at the boundary.
 
-  # --- Класс 1: позитивный ---
+  # --- Class 1: positive ---
 
-  Сценарий: позитивный — Wrap нестатичной ошибки в /domain/service
-    Допустим пакет в "/domain/service" с "err := s.call(); return errors.Wrap(err, \"ctx\")"
-    Когда анализатор giderrwrap проверяет файл
-    Тогда выводится диагностика "GID-176: стек уже собран на границе — используйте errors.WithMessage вместо errors.Wrap для пришедшей ошибки"
+  Scenario: positive — Wrap of a non-static error in /domain/service
+    Given a package in "/domain/service" with "err := s.call(); return errors.Wrap(err, \"ctx\")"
+    When the giderrwrap analyzer checks the file
+    Then the diagnostic "GID-176: the stack is already collected at the boundary. Fix: use errors.WithMessage instead of errors.Wrap for an incoming error" is reported
 
-  Сценарий: позитивный — Wrap ошибки-параметра функции
-    Допустим пакет в "/domain/service" с "func (s *Service) f(err error) error { return errors.Wrap(err, \"ctx\") }"
-    Когда анализатор giderrwrap проверяет файл
-    Тогда выводится диагностика "GID-176: стек уже собран на границе …"
+  Scenario: positive — Wrap of an error passed as a function parameter
+    Given a package in "/domain/service" with "func (s *Service) f(err error) error { return errors.Wrap(err, \"ctx\") }"
+    When the giderrwrap analyzer checks the file
+    Then the diagnostic "GID-176: the stack is already collected at the boundary …" is reported
 
-  # --- Класс 2: негативный ---
+  # --- Class 2: negative ---
 
-  Сценарий: негативный — WithMessage для пришедшей ошибки
-    Допустим пакет в "/domain/service" с "err := s.call(); return errors.WithMessage(err, \"ctx\")"
-    Когда анализатор giderrwrap проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — WithMessage for an incoming error
+    Given a package in "/domain/service" with "err := s.call(); return errors.WithMessage(err, \"ctx\")"
+    When the giderrwrap analyzer checks the file
+    Then no diagnostic is reported
 
-  # --- Класс 3: граничный ---
+  # --- Class 3: boundary ---
 
-  Сценарий: граничный — Wrap статичной ошибки из model — разрешено
-    Допустим пакет в "/domain/service" с "return errors.Wrap(model.ErrSnapshotNotFound, \"ctx\")"
-    Когда анализатор giderrwrap проверяет файл
-    Тогда диагностика не выводится
-    # Wrap статичной (package-level) ошибки нужен — он собирает стек первым.
+  Scenario: boundary — Wrap of a static error from model — allowed
+    Given a package in "/domain/service" with "return errors.Wrap(model.ErrSnapshotNotFound, \"ctx\")"
+    When the giderrwrap analyzer checks the file
+    Then no diagnostic is reported
+    # Wrap of a static (package-level) error is needed — it collects the stack first.
 
-  # --- Класс 4: неприменимость ---
+  # --- Class 4: non-applicability ---
 
-  Сценарий: неприменимость — WithStack пришедшей ошибки в domain (не Wrap)
-    Допустим пакет в "/domain/service" с "err := s.call(); return errors.WithStack(err)"
-    Когда анализатор giderrwrap проверяет файл
-    Тогда диагностика не выводится
-    # Часть 2 ловит только errors.Wrap; WithStack — вне её scope.
+  Scenario: non-applicability — WithStack of an incoming error in domain (not Wrap)
+    Given a package in "/domain/service" with "err := s.call(); return errors.WithStack(err)"
+    When the giderrwrap analyzer checks the file
+    Then no diagnostic is reported
+    # Part 2 catches only errors.Wrap; WithStack is outside its scope.
 
   # ============================================================
   # GID-177 (gidstaticerr)
   # ============================================================
-  # Везде (кроме testdata/generated): return статичной ошибки без обёртки.
+  # Everywhere (except testdata/generated): a return of a static error without a wrapper.
 
-  # --- Класс 1: позитивный ---
+  # --- Class 1: positive ---
 
-  Сценарий: позитивный — return package-level error-var без обёртки
-    Допустим функция с "return model.ErrSnapshotNotFound"
-    Когда анализатор gidstaticerr проверяет файл
-    Тогда выводится диагностика "GID-177: статичная ошибка возвращается без стека — оберните errors.WithStack (или errors.Wrap, если нужен контекст)"
+  Scenario: positive — return of a package-level error var without a wrapper
+    Given a function with "return model.ErrSnapshotNotFound"
+    When the gidstaticerr analyzer checks the file
+    Then the diagnostic "GID-177: a static error is returned without a stack. Fix: wrap with errors.WithStack (or errors.Wrap if you need context)" is reported
 
-  Сценарий: позитивный — return адреса именованного error-типа (&BigError{})
-    Допустим функция с "return &model.BigError{Code: 1}"
-    Когда анализатор gidstaticerr проверяет файл
-    Тогда выводится диагностика "GID-177: статичная ошибка возвращается без стека …"
+  Scenario: positive — return of the address of a named error type (&BigError{})
+    Given a function with "return &model.BigError{Code: 1}"
+    When the gidstaticerr analyzer checks the file
+    Then the diagnostic "GID-177: a static error is returned without a stack …" is reported
 
-  Сценарий: позитивный — return композит-литерала error-типа (BigError{})
-    Допустим функция с "return model.BigError{Code: 2}"
-    Когда анализатор gidstaticerr проверяет файл
-    Тогда выводится диагностика "GID-177: статичная ошибка возвращается без стека …"
+  Scenario: positive — return of a composite literal of an error type (BigError{})
+    Given a function with "return model.BigError{Code: 2}"
+    When the gidstaticerr analyzer checks the file
+    Then the diagnostic "GID-177: a static error is returned without a stack …" is reported
 
-  # --- Класс 2: негативный ---
+  # --- Class 2: negative ---
 
-  Сценарий: негативный — статичная ошибка обёрнута WithStack или Wrap
-    Допустим функция с "return errors.WithStack(model.ErrSnapshotNotFound)" (и аналогично errors.Wrap)
-    Когда анализатор gidstaticerr проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — a static error wrapped with WithStack or Wrap
+    Given a function with "return errors.WithStack(model.ErrSnapshotNotFound)" (and likewise errors.Wrap)
+    When the gidstaticerr analyzer checks the file
+    Then no diagnostic is reported
 
-  # --- Класс 3: граничный ---
+  # --- Class 3: boundary ---
 
-  Сценарий: граничный — возврат пришедшей нестатичной ошибки
-    Допустим функция "func (s *Service) f(err error) error { return err }"
-    Когда анализатор gidstaticerr проверяет файл
-    Тогда диагностика не выводится
-    # Нестатичная ошибка (параметр/локальная) — не зона GID-177 (это GID-176).
+  Scenario: boundary — returning an incoming non-static error
+    Given the function "func (s *Service) f(err error) error { return err }"
+    When the gidstaticerr analyzer checks the file
+    Then no diagnostic is reported
+    # A non-static error (parameter/local) is not the domain of GID-177 (it is GID-176).
 
-  # --- Класс 4: неприменимость ---
+  # --- Class 4: non-applicability ---
 
-  Сценарий: неприменимость — конструктор-исключение собирает стек (settings.exclude)
-    Допустим settings.exclude содержит "gderror.NewUnhandledValueError" и "return gderror.NewUnhandledValueError(x)"
-    Когда анализатор gidstaticerr проверяет файл
-    Тогда диагностика не выводится
+  Scenario: non-applicability — an exempted constructor collects the stack (settings.exclude)
+    Given settings.exclude contains "gderror.NewUnhandledValueError" and "return gderror.NewUnhandledValueError(x)"
+    When the gidstaticerr analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: неприменимость — объявление error-var (не return)
-    Допустим "var ErrSnapshotNotFound = errors.New(\"…\")" в error.go
-    Когда анализатор gidstaticerr проверяет файл
-    Тогда диагностика не выводится
-    # GID-177 проверяет только return-выражения, не объявления.
+  Scenario: non-applicability — an error var declaration (not a return)
+    Given "var ErrSnapshotNotFound = errors.New(\"…\")" in error.go
+    When the gidstaticerr analyzer checks the file
+    Then no diagnostic is reported
+    # GID-177 checks only return expressions, not declarations.
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (RULES.md, GID-176/177)
-#  [x] Выбран слой: go/analysis (пакет errwrap: giderrwrap + gidstaticerr)
-#  [x] Заданы сообщения ("GID-176: …" / "GID-177: …")
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость — на каждый анализатор
-#  [x] testdata с // want для analysistest
-#  [ ] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (RULES.md, GID-176/177)
+#  [x] Layer chosen: go/analysis (package errwrap: giderrwrap + gidstaticerr)
+#  [x] Messages are defined ("GID-176: …" / "GID-177: …")
+#  [x] Case classes covered: positive, negative, boundary, non-applicability — for each analyzer
+#  [x] testdata with // want for analysistest
+#  [ ] Rule enabled in .golangci.yml

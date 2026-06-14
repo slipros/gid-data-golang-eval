@@ -1,4 +1,4 @@
-// Eval GID-214: неприменимость — _test.go, логгер в тестах разрешён.
+// Eval GID-214: not applicable — _test.go, a logger in tests is allowed.
 package handler
 
 import (
@@ -8,7 +8,7 @@ import (
 )
 
 func TestSomething(t *testing.T) {
-	// В тестах создавать логгер можно — _test.go пропускается.
+	// In tests creating a logger is fine — _test.go is skipped.
 	logger := logrus.New()
 	_ = logger
 }

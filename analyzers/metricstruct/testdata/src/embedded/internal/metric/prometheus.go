@@ -1,13 +1,13 @@
-// Граничный: embedded-поле с методом Register тоже требует вызова.
+// Boundary case: an embedded field with a Register method also requires a call.
 package metric
 
-// Prometheus встраивает группу HTTPMetrics (embedded).
+// Prometheus embeds the HTTPMetrics group (embedded).
 type Prometheus struct {
 	HTTPMetrics // want `GID-174: Prometheus.Register registers group HTTPMetrics\. Fix: call its Register`
-	GRPCMetrics // embedded и зарегистрирована ниже — ок
+	GRPCMetrics // embedded and registered below — ok
 }
 
-// Register регистрирует только GRPC через embedded-имя, забыли HTTP.
+// Register registers only GRPC via the embedded name; HTTP was forgotten.
 func (p Prometheus) Register() error {
 	return p.GRPCMetrics.Register()
 }

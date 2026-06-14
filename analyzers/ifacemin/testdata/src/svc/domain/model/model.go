@@ -1,5 +1,5 @@
-// Неприменимость GID-197: model-слой вне scope — интерфейсы model могут
-// описывать контракт для внешних потребителей.
+// Inapplicability of GID-197: the model layer is out of scope — model
+// interfaces may describe a contract for external consumers.
 package model
 
 type Filterable interface {

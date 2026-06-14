@@ -1,5 +1,5 @@
-// Негатив: /domain/model — дом domain-ошибок, здесь объявление разрешено.
-// Создание — через github.com/pkg/errors (GID-146).
+// Negative: /domain/model is the home of domain errors, declaration is allowed here.
+// Creation — via github.com/pkg/errors (GID-146).
 package model
 
 import "github.com/pkg/errors"

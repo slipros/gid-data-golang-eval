@@ -1,4 +1,4 @@
-// Eval GID-145 для /dal/repository.
+// Eval of GID-145 for /dal/repository.
 package repository
 
 import (
@@ -9,19 +9,19 @@ import (
 	"dalsvc/dal/entity"
 )
 
-// --- Позитив: объявление ошибки вне entity ---
+// --- Positive: declaring an error outside entity ---
 
 var ErrConn = errors.New("conn") // want `GID-145: error "ErrConn" is declared in "dalsvc/dal/repository"\. Fix: keep this layer's errors in /dal/entity` `GID-145: creating an error via errors\.New is forbidden`
 
 type Snapshot struct{}
 
-// --- Позитив: создание ошибок в рантайме ---
+// --- Positive: creating errors at runtime ---
 
 func (s *Snapshot) bad() error {
 	return fmt.Errorf("query failed") // want `GID-145: creating an error via fmt\.Errorf is forbidden\. Fix: exchange it for an error from /dal/entity`
 }
 
-// --- Негатив: обмен ошибки подключения на entity-ошибку ---
+// --- Negative: exchanging a connection error for an entity error ---
 
 func (s *Snapshot) good(err error) error {
 	if err != nil {
@@ -30,8 +30,8 @@ func (s *Snapshot) good(err error) error {
 	return nil
 }
 
-// Негатив (граница): обмена не произошло — исходная ошибка подключения
-// пробрасывается (с обогащением) — это допустимо.
+// Negative (boundary): no exchange happened — the original connection error
+// is passed through (enriched) — this is acceptable.
 func (s *Snapshot) goodPassThrough(err error) error {
 	return errors.Wrap(err, "select snapshot")
 }

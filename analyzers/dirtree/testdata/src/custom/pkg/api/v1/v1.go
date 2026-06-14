@@ -1,4 +1,4 @@
-// Негатив: v1 разрешён в pkg/api кастомного дерева.
+// Negative: v1 is allowed in pkg/api of the custom tree.
 package v1
 
 type API struct{}

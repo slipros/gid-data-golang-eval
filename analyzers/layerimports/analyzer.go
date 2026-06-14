@@ -1,57 +1,57 @@
-// Package layerimports реализует правила направления зависимостей между
-// слоями Clean Architecture (полная матрица — RULES.md, GID-132/170/172,
+// Package layerimports implements the dependency-direction rules between
+// Clean Architecture layers (full matrix — RULES.md, GID-132/170/172,
 // GID-224…229).
 //
 // GID-132 (layer-imports):
-//   - /dal/** не импортирует /domain/** — repository работает только с entity;
-//   - /domain/model не импортирует /dal/** — model чистый;
-//   - /domain/usecase не импортирует /dal/** — usecase работает только
-//     с model, с DAL общается через сервисы;
-//   - /domain/service не импортирует /dal/repository — зависимость от
-//     репозитория описывается интерфейсом рядом с потребителем.
-//     Импорт /dal/entity сервису разрешён: он конвертирует model <-> entity.
+//   - /dal/** does not import /domain/** — repository works only with entity;
+//   - /domain/model does not import /dal/** — model is pure;
+//   - /domain/usecase does not import /dal/** — usecase works only
+//     with model and talks to DAL through services;
+//   - /domain/service does not import /dal/repository — the dependency on
+//     the repository is described by an interface next to the consumer.
+//     Importing /dal/entity is allowed for a service: it converts model <-> entity.
 //
 // GID-170 (no-event-import):
-//   - /domain/** не импортирует /event/**;
-//   - /dal/** не импортирует /event/** — event-слой (kafka producer/consumer,
-//     DTO) зависит от domain/model и конвертирует model <-> DTO, не наоборот.
+//   - /domain/** does not import /event/**;
+//   - /dal/** does not import /event/** — the event layer (kafka producer/consumer,
+//     DTO) depends on domain/model and converts model <-> DTO, not the other way.
 //
 // GID-172 (client-no-entity):
-//   - /client/** не импортирует /dal/** — у клиента свои типы, он ничего
-//     не знает о entity/repository.
+//   - /client/** does not import /dal/** — the client has its own types and knows
+//     nothing about entity/repository.
 //
 // GID-224 (transport-imports):
-//   - транспорт (/server, /schedule, /validate, /event) из слоёв сервиса
-//     видит только /domain/model (и /validate) — конкретные service/usecase
-//     инжектятся через интерфейсы у потребителя.
+//   - transport (/server, /schedule, /validate, /event) sees only /domain/model
+//     (and /validate) from the service layers — concrete service/usecase are
+//     injected through interfaces at the consumer.
 //
 // GID-225 (root-and-leaves):
-//   - /internal/app (composition root) и транспорт-листья (/server,
-//     /schedule, /validate) никем не импортируются.
+//   - /internal/app (composition root) and the transport leaves (/server,
+//     /schedule, /validate) are imported by nobody.
 //
 // GID-226 (metric-standalone):
-//   - /metric не импортирует слои сервиса; domain/dal получают метрики
-//     интерфейсом — /metric им недоступен (wiring в app).
+//   - /metric does not import service layers; domain/dal receive metrics
+//     through an interface — /metric is not available to them (wiring in app).
 //
 // GID-227 (model-pure):
-//   - /domain/model не импортирует ни один слой сервиса — это чистый
-//     словарь; подпакеты /domain/model/* — полноправный model-слой.
+//   - /domain/model does not import any service layer — it is the pure
+//     vocabulary; the subpackages /domain/model/* are a full-fledged model layer.
 //
 // GID-228 (no-direct-client):
-//   - /domain/** и /dal/** не импортируют /client/** — зависимость от
-//     клиента описывается интерфейсом в /domain/model (GID-134).
+//   - /domain/** and /dal/** do not import /client/** — the dependency on
+//     the client is described by an interface in /domain/model (GID-134).
 //
 // GID-229 (client-isolated):
-//   - /client/** не импортирует слои сервиса (включая /domain целиком) —
-//     у клиента свои типы, конвертация живёт у потребителя.
+//   - /client/** does not import service layers (including all of /domain) —
+//     the client has its own types, conversion lives at the consumer.
 //
-// Баны действуют только внутри одного модуля: для пакетов с сегментом
-// /internal/ сравнивается префикс модуля, для остальных — первый сегмент
-// пути (testdata, нестандартная раскладка). Сторонние библиотеки с
-// сегментами client/event/metric в пути не задеваются.
+// Bans apply only within a single module: for packages with an /internal/
+// segment the module prefix is compared, for the rest — the first path
+// segment (testdata, non-standard layout). Third-party libraries with
+// client/event/metric segments in their path are not affected.
 //
-// Ослабление per-project — settings.disable (список GID-ID); свои правила —
-// settings.rules (id, scope, banned, reason). Точечно — //nolint:gidlayerimports.
+// Per-project relaxation — settings.disable (list of GID-IDs); custom rules —
+// settings.rules (id, scope, banned, reason). Pointwise — //nolint:gidlayerimports.
 package layerimports
 
 import (
@@ -64,8 +64,8 @@ import (
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 )
 
-// Порядок правил важен: для импорта рапортуется первое совпавшее правило
-// (специфичные — раньше общих), дубли диагностик не плодятся.
+// Rule order matters: the first matching rule is reported for an import
+// (specific rules before general ones), so duplicate diagnostics are not produced.
 var layerRules = []layerRule{
 	{
 		id:     "GID-132",
@@ -109,7 +109,7 @@ var layerRules = []layerRule{
 		banned: [][]string{{"dal"}},
 		reason: "the client has its own types and knows nothing about entity/repository from the dal layer",
 	},
-	// --- матрица изоляции слоёв (2026-06-07) ---
+	// --- layer isolation matrix (2026-06-07) ---
 	{
 		id:    "GID-227",
 		scope: []string{"domain", "model"},
@@ -223,21 +223,21 @@ var layerRules = []layerRule{
 	},
 }
 
-// Analyzer — правила GID-132/170/172/224…229 с настройками по умолчанию.
+// Analyzer — GID-132/170/172/224…229 rules with default settings.
 var Analyzer = NewAnalyzer(Settings{})
 
-// Settings — настройки линтера из .golangci.yml.
+// Settings — linter settings from .golangci.yml.
 type Settings struct {
-	// Disable — GID-ID встроенных правил, которые проект осознанно отключает
-	// (например, GID-224 на переходный период).
+	// Disable — GID-IDs of built-in rules that the project deliberately turns off
+	// (for example, GID-224 during a transition period).
 	Disable []string `json:"disable"`
-	// Rules — дополнительные правила проекта поверх встроенной матрицы.
+	// Rules — additional project rules on top of the built-in matrix.
 	Rules []RuleSetting `json:"rules"`
 }
 
-// RuleSetting — дополнительное правило направления импортов: пакетам
-// слоя Scope запрещены импорты Banned. Слои задаются слэш-путями
-// сегментов ("domain/service", "dal").
+// RuleSetting — an additional import-direction rule: packages in the
+// Scope layer are forbidden to import Banned. Layers are given as
+// slash-paths of segments ("domain/service", "dal").
 type RuleSetting struct {
 	ID     string   `json:"id"`
 	Scope  string   `json:"scope"`
@@ -245,7 +245,7 @@ type RuleSetting struct {
 	Reason string   `json:"reason"`
 }
 
-// NewAnalyzer строит анализатор направления импортов между слоями.
+// NewAnalyzer builds the analyzer for import direction between layers.
 func NewAnalyzer(s Settings) *analysis.Analyzer {
 	rules := effectiveRules(s)
 	return &analysis.Analyzer{
@@ -259,8 +259,8 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 	}
 }
 
-// layerRule: пакетам в scope запрещены импорты banned. id — ID правила,
-// под которым рапортуется нарушение.
+// layerRule: packages in scope are forbidden to import banned. id is the ID
+// of the rule under which a violation is reported.
 type layerRule struct {
 	id     string
 	scope  []string
@@ -268,22 +268,22 @@ type layerRule struct {
 	reason string
 }
 
-// effectiveRules — встроенная матрица минус settings.disable плюс
-// settings.rules (свои правила проверяются после встроенных).
+// effectiveRules — the built-in matrix minus settings.disable plus
+// settings.rules (custom rules are checked after the built-in ones).
 func effectiveRules(s Settings) []layerRule {
 	disabled := make(map[string]struct{}, len(s.Disable))
 	for _, id := range s.Disable {
 		disabled[id] = struct{}{}
 	}
 	rules := make([]layerRule, 0, len(layerRules)+len(s.Rules))
-	//nolint:gidallptr // плагин не зависит от внутренней библиотеки gdhelper
+	//nolint:gidallptr // the plugin does not depend on the internal gdhelper library
 	for _, rule := range layerRules {
 		if _, ok := disabled[rule.id]; ok {
 			continue
 		}
 		rules = append(rules, rule)
 	}
-	//nolint:gidallptr // плагин не зависит от внутренней библиотеки gdhelper
+	//nolint:gidallptr // the plugin does not depend on the internal gdhelper library
 	for _, rs := range s.Rules {
 		rule := layerRule{
 			id:     rs.ID,
@@ -303,7 +303,7 @@ func effectiveRules(s Settings) []layerRule {
 	return rules
 }
 
-// segments разбирает слэш-путь слоя ("domain/service") в сегменты.
+// segments splits a slash-path of a layer ("domain/service") into segments.
 func segments(path string) []string {
 	var out []string
 	for seg := range strings.SplitSeq(path, "/") {
@@ -317,7 +317,7 @@ func segments(path string) []string {
 func run(pass *analysis.Pass, rules []layerRule) (any, error) {
 	pkgPath := pass.Pkg.Path()
 	var scoped []layerRule
-	//nolint:gidallptr // плагин не зависит от внутренней библиотеки gdhelper
+	//nolint:gidallptr // the plugin does not depend on the internal gdhelper library
 	for _, rule := range rules {
 		if pathseg.Contains(pkgPath, rule.scope...) {
 			scoped = append(scoped, rule)
@@ -348,10 +348,10 @@ func checkImports(pass *analysis.Pass, rules []layerRule, file *ast.File) {
 	}
 }
 
-// reportFirstMatch рапортует первое совпавшее правило: специфичные правила
-// идут раньше общих, и один импорт не получает дубль диагностик.
+// reportFirstMatch reports the first matching rule: specific rules come
+// before general ones, and a single import does not get duplicate diagnostics.
 func reportFirstMatch(pass *analysis.Pass, rules []layerRule, imp *ast.ImportSpec, path string) {
-	//nolint:gidallptr // плагин не зависит от внутренней библиотеки gdhelper
+	//nolint:gidallptr // the plugin does not depend on the internal gdhelper library
 	for _, rule := range rules {
 		for _, banned := range rule.banned {
 			if !pathseg.Contains(path, banned...) {
@@ -365,11 +365,11 @@ func reportFirstMatch(pass *analysis.Pass, rules []layerRule, imp *ast.ImportSpe
 	}
 }
 
-// sameModule сообщает, принадлежит ли импорт тому же модулю, что и
-// импортирующий пакет: слоевые баны не задевают сторонние библиотеки
-// с сегментами client/event/metric в пути. Для канонической раскладки
-// границей модуля служит сегмент /internal/; иначе (testdata,
-// нестандартная раскладка) сравнивается первый сегмент пути.
+// sameModule tells whether an import belongs to the same module as the
+// importing package: layer bans do not affect third-party libraries
+// with client/event/metric segments in their path. For the canonical layout
+// the /internal/ segment serves as the module boundary; otherwise (testdata,
+// non-standard layout) the first path segment is compared.
 func sameModule(pkgPath, importPath string) bool {
 	const internalSeg = "/internal/"
 	if module, _, ok := strings.Cut(pkgPath, internalSeg); ok {

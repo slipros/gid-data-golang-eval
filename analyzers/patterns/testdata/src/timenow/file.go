@@ -2,20 +2,20 @@ package timenow
 
 import "time"
 
-// stdTime — заглушка обёртки gdhelper.StdTime для негативного кейса.
+// stdTime — a stub of the gdhelper.StdTime wrapper for the negative case.
 var stdTime = struct{ Now func() time.Time }{Now: func() time.Time { return time.Time{} }}
 
-// Позитив: прямой вызов time.Now() запрещён.
+// Positive: a direct time.Now() call is forbidden.
 func bad() time.Time {
 	return time.Now() // want `GID-001: time\.Now\(\) must not be called directly\. Fix: use gdhelper\.StdTime\.Now\(\) instead of time\.Now\(\)\.`
 }
 
-// Негатив: обёртка вместо time.Now().
+// Negative: the wrapper instead of time.Now().
 func good() time.Time {
 	return stdTime.Now()
 }
 
-// Неприменимость: одноимённый метод другого типа — не time.Now.
+// Not applicable: a same-named method of another type — not time.Now.
 type clock struct{}
 
 func (c clock) Now() time.Time { return time.Time{} }

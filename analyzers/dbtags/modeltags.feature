@@ -1,49 +1,49 @@
-# language: ru
+# language: en
 
-Функция: GID-168 — запрет db-тегов у полей структур в /domain/**
-  Как разработчик
-  Я хочу, чтобы в /domain/** у полей структур не было тегов маппинга на БД
-  Чтобы model оставался чистым бизнес-объектом, а маппинг на колонки БД жил в entity (DAL)
+Feature: GID-168 — ban on db tags on struct fields in /domain/**
+  As a developer
+  I want struct fields in /domain/** to have no database-mapping tags
+  So that the model stays a pure business object and the DB column mapping lives in entity (DAL)
 
-  # Scope: pathseg.Contains(pkgPath, "domain") — слой model и все его подпакеты.
-  # Тег маппинга по умолчанию ["db"], настраивается через Settings.Tags.
-  # Прочие теги (json и пр.) — не трогаем. Сгенерированный код пропускаем.
+  # Scope: pathseg.Contains(pkgPath, "domain") — the model layer and all its subpackages.
+  # The mapping tag defaults to ["db"], configurable via Settings.Tags.
+  # Other tags (json etc.) are not touched. Generated code is skipped.
 
-  Сценарий: позитивный — поле с db-тегом в domain
-    Допустим пакет в "/domain/model" со структурой "Snapshot" с полем "ID string `db:\"id\"`"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-168: поле Snapshot.ID с тегом \"db\" в domain-слое — маппинг на БД живёт в /dal/entity" на поле "ID"
+  Scenario: positive — a field with a db tag in domain
+    Given a package in "/domain/model" with the struct "Snapshot" having the field "ID string `db:\"id\"`"
+    When the analyzer checks the file
+    Then the diagnostic "GID-168: field Snapshot.ID has a \"db\" tag in the domain layer. Fix: keep db mapping in /dal/entity" is reported on the field "ID"
 
-  Сценарий: позитивный — приватное поле с db-тегом тоже флагуется
-    Допустим пакет в "/domain/model" со структурой "cursor" с приватным полем "offset int `db:\"offset\"`"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-168" на поле "offset"
+  Scenario: positive — a private field with a db tag is also flagged
+    Given a package in "/domain/model" with the struct "cursor" having the private field "offset int `db:\"offset\"`"
+    When the analyzer checks the file
+    Then a "GID-168" diagnostic is reported on the field "offset"
 
-  Сценарий: негативный — поля без тегов маппинга
-    Допустим пакет в "/domain/model" со структурой "Job", где поля имеют только json/validate-теги или вовсе без тегов
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — fields without mapping tags
+    Given a package in "/domain/model" with the struct "Job" whose fields have only json/validate tags or no tags at all
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: граничный — embedded-поле с db-тегом флагуется
-    Допустим пакет в "/domain/model" со структурой, встраивающей "Snapshot `db:\"snapshot\"`"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-168" на встроенном поле "Snapshot"
+  Scenario: boundary — an embedded field with a db tag is flagged
+    Given a package in "/domain/model" with a struct embedding "Snapshot `db:\"snapshot\"`"
+    When the analyzer checks the file
+    Then a "GID-168" diagnostic is reported on the embedded field "Snapshot"
 
-  Сценарий: граничный — ch-тег при настройках по умолчанию не флагуется
-    Допустим Settings.Tags не задан (действует дефолт ["db"])
-    И пакет в "/domain/model" со структурой "Metric" с полем "ID string `ch:\"id\"`"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: boundary — a ch tag is not flagged with default settings
+    Given Settings.Tags is not set (the default ["db"] applies)
+    And a package in "/domain/model" with the struct "Metric" having the field "ID string `ch:\"id\"`"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: неприменимость — та же структура в /dal/entity
-    Допустим пакет в "/dal/entity" со структурой "Snapshot" с полями с db-тегами
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: non-applicability — the same struct in /dal/entity
+    Given a package in "/dal/entity" with the struct "Snapshot" having fields with db tags
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (RULES.md, GID-168)
-#  [x] Выбран слой: go/analysis (анализатор gidmodeltags в analyzers/dbtags)
-#  [x] Заданы severity и сообщение ("GID-168: …")
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [ ] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (RULES.md, GID-168)
+#  [x] Layer chosen: go/analysis (analyzer gidmodeltags in analyzers/dbtags)
+#  [x] Severity and message are defined ("GID-168: …")
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [ ] Rule enabled in .golangci.yml

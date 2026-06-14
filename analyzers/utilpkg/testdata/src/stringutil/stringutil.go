@@ -1,5 +1,5 @@
-// Негативный кейс: stringutil содержит "util" суффиксом, но имя пакета
-// целиком не совпадает с элементом чёрного списка — матча нет.
+// Negative case: stringutil contains "util" as a suffix, but the whole
+// package name does not match a blacklist entry — no match.
 package stringutil
 
 func Noop() {}

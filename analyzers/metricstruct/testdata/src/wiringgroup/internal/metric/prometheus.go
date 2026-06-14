@@ -1,18 +1,18 @@
-// Проверка 6: в prometheus.go объявлена другая экспортируемая struct-группа.
+// Check 6: prometheus.go declares another exported struct group.
 package metric
 
-// Prometheus — агрегатор, тут он уместен.
+// Prometheus — the aggregator; it belongs here.
 type Prometheus struct {
 	HTTP HTTPMetrics
 }
 
-// HTTPMetrics в prometheus.go — нарушение: группа живёт в отдельном файле.
+// HTTPMetrics in prometheus.go — violation: a group lives in its own file.
 type HTTPMetrics struct { // want `GID-174: a metrics group must live in its own file; prometheus.go is wiring only\. Fix: move the group out`
 	Requests int
 }
 
-// Register регистрирует группу HTTP.
+// Register registers the HTTP group.
 func (p Prometheus) Register() error { return p.HTTP.Register() }
 
-// Register группы HTTP.
+// Register of the HTTP group.
 func (m HTTPMetrics) Register() error { return nil }

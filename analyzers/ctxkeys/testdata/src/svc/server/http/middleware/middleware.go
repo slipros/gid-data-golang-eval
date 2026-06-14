@@ -1,4 +1,4 @@
-// Eval для GID-165: свой contextKey в middleware запрещён.
+// Eval for GID-165: a custom contextKey in a middleware is forbidden.
 package middleware
 
 import (
@@ -10,7 +10,7 @@ import (
 
 type contextKey string
 
-// --- Позитив: middleware кладёт данные своим ключом ---
+// --- Positive: the middleware stores data with its own key ---
 
 func Auth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -19,7 +19,7 @@ func Auth(next http.Handler) http.Handler {
 	})
 }
 
-// --- Негатив: middleware использует helper из model ---
+// --- Negative: the middleware uses a helper from model ---
 
 func AuthViaModel(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -28,7 +28,7 @@ func AuthViaModel(next http.Handler) http.Handler {
 	})
 }
 
-// --- Неприменимость: производные контексты без значений ---
+// --- Not applicable: derived contexts without values ---
 
 func withTimeout(ctx context.Context) (context.Context, context.CancelFunc) {
 	return context.WithCancel(ctx)

@@ -1,21 +1,21 @@
-// Eval GID-173 — /dal/repository: голая роль Connection + граничные кейсы.
+// Eval of GID-173 — /dal/repository: the bare role Connection + boundary cases.
 package repository
 
 import "context"
 
-// --- Позитивный кейс: голая роль ---
+// --- Positive case: a bare role ---
 
 type Connection interface { // want `GID-173: interface "Connection" must be named with an entity prefix\. Fix: e\.g\. HelloRepository`
 	Ping(ctx context.Context) error
 }
 
-// --- Граничный кейс: тип-структура с именем роли — не интерфейс ---
+// --- Boundary case: a struct type with a role name — not an interface ---
 
 type Repository struct {
 	conn Connection
 }
 
-// --- Негативный кейс: интерфейс с префиксом сущности ---
+// --- Negative case: an interface with an entity prefix ---
 
 type SnapshotConnection interface {
 	Ping(ctx context.Context) error

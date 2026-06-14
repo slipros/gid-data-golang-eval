@@ -1,5 +1,5 @@
-// Граничный (GID-170): сегмент "events" (мн. число) — не "event",
-// под правило не подпадает.
+// Boundary (GID-170): the segment "events" (plural) is not "event",
+// it does not fall under the rule.
 package dto
 
 type SnapshotDTO struct {

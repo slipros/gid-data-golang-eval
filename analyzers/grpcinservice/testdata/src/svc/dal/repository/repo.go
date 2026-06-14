@@ -1,4 +1,4 @@
-// Негатив (неприменимость): repository — правильное место для gRPC-вызовов.
+// Negative (inapplicability): repository is the right place for gRPC calls.
 package repository
 
 import (

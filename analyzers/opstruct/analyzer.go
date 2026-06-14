@@ -1,25 +1,27 @@
-// Package opstruct реализует правило GID-210 (op-struct-fields):
+// Package opstruct implements rule GID-210 (op-struct-fields):
 //
-//   - GID-210 (gidopstruct): операционные Create-структуры содержат
-//     минимальный набор полей.
+//   - GID-210 (gidopstruct): operational Create structs hold a minimal set
+//     of fields.
 //
-// Проверяются struct-типы, чьё имя матчит regexp `^Create[A-Z]` (CreateJob,
-// CreateStageInput). Имя Create без следующей заглавной (а также CreatedBy,
-// CreatedAt, CreatedSnapshot) под regexp НЕ попадает — это другие слова.
+// Struct types whose name matches the regexp `^Create[A-Z]` are checked
+// (CreateJob, CreateStageInput). The name Create without a following capital
+// (as well as CreatedBy, CreatedAt, CreatedSnapshot) does NOT match the
+// regexp — those are different words.
 //
-// Слой определяется по сегментам import-пути:
+// The layer is determined by import-path segments:
 //
-//   - model-слой (/domain/model и подпакеты): Create-структура НЕ содержит
-//     полей ID, CreatedAt, UpdatedAt — они генерируются на уровне
-//     service/convert (источник: model.md «модельные Create-структуры не
-//     содержат ID и CreatedAt»).
-//   - entity-слой (/dal/entity и подпакеты): Create-структура НЕ содержит поля
-//     UpdatedAt — Create holds only INSERT fields. При этом entity-Create
-//     ЛЕГИТИМНО содержит ID и CreatedAt, поэтому они не флагаются.
+//   - model layer (/domain/model and subpackages): a Create struct does NOT
+//     contain the fields ID, CreatedAt, UpdatedAt — they are generated at the
+//     service/convert level (source: model.md "model Create structs do not
+//     contain ID and CreatedAt").
+//   - entity layer (/dal/entity and subpackages): a Create struct does NOT
+//     contain the UpdatedAt field — Create holds only INSERT fields. At the
+//     same time an entity Create LEGITIMATELY contains ID and CreatedAt, so
+//     they are not flagged.
 //
-// Embedded-поля не проверяются. Сгенерированные файлы пропускаются.
+// Embedded fields are not checked. Generated files are skipped.
 //
-// Источники: model.md, entity.md.
+// Sources: model.md, entity.md.
 package opstruct
 
 import (
@@ -33,24 +35,24 @@ import (
 
 const ruleID = "GID-210"
 
-// createName: имя операционной Create-структуры — префикс Create перед
-// заглавной буквой (CreateJob, CreateStageInput). Create без продолжения,
-// CreatedBy, CreatedAt, CreatedSnapshot и Update* под regexp не попадают.
+// createName: the name of an operational Create struct — the Create prefix
+// followed by a capital letter (CreateJob, CreateStageInput). Create with no
+// continuation, CreatedBy, CreatedAt, CreatedSnapshot and Update* do not match.
 var createName = regexp.MustCompile(`^Create[A-Z]`)
 
-// model-слой запрещает эти поля в Create-структуре.
+// The model layer forbids these fields in a Create struct.
 var modelForbidden = map[string]string{
 	"ID":        "generated at the convert/DB level",
 	"CreatedAt": "set at the service/convert level",
 	"UpdatedAt": "set at the service/convert level",
 }
 
-// entity-слой запрещает только UpdatedAt (ID и CreatedAt в entity-Create легитимны).
+// The entity layer forbids only UpdatedAt (ID and CreatedAt are legitimate in an entity Create).
 var entityForbidden = map[string]string{
 	"UpdatedAt": "Create holds only INSERT fields",
 }
 
-// Analyzer — правило GID-210: операционные Create-структуры содержат минимальный набор полей.
+// Analyzer — rule GID-210: operational Create structs hold a minimal set of fields.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidopstruct",
 	Doc: ruleID + ": operational Create structs hold a minimal set of fields " +
@@ -71,7 +73,7 @@ func run(pass *analysis.Pass) (any, error) {
 	case inEntity:
 		forbidden = entityForbidden
 	default:
-		// Не model- и не entity-слой — правило не применяется.
+		// Neither the model nor the entity layer — the rule does not apply.
 		return nil, nil
 	}
 
@@ -105,7 +107,7 @@ func run(pass *analysis.Pass) (any, error) {
 
 func checkStruct(pass *analysis.Pass, typeName string, st *ast.StructType, forbidden map[string]string) {
 	for _, field := range st.Fields.List {
-		// Embedded-поля не проверяем.
+		// Embedded fields are not checked.
 		if len(field.Names) == 0 {
 			continue
 		}

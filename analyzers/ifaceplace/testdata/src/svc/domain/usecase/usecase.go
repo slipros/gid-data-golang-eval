@@ -1,13 +1,13 @@
-// Граничный класс GID-134: потребитель — слой /domain/usecase.
-// model-интерфейс здесь разрешён (как и в service).
+// Boundary class of GID-134: the consumer is the /domain/usecase layer.
+// A model interface is allowed here (as in service).
 package usecase
 
 import "svc/domain/model"
 
-// Поле с model-интерфейсом в usecase — ОК.
+// A field with a model interface in usecase — OK.
 type Usecase struct {
 	repo model.JobRepository
 }
 
-// Параметр с model-интерфейсом в usecase — ОК.
+// A parameter with a model interface in usecase — OK.
 func (u *Usecase) Use(jr model.JobRepository) {}

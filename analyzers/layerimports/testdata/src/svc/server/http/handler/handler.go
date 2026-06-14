@@ -1,5 +1,5 @@
-// Позитив (GID-224): server импортирует dal и domain/service — запрещено;
-// негатив: domain/model и validate транспорту разрешены.
+// Positive (GID-224): server imports dal and domain/service — forbidden;
+// negative: domain/model and validate are allowed for transport.
 package handler
 
 import (
@@ -15,7 +15,7 @@ type Snapshot struct {
 	v    *validate.Snapshot
 }
 
-// Негатив: model в handler — норма (вход/выход транспорта).
+// Negative: model in handler is fine (transport input/output).
 func (h *Snapshot) Get() model.Snapshot {
 	return model.Snapshot{}
 }

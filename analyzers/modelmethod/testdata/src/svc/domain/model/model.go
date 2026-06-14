@@ -1,4 +1,4 @@
-// Model-пакет для eval GID-195.
+// Model package for the GID-195 eval.
 package model
 
 type Snapshot struct {

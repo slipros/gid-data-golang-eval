@@ -1,4 +1,4 @@
-// Негатив (граница): composition root — New() приложения по шаблону.
+// Negative (edge): the composition root — the application's New() per the template.
 package api
 
 type Application struct{}

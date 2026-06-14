@@ -1,4 +1,4 @@
-// Неприменимость: вне server/http правило не действует.
+// Inapplicable: outside server/http the rule does not apply.
 package service
 
 import "net/http"

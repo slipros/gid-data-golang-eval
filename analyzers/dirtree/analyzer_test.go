@@ -8,13 +8,13 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/dirtree"
 )
 
-// TestAnalyzer — дефолтное каноничное дерево internal/.
+// TestAnalyzer — the default canonical internal/ tree.
 func TestAnalyzer(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), dirtree.Analyzer, "svc/...")
 }
 
-// TestCustomTree — дерево из settings.tree заменяет дефолтное
-// и работает на любом уровне, не только в internal/.
+// TestCustomTree — the tree from settings.tree replaces the default one
+// and works at any level, not only in internal/.
 func TestCustomTree(t *testing.T) {
 	a := dirtree.NewAnalyzer(dirtree.Settings{
 		Tree: map[string][]string{

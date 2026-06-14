@@ -1,4 +1,4 @@
-// Класс 4: неприменимость — файл без слайсовых литералов вообще.
+// Class 4: not applicable — a file without any slice literals at all.
 package noslice
 
 type Point struct {

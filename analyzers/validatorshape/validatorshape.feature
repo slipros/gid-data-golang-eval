@@ -1,72 +1,72 @@
-# language: ru
+# language: en
 
-Функция: GID-213 — форма валидатора (validator-shape)
-  Как разработчик
-  Я хочу, чтобы каждый валидатор был структурой с методом
+Feature: GID-213 — the validator shape (validator-shape)
+  As a developer
+  I want every validator to be a struct with the method
   Validate(ctx context.Context, req *T) error
-  Чтобы валидаторы были единообразны и совпадали по имени с операцией
+  So that validators are uniform and match the operation by name
 
-  # Scope: только пакеты со слоем validate (segment "validate" в import-пути).
-  # Проверяются экспортируемые struct-типы, кроме имён с суффиксом Options.
-  # Достаточно: первый параметр — context.Context, единственный результат — error.
+  # Scope: only packages of the validate layer (the "validate" segment in the import path).
+  # Exported struct types are checked, except names with the Options suffix.
+  # Sufficient: the first parameter is context.Context, the only result is error.
 
-  Сценарий: позитив — экспортируемый struct без метода Validate
-    Допустим в validate-пакете объявлен "type CreateJob struct{}" без метода Validate
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-213" на типе "CreateJob"
+  Scenario: positive — an exported struct without a Validate method
+    Given "type CreateJob struct{}" without a Validate method is declared in a validate package
+    When the analyzer checks the file
+    Then a "GID-213" diagnostic is reported on the type "CreateJob"
 
-  Сценарий: позитив — Validate без ctx
-    Допустим валидатор с методом "func (v *UpdateJob) Validate(req *Req) error"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-213" на типе "UpdateJob"
+  Scenario: positive — Validate without ctx
+    Given a validator with the method "func (v *UpdateJob) Validate(req *Req) error"
+    When the analyzer checks the file
+    Then a "GID-213" diagnostic is reported on the type "UpdateJob"
 
-  Сценарий: позитив — Validate возвращает (bool, error)
-    Допустим валидатор с методом "func (v *DeleteJob) Validate(ctx context.Context, req *Req) (bool, error)"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-213" на типе "DeleteJob"
+  Scenario: positive — Validate returns (bool, error)
+    Given a validator with the method "func (v *DeleteJob) Validate(ctx context.Context, req *Req) (bool, error)"
+    When the analyzer checks the file
+    Then a "GID-213" diagnostic is reported on the type "DeleteJob"
 
-  Сценарий: негатив — корректный валидатор
-    Допустим валидатор с методом "func (v *ListJobs) Validate(ctx context.Context, req *Req) error"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — a correct validator
+    Given a validator with the method "func (v *ListJobs) Validate(ctx context.Context, req *Req) error"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: негатив — тип с суффиксом Options не валидатор
-    Допустим в validate-пакете объявлен "type ListJobsOptions struct{}" без метода Validate
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — a type with the Options suffix is not a validator
+    Given "type ListJobsOptions struct{}" without a Validate method is declared in a validate package
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: негатив — неэкспортируемый struct не флагается
-    Допустим в validate-пакете объявлен "type helper struct{}" без метода Validate
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — an unexported struct is not flagged
+    Given "type helper struct{}" without a Validate method is declared in a validate package
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: граничный — Validate с value-receiver
-    Допустим валидатор с методом "func (v GetJob) Validate(ctx context.Context, req *Req) error"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: boundary — Validate with a value receiver
+    Given a validator with the method "func (v GetJob) Validate(ctx context.Context, req *Req) error"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  # Решение, зафиксированное в правиле: достаточно ctx первым параметром и
-  # единственного результата error. Число параметров после ctx не ограничивается.
-  Сценарий: граничный — Validate с двумя параметрами после ctx
-    Допустим валидатор с методом "func (v PatchJob) Validate(ctx context.Context, req *Req, opt Opt) error"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  # The decision fixed in the rule: ctx as the first parameter and a single
+  # error result are sufficient. The number of parameters after ctx is not limited.
+  Scenario: boundary — Validate with two parameters after ctx
+    Given a validator with the method "func (v PatchJob) Validate(ctx context.Context, req *Req, opt Opt) error"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: неприменимость — struct без Validate в обычном пакете
-    Допустим в пакете "/domain/service" объявлен "type Worker struct{}" без метода Validate
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: non-applicability — a struct without Validate in an ordinary package
+    Given "type Worker struct{}" without a Validate method is declared in the "/domain/service" package
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: неприменимость — тип в settings.exclude
-    Допустим тип "HealthCheck" числится в settings.exclude
-    И в validate-пакете объявлен "type HealthCheck struct{}" без метода Validate
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: non-applicability — a type in settings.exclude
+    Given the type "HealthCheck" is listed in settings.exclude
+    And "type HealthCheck struct{}" without a Validate method is declared in a validate package
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (RULES.md — вне правки этой задачи)
-#  [x] Выбран слой: go/analysis (нужны типы — context.Context, error)
-#  [x] Заданы severity и сообщение
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [ ] Правило включено в .golangci.yml (вне правки этой задачи)
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (RULES.md — outside this task's change)
+#  [x] Layer chosen: go/analysis (types needed — context.Context, error)
+#  [x] Severity and message are defined
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [ ] Rule enabled in .golangci.yml (outside this task's change)

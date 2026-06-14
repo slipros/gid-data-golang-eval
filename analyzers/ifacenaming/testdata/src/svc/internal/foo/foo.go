@@ -1,9 +1,9 @@
-// Eval GID-173 — неприменимость: /internal/foo вне scope.
+// Eval of GID-173 — inapplicability: /internal/foo is out of scope.
 package foo
 
 import "context"
 
-// Голая роль вне scope — диагностики быть не должно.
+// A bare role out of scope — there must be no diagnostic.
 type Repository interface {
 	Hello(ctx context.Context) error
 }

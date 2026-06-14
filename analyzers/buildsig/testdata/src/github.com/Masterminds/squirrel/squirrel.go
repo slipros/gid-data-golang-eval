@@ -1,11 +1,11 @@
-// Stub библиотеки github.com/Masterminds/squirrel для eval.
+// Stub of the github.com/Masterminds/squirrel library for eval.
 package squirrel
 
-// SelectBuilder — заглушка билдера SELECT-запросов.
+// SelectBuilder — a stub of the SELECT query builder.
 type SelectBuilder struct{}
 
-// ToSql возвращает sql, args и ошибку.
+// ToSql returns sql, args and an error.
 func (b SelectBuilder) ToSql() (string, []any, error) { return "", nil, nil }
 
-// Select создаёт SelectBuilder.
+// Select creates a SelectBuilder.
 func Select(columns ...string) SelectBuilder { return SelectBuilder{} }

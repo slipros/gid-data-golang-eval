@@ -1,11 +1,11 @@
-// Package servicesingle реализует правило GID-148: domain-сервис посвящён
-// одной сущности и не зависит от других сервисов. Оркестрация бизнес-логики
-// нескольких сущностей — задача usecase, который может использовать
-// несколько сервисов.
+// Package servicesingle implements rule GID-148: a domain service is devoted
+// to one entity and does not depend on other services. Orchestrating the
+// business logic of several entities is the job of a usecase, which may use
+// several services.
 //
-// Детерминированная проверка: в корне /domain/service поле структуры,
-// чей тип — другая структура из того же пакета (кроме *Options), означает
-// зависимость сервиса от сервиса.
+// The deterministic check: in the root of /domain/service a struct field
+// whose type is another struct from the same package (except *Options) means
+// a service-on-service dependency.
 package servicesingle
 
 import (
@@ -20,7 +20,7 @@ import (
 
 const ruleID = "GID-148"
 
-// Analyzer — правило GID-148: a service must not depend on another service; entity orchestration happens in usecase. Fix: move orchestration to usecase.
+// Analyzer — rule GID-148: a service must not depend on another service; entity orchestration happens in usecase. Fix: move orchestration to usecase.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidservicesingle",
 	Doc:  ruleID + ": a service must not depend on another service; entity orchestration happens in usecase. Fix: move orchestration to usecase",
@@ -69,8 +69,8 @@ func checkServiceStruct(pass *analysis.Pass, owner string, st *ast.StructType) {
 	}
 }
 
-// samePackageStruct возвращает имя типа, если тип поля — структура
-// (или указатель на структуру) из этого же пакета и не Options-тип.
+// samePackageStruct returns the type name if the field type is a struct
+// (or a pointer to a struct) from the same package and not an Options type.
 func samePackageStruct(pass *analysis.Pass, expr ast.Expr) (string, bool) {
 	t := pass.TypesInfo.TypeOf(expr)
 	if t == nil {

@@ -1,4 +1,4 @@
-// Позитив: метод и конструктор сущности в чужом файле.
+// Positive: an entity's method and constructor in a foreign file.
 package entitygroup
 
 func NewJob() *Job { // want `GID-157: "NewJob" belongs to entity "Job"\. Fix: keep the entity's code in the file where it is declared`

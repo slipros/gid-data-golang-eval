@@ -1,7 +1,7 @@
-// Eval GID-211: каноническое место enum — /dal/entity/enum, диагностики нет.
+// Eval GID-211: the canonical place for an enum is /dal/entity/enum, no diagnostic.
 package enum
 
-// --- Негативный класс: string-enum в своём месте — ок ---
+// --- Negative class: a string enum in its proper place — ok ---
 
 type Status string
 

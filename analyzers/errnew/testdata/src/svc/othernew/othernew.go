@@ -1,5 +1,5 @@
-// Package othernew содержит локальную функцию New, не связанную с pkg/errors.
+// Package othernew contains a local New function unrelated to pkg/errors.
 package othernew
 
-// New — одноимённая функция другого пакета; правило GID-136 её не задевает.
+// New — a same-named function from another package; rule GID-136 does not touch it.
 func New(message string) error { return nil }

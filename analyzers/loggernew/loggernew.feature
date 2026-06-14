@@ -1,65 +1,65 @@
-# language: ru
+# language: en
 
-Функция: GID-214 — logger создаётся один раз в composition root
-  Как разработчик
-  Я хочу, чтобы logrus.New()/StandardLogger() вызывались только в composition root
-  Чтобы был единый сконфигурированный логгер, а слои получали готовый *logrus.Entry через конструктор
-  Источник: libs.md (logrus: не создавать новые экземпляры, пробрасывать существующий)
-  Scope: все пакеты, КРОМЕ package main и пакетов composition root (путь содержит internal/app)
-  Резолв logrus идёт по import-пути через types, _test.go и сгенерированные файлы пропускаются.
+Feature: GID-214 — the logger is created once in the composition root
+  As a developer
+  I want logrus.New()/StandardLogger() to be called only in the composition root
+  So that there is a single configured logger and the layers receive a ready *logrus.Entry via the constructor
+  Source: libs.md (logrus: do not create new instances, pass the existing one along)
+  Scope: all packages EXCEPT package main and composition-root packages (the path contains internal/app)
+  logrus is resolved by import path via types; _test.go and generated files are skipped.
 
-  # --- Позитивный класс: нарушение ловится ---
+  # --- Positive class: the violation is caught ---
 
-  Сценарий: logrus.New() в /domain/service — нарушение
-    Допустим в /domain/service вызывается "logrus.New()"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-214" с текстом "только в composition root"
+  Scenario: logrus.New() in /domain/service — violation
+    Given "logrus.New()" is called in /domain/service
+    When the analyzer checks the file
+    Then a "GID-214" diagnostic is reported with the text "only in the composition root"
 
-  Сценарий: logrus.StandardLogger() в /dal/repository — нарушение
-    Допустим в /dal/repository вызывается "logrus.StandardLogger()"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-214" с текстом "только в composition root"
+  Scenario: logrus.StandardLogger() in /dal/repository — violation
+    Given "logrus.StandardLogger()" is called in /dal/repository
+    When the analyzer checks the file
+    Then a "GID-214" diagnostic is reported with the text "only in the composition root"
 
-  # --- Негативный класс: чистый код проходит ---
+  # --- Negative class: clean code passes ---
 
-  Сценарий: logrus.New() в package main — ок
-    Допустим в package main вызывается "logrus.New()"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: logrus.New() in package main — ok
+    Given "logrus.New()" is called in package main
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: logrus.New() в internal/app — ок
-    Допустим в пакете с путём internal/app вызывается "logrus.New()"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: logrus.New() in internal/app — ok
+    Given "logrus.New()" is called in a package whose path contains internal/app
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: logger.WithField в /domain/service — это не создание экземпляра, ок
-    Допустим в /domain/service вызывается "logger.WithField(...)"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: logger.WithField in /domain/service — not an instance creation, ok
+    Given "logger.WithField(...)" is called in /domain/service
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  # --- Граничный класс ---
+  # --- Boundary class ---
 
-  Сценарий: New() из другого пакета с именем logrus — резолв по import-пути, ок
-    Допустим импортирован чужой пакет "logrus" с другим import-путём и вызывается "logrus.New()"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: New() from another package named logrus — resolved by import path, ok
+    Given a foreign package "logrus" with a different import path is imported and "logrus.New()" is called
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: сгенерированный файл с logrus.New() — пропускается
-    Допустим файл помечен "// Code generated ... DO NOT EDIT."
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a generated file with logrus.New() — skipped
+    Given the file is marked "// Code generated ... DO NOT EDIT."
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  # --- Класс неприменимости ---
+  # --- Non-applicability class ---
 
-  Сценарий: logrus.New() в _test.go — правило не применяется
-    Допустим в файле "*_test.go" в /domain/handler вызывается "logrus.New()"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: logrus.New() in _test.go — the rule does not apply
+    Given "logrus.New()" is called in a "*_test.go" file in /domain/handler
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (RULES.md, GID-214)
-#  [x] Выбран слой: go/analysis (LoadModeTypesInfo — резолв logrus по import-пути)
-#  [x] Заданы severity и сообщение ("GID-214: ...")
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [ ] Правило включено в .golangci.yml (вне scope этой задачи)
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (RULES.md, GID-214)
+#  [x] Layer chosen: go/analysis (LoadModeTypesInfo — logrus resolved by import path)
+#  [x] Severity and message are defined ("GID-214: ...")
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [ ] Rule enabled in .golangci.yml (outside the scope of this task)

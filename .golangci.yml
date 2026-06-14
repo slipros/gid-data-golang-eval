@@ -1,13 +1,13 @@
-# Эталонный конфиг для custom-gcl. Реестр правил — RULES.md.
-# База — боевой конфиг consent-api (UDMP/backend-go); поверх неё накинуты
-# слои GID: простые паттерны (слой 1) и собственные gid-анализаторы (слой 2) —
-# и настройки стандартных линтеров под стайлгайд (слой 3).
+# Reference config for custom-gcl. Rule registry — RULES.md.
+# Base — the production consent-api config (UDMP/backend-go); on top of it sit
+# the GID layers: simple patterns (layer 1) and custom gid analyzers (layer 2) —
+# plus standard-linter settings tuned to the styleguide (layer 3).
 version: "2"
 
 run:
   issues-exit-code: 1
-  # База ставила tests: false; включено, иначе тестовые правила
-  # (GID-191 gidsubtestname, GID-209) не работают.
+  # The base set tests: false; enabled here, otherwise test rules
+  # (GID-191 gidsubtestname, GID-209) do not work.
   tests: true
   allow-parallel-runners: true
   concurrency: 4
@@ -15,17 +15,17 @@ run:
   modules-download-mode: readonly
 
 issues:
-  max-issues-per-linter: 50      # Ограничить вывод
-  max-same-issues: 3             # Не показывать одну ошибку 100 раз
-  new: false                     # false = проверять весь код, true = только изменения
-  # одна строка может нарушать несколько правил — показываем все
+  max-issues-per-linter: 50      # Limit the output
+  max-same-issues: 3             # Do not show the same issue 100 times
+  new: false                     # false = check all code, true = changes only
+  # one line may violate several rules — show them all
   uniq-by-line: false
 
 linters:
   # default: standard — errcheck, govet, ineffassign, staticcheck, unused
   # (GID-202/205/206)
   enable:
-    # --- база consent-api ---
+    # --- consent-api base ---
     - bidichk
     - bodyclose
     - contextcheck
@@ -40,31 +40,31 @@ linters:
     - goconst
     - gocritic
     - gosec
-    - importas       # GID-208: фиксированные алиасы импортов (pb и пр.)
+    - importas       # GID-208: fixed import aliases (pb etc.)
     - ireturn        # GID-208: accept interfaces, return concrete types
     - makezero
     - misspell
     - mnd
-    - nakedret       # GID-208: naked return только в коротких функциях
-    - nestif         # GID-208: глубина вложенности if
+    - nakedret       # GID-208: naked return only in short functions
+    - nestif         # GID-208: if nesting depth
     - nilerr
     - noctx
     - nolintlint
-    - prealloc       # GID-208: capacity hint у слайсов
-    - predeclared    # GID-208: не шейдить builtin-имена
+    - prealloc       # GID-208: capacity hint for slices
+    - predeclared    # GID-208: do not shadow builtin names
     - promlinter
-    - revive         # GID-207: точечные rules (см. settings)
-    - staticcheck    # GID-205/206: SA + S + QF + все ST (checks: all)
+    - revive         # GID-207: selected rules only (see settings)
+    - staticcheck    # GID-205/206: SA + S + QF + all ST (checks: all)
     - unconvert
     - unparam
     - usestdlibvars
     - wastedassign
     - whitespace
-    # --- слой 3, добавлено к базе (GID-208, обоснование — STYLEGUIDE_COVERAGE.md) ---
-    - musttag        # GID-208: теги у marshaled-структур
-    - perfsprint     # GID-208: strconv vs fmt, конкатенация vs Sprintf
-    - depguard       # GID-137: баны библиотек по import-пути (uuid-форки, см. settings)
-    # --- Слой 1: простые AST-паттерны (бывший ruleguard) ---
+    # --- layer 3, added on top of the base (GID-208, rationale — STYLEGUIDE_COVERAGE.md) ---
+    - musttag        # GID-208: tags on marshaled structs
+    - perfsprint     # GID-208: strconv vs fmt, concatenation vs Sprintf
+    - depguard       # GID-137: library bans by import path (uuid forks, see settings)
+    # --- Layer 1: simple AST patterns (former ruleguard) ---
     - gidtimenow       # GID-001
     - giduuidnil       # GID-002
     - giduuidversion   # GID-003
@@ -72,7 +72,7 @@ linters:
     - gidyoda          # GID-006
     - gidquoteverb     # GID-007
     - giddeepequal     # GID-008
-    # --- Слой 2: собственные go/analysis правила ---
+    # --- Layer 2: custom go/analysis rules ---
     - gidnogetprefix   # GID-101
     - gidnobatch       # GID-102
     - gidonlygofrsuuid # GID-137
@@ -152,12 +152,17 @@ linters:
     - gidinlineconv    # GID-215
     - gideventctor     # GID-216
     - gidbansymbol     # GID-217
+    - gidhandlershape  # GID-230
+    - gidfsmmap        # GID-231
+    - gidprotorequired # GID-232
+    - gidenumcast      # GID-233
+    - giderrname       # GID-234
   disable:
-    # Список выключенных — из базы consent-api (осознанный выбор команды).
-    # Часть из них покрывала бы GID-правила — помечено комментарием.
+    # The disabled list comes from the consent-api base (a deliberate team choice).
+    # Some of them would cover GID rules — marked with a comment.
     - asasalint
     - asciicheck
-    - containedctx    # GID-208: context не хранится в структуре
+    - containedctx    # GID-208: context is not stored in a struct
     - cyclop
     - decorder
     - dogsled
@@ -166,8 +171,8 @@ linters:
     - forbidigo
     - funlen
     - gochecknoglobals
-    - gochecknoinits  # GID-208: запрет init()
-    - gocognit        # GID-208: когнитивная сложность
+    - gochecknoinits  # GID-208: init() is forbidden
+    - gocognit        # GID-208: cognitive complexity
     - gocyclo
     - godot
     - godox
@@ -175,9 +180,9 @@ linters:
     - gomoddirectives
     - gomodguard
     - goprintffuncname
-    - grouper         # GID-208: группировка объявлений
-    - interfacebloat  # GID-208: маленькие интерфейсы
-    - lll             # GID-201: ширина строки <= 120
+    - grouper         # GID-208: declaration grouping
+    - interfacebloat  # GID-208: small interfaces
+    - lll             # GID-201: line width <= 120
     - maintidx
     - nilnil
     - nlreturn
@@ -188,9 +193,9 @@ linters:
     - rowserrcheck
     - sqlclosecheck
     - tagliatelle
-    - testpackage     # GID-209: внешние _test-пакеты
-    - thelper         # GID-209: t.Helper() в тест-хелперах
-    - tparallel       # GID-209: корректность t.Parallel
+    - testpackage     # GID-209: external _test packages
+    - thelper         # GID-209: t.Helper() in test helpers
+    - tparallel       # GID-209: t.Parallel correctness
     - varnamelen
     - wrapcheck
     - wsl
@@ -205,15 +210,15 @@ linters:
         - io.Copy(os.Stdout)
         - (io.ReadCloser).Close
         - (*net/http.Response).Body.Close
-      check-type-assertions: true # GID-202: comma-ok обязателен
-      check-blank: true           # GID-202: запрет _ = err
+      check-type-assertions: true # GID-202: comma-ok is mandatory
+      check-blank: true           # GID-202: _ = err is forbidden
     goconst:
       min-len: 2
       min-occurrences: 2
-    # depguard — только модуленезависимые баны библиотек (полный import-путь).
-    # Запреты между слоями здесь не выражаются: deny — префиксный матчинг,
-    # потребовал бы хардкода module path в каждом сервисе. Направление
-    # слоёв закрывает gidlayerimports (GID-132/170/172/224…229).
+    # depguard — only module-independent library bans (full import path).
+    # Cross-layer bans cannot be expressed here: deny is prefix matching and
+    # would require hardcoding the module path in every service. Layer
+    # direction is covered by gidlayerimports (GID-132/170/172/224…229).
     depguard:
       rules:
         uuid:
@@ -230,23 +235,23 @@ linters:
             - pkg: github.com/twinj/uuid
               desc: 'GID-137: for UUID only github.com/gofrs/uuid is allowed'
     staticcheck:
-      # GID-206: включаем и стилевые ST-чеки, выключенные по умолчанию
-      # (ST1003 initialisms, ST1016 ресивер). ST1000 гасится в exclusions.
+      # GID-206: also enable stylistic ST checks disabled by default
+      # (ST1003 initialisms, ST1016 receiver). ST1000 is silenced in exclusions.
       checks: ["all"]
     revive:
-      # GID-207: только выбранные правила (см. STYLEGUIDE_COVERAGE.md)
+      # GID-207: selected rules only (see STYLEGUIDE_COVERAGE.md)
       rules:
-        - name: package-comments  # из базы consent-api
+        - name: package-comments  # from the consent-api base
           severity: warning
           disabled: true
-        - name: exported          # doc-comments у экспортируемых
-        - name: indent-error-flow # ошибка обрабатывается в if, без else
+        - name: exported          # doc comments on exported symbols
+        - name: indent-error-flow # the error is handled in if, without else
         - name: early-return
         - name: superfluous-else
-        - name: deep-exit         # os.Exit/log.Fatal вне main запрещены
+        - name: deep-exit         # os.Exit/log.Fatal outside main are forbidden
         - name: dot-imports
-        - name: blank-imports     # blank-импорт — с комментарием
-        - name: use-any           # any вместо interface{}
+        - name: blank-imports     # blank import requires a comment
+        - name: use-any           # any instead of interface{}
     ireturn:
       allow:
         - anon
@@ -254,7 +259,7 @@ linters:
         - empty
         - stdlib
         - generic
-    # importas: алиасы фиксируются per-project, пример:
+    # importas: aliases are pinned per project, example:
     # importas:
     #   alias:
     #     - pkg: gitlab.gid.team/x/y/pkg/api/order/v1
@@ -270,7 +275,7 @@ linters:
         - performance
         - style
     custom:
-      # --- Слой 1: простые AST-паттерны (бывший ruleguard) ---
+      # --- Layer 1: simple AST patterns (former ruleguard) ---
       gidtimenow:
         type: module
         description: 'GID-001: time.Now() must not be called directly; use gdhelper.StdTime.Now()'
@@ -299,7 +304,7 @@ linters:
         type: module
         description: 'GID-008: avoid reflect.DeepEqual; use require/cmp or explicit comparison'
         original-url: github.com/slipros/gid-data-golang-eval
-      # --- Слой 2: собственные go/analysis правила ---
+      # --- Layer 2: custom go/analysis rules ---
       gidnogetprefix:
         type: module
         description: 'GID-101: forbid the Get prefix in method names'
@@ -340,15 +345,15 @@ linters:
         type: module
         description: 'GID-132/170/172/224…229: layer isolation matrix (dal/domain/server/schedule/validate/event/client/metric/app)'
         original-url: github.com/slipros/gid-data-golang-eval
-        # Ослабление встроенной матрицы и свои правила:
+        # Relaxing the built-in matrix and adding custom rules:
         # settings:
-        #   disable:           # GID-ID, которые проект осознанно отключает
-        #     - GID-224        #   (например, на переходный период)
-        #   rules:             # свои правила поверх матрицы
+        #   disable:           # GID-IDs the project deliberately turns off
+        #     - GID-224        #   (e.g. for a transition period)
+        #   rules:             # custom rules on top of the matrix
         #     - id: SVC-1
         #       scope: domain/service
         #       banned: [legacy]
-        #       reason: 'пакет legacy выпиливается — новые зависимости запрещены'
+        #       reason: 'the legacy package is being removed — new dependencies are forbidden'
       gidservicemodel:
         type: module
         description: 'GID-151: service API takes and returns model, not entity'
@@ -381,7 +386,7 @@ linters:
         type: module
         description: 'GID-194: constants are declared where used, not globally'
         original-url: github.com/slipros/gid-data-golang-eval
-        # Исключения (помимо //nolint:gidconstscope) — имена констант:
+        # Exclusions (besides //nolint:gidconstscope) — constant names:
         # settings:
         #   exclude:
         #     - LegacyTimeout
@@ -389,46 +394,46 @@ linters:
         type: module
         description: 'GID-195: a service/usecase function over one model value is a model method'
         original-url: github.com/slipros/gid-data-golang-eval
-        # Исключения (помимо //nolint:gidmodelmethod):
+        # Exclusions (besides //nolint:gidmodelmethod):
         # settings:
         #   exclude:
-        #     - 'legacyTitle'            # имя функции
-        #     - 'Service.legacyRender'   # Тип.Метод
+        #     - 'legacyTitle'            # function name
+        #     - 'Service.legacyRender'   # Type.Method
       gidchainperline:
         type: module
         description: 'GID-196: call chain: one call per line, including the first'
         original-url: github.com/slipros/gid-data-golang-eval
-        # Порог длины цепочки (по умолчанию 2; logrus — зона gidlogchain):
+        # Chain length threshold (default 2; logrus is gidlogchain territory):
         # settings:
         #   min-calls: 3
       gidifacemin:
         type: module
         description: 'GID-197: a dependency interface holds only the methods used'
         original-url: github.com/slipros/gid-data-golang-eval
-        # Исключения (помимо //nolint:gidifacemin):
+        # Exclusions (besides //nolint:gidifacemin):
         # settings:
         #   exclude:
-        #     - 'LegacyGateway'        # интерфейс целиком
-        #     - 'AlertSink.Flush'      # Интерфейс.Метод
+        #     - 'LegacyGateway'        # the whole interface
+        #     - 'AlertSink.Flush'      # Interface.Method
       gidinout:
         type: module
         description: 'GID-111: input model/entity by pointer, output by value'
         original-url: github.com/slipros/gid-data-golang-eval
-        # Исключения (помимо //nolint:gidinout):
+        # Exclusions (besides //nolint:gidinout):
         # settings:
         #   exclude:
-        #     - 'Snapshot.SnapshotPtr' # Тип.Метод
-        #     - 'EncodeRaw'            # имя метода на любом типе
+        #     - 'Snapshot.SnapshotPtr' # Type.Method
+        #     - 'EncodeRaw'            # method name on any type
       gidcreateupdate:
         type: module
         description: 'GID-112: Create*/Update* in repo and service return only error'
         original-url: github.com/slipros/gid-data-golang-eval
-        # Исключения (помимо //nolint:gidcreateupdate) — когда удобно
-        # сразу получить созданную сущность:
+        # Exclusions (besides //nolint:gidcreateupdate) — when it is handy
+        # to get the created entity right away:
         # settings:
         #   exclude:
-        #     - 'Job.CreateJob'  # Тип.Метод
-        #     - 'CreateSession'  # имя метода на любом типе
+        #     - 'Job.CreateJob'  # Type.Method
+        #     - 'CreateSession'  # method name on any type
       gidprivatefunc:
         type: module
         description: 'GID-133: private functions in service/usecase/repository are struct methods'
@@ -441,8 +446,8 @@ linters:
         type: module
         description: 'GID-158: folder-tree control: only allowed subfolders'
         original-url: github.com/slipros/gid-data-golang-eval
-        # Дерево этого репозитория (заменяет дефолтное дерево сервиса).
-        # Формат: "папка" -> разрешённые подпапки; уровень — любой.
+        # Tree of this repository (replaces the default service tree).
+        # Format: "folder" -> allowed subfolders; any nesting level.
         settings:
           tree:
             internal:
@@ -453,7 +458,7 @@ linters:
         type: module
         description: 'GID-159: caching lives in a repository decorator; domain knows nothing about cache'
         original-url: github.com/slipros/gid-data-golang-eval
-        # Список кэш-библиотек можно заменить:
+        # The list of cache libraries can be replaced:
         # settings:
         #   packages:
         #     - github.com/redis/go-redis
@@ -462,7 +467,7 @@ linters:
         type: module
         description: 'GID-160: a service calls gRPC through a repository'
         original-url: github.com/slipros/gid-data-golang-eval
-        # Исключения (иногда gRPC вызывается прямо в service):
+        # Exclusions (sometimes gRPC is called directly in service):
         # settings:
         #   exclude:
         #     - gitlab.gid.team/x/y/pkg/api/orderpb
@@ -478,19 +483,19 @@ linters:
         type: module
         description: 'GID-163: an http handler uses data-response.go/v2'
         original-url: github.com/slipros/gid-data-golang-eval
-        # Исключения (чистый handler позволителен, например health-чекам):
+        # Exclusions (a plain handler is acceptable, e.g. for health checks):
         # settings:
         #   exclude:
-        #     - 'Health'           # имя функции
-        #     - 'Probe.Readiness'  # Тип.Метод
+        #     - 'Health'           # function name
+        #     - 'Probe.Readiness'  # Type.Method
       gidvalidator:
         type: module
         description: 'GID-164: incoming data is validated via validator.go/v2'
         original-url: github.com/slipros/gid-data-golang-eval
-        # Исключения (validate-пакеты, освобождённые от требования):
+        # Exclusions (validate packages exempt from the requirement):
         # settings:
         #   exclude:
-        #     - kafka/consumer/validate  # суффикс пути пакета
+        #     - kafka/consumer/validate  # package path suffix
       gidctxkeys:
         type: module
         description: 'GID-165/166/167: context keys in /domain/model; ContextWith<Name>/<Name>FromContext; type ContextKey string + snake_case'
@@ -523,8 +528,8 @@ linters:
         type: module
         description: 'GID-125: entity struct fields have a mapping tag (db by default)'
         original-url: github.com/slipros/gid-data-golang-eval
-        # Список допустимых тегов можно расширить — например, библиотека
-        # для ClickHouse использует ch:
+        # The list of allowed tags can be extended — e.g. the ClickHouse
+        # library uses ch:
         # settings:
         #   tags:
         #     - db
@@ -537,7 +542,7 @@ linters:
         type: module
         description: 'GID-168: db tags are forbidden in the domain layer; db mapping lives in entity'
         original-url: github.com/slipros/gid-data-golang-eval
-        # Список тегов маппинга — как у giddbtags:
+        # The list of mapping tags — same as giddbtags:
         # settings:
         #   tags:
         #     - db
@@ -546,7 +551,7 @@ linters:
         type: module
         description: 'GID-169: layer errors in /domain/model and /dal/entity live in error.go'
         original-url: github.com/slipros/gid-data-golang-eval
-        # Допустимые имена файлов (по умолчанию error.go, errors.go и err.go):
+        # Allowed file names (default: error.go, errors.go and err.go):
         # settings:
         #   files:
         #     - error.go
@@ -558,7 +563,7 @@ linters:
         type: module
         description: 'GID-173: dependency interfaces have an entity prefix (HelloRepository)'
         original-url: github.com/slipros/gid-data-golang-eval
-        # Словарь голых ролей можно заменить:
+        # The dictionary of bare role names can be replaced:
         # settings:
         #   names:
         #     - Repository
@@ -575,7 +580,7 @@ linters:
         type: module
         description: 'GID-176: errors from the boundary (client, repository) use errors.Wrap; in domain use WithMessage'
         original-url: github.com/slipros/gid-data-golang-eval
-        # Исключения ("Метод" | "Тип.Метод"):
+        # Exclusions ("Method" | "Type.Method"):
         # settings:
         #   exclude:
         #     - 'PassThrough'
@@ -583,7 +588,7 @@ linters:
         type: module
         description: 'GID-177: static errors on return use errors.WithStack (or Wrap)'
         original-url: github.com/slipros/gid-data-golang-eval
-        # Конструкторы, уже собирающие стек:
+        # Constructors that already capture the stack:
         # settings:
         #   exclude:
         #     - 'gderror.NewUnhandledValueError'
@@ -603,7 +608,7 @@ linters:
         type: module
         description: 'GID-180: goroutines and I/O are forbidden in init()'
         original-url: github.com/slipros/gid-data-golang-eval
-        # Список I/O-пакетов можно заменить:
+        # The list of I/O packages can be replaced:
         # settings:
         #   packages:
         #     - os
@@ -624,7 +629,7 @@ linters:
         type: module
         description: 'GID-184: error messages without failed to/unable to prefixes describe the operation'
         original-url: github.com/slipros/gid-data-golang-eval
-        # Список префиксов можно заменить:
+        # The list of prefixes can be replaced:
         # settings:
         #   prefixes:
         #     - 'failed to'
@@ -640,7 +645,7 @@ linters:
         type: module
         description: 'GID-187: forbid junk-drawer packages util/common/helpers/...'
         original-url: github.com/slipros/gid-data-golang-eval
-        # Чёрный список имён можно заменить:
+        # The blacklist of names can be replaced:
         # settings:
         #   names:
         #     - util
@@ -673,11 +678,11 @@ linters:
         type: module
         description: 'GID-114: repo/service methods are named after the entity, without a List prefix or ByID suffix'
         original-url: github.com/slipros/gid-data-golang-eval
-        # Исключения для методов-глаголов без сущности (Close, Ping, ...):
+        # Exclusions for verb-only methods without an entity (Close, Ping, ...):
         # settings:
         #   exclude:
-        #     - 'Ping'        # имя метода на любом типе
-        #     - 'Job.Close'   # Тип.Метод
+        #     - 'Ping'        # method name on any type
+        #     - 'Job.Close'   # Type.Method
       gidoptsnaming:
         type: module
         description: 'GID-126: options type is <Entity>Options (bare Options only in app); defaults Default*'
@@ -710,7 +715,7 @@ linters:
         type: module
         description: 'GID-213: a validator is a struct with a Validate(ctx, req) error method'
         original-url: github.com/slipros/gid-data-golang-eval
-        # Исключения (типы validate-пакетов, не являющиеся валидаторами):
+        # Exclusions (validate-package types that are not validators):
         # settings:
         #   exclude:
         #     - 'SharedRules'
@@ -726,7 +731,7 @@ linters:
         type: module
         description: 'GID-216: kafka consumer takes *logrus.Logger, producer does not'
         original-url: github.com/slipros/gid-data-golang-eval
-        # Исключения (помимо //nolint:gideventctor) — имена конструкторов:
+        # Exclusions (besides //nolint:gideventctor) — constructor names:
         # settings:
         #   exclude:
         #     - 'NewAuditTrail'
@@ -734,12 +739,47 @@ linters:
         type: module
         description: 'GID-217: forbid specific library symbols (default gdpostgres.TQuery)'
         original-url: github.com/slipros/gid-data-golang-eval
-        # Список банов настраивается; пусто → дефолт gdpostgres.TQuery:
+        # The ban list is configurable; empty → default gdpostgres.TQuery:
         # settings:
         #   symbols:
         #     - pkg: gitlab.gid.team/gid-data/tech/golang/libs/postgres.git
         #       name: TQuery
-        #       msg: 'используй прямые методы conn: Select, ScanRow, NamedStruct, Transaction'
+        #       msg: 'use direct conn methods: Select, ScanRow, NamedStruct, Transaction'
+      gidhandlershape:
+        type: module
+        description: 'GID-230: a handler has Handle(ctx, ...) (..., error) and <Handler>Validator/<Handler>Service deps; the gRPC service struct exposes exported *Handler fields'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # Exclusions (besides //nolint:gidhandlershape) — struct type names:
+        # settings:
+        #   exclude:
+        #     - 'HealthCheck'
+      gidfsmmap:
+        type: module
+        description: 'GID-231: an FSM transition map in /domain/model must be unexported'
+        original-url: github.com/slipros/gid-data-golang-eval
+      gidprotorequired:
+        type: module
+        description: 'GID-232: NewRequired on a proto3 enum field treats *_UNSPECIFIED=0 as empty — use validator.NewInRange with the allowed values'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # Exceptions (enum fields exempt from the rule, "Field" or "RequestType.Field"):
+        # settings:
+        #   exclude:
+        #     - 'CreateStageRequest.Executor'
+      gidenumcast:
+        type: module
+        description: 'GID-233: no direct cast between enum types from different packages — convert via map with gderror.NewUnhandledValueError (GID-143)'
+        original-url: github.com/slipros/gid-data-golang-eval
+      giderrname:
+        type: module
+        description: 'GID-234: errors in /domain/model are bound to their entity (ErrSnapshotNotFound), generic names (ErrNotFound) are forbidden'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # The banned generic-name list can be replaced; point exceptions via exclude:
+        # settings:
+        #   names:
+        #     - ErrNotFound
+        #     - ErrAlreadyExists
+        #   exclude:
+        #     - ErrLegacy
 
   exclusions:
     generated: lax
@@ -749,7 +789,7 @@ linters:
       - legacy
       - std-error-handling
     rules:
-      # --- база consent-api ---
+      # --- consent-api base ---
       - linters:
           - govet
         text: declaration of "err" shadows declaration
@@ -761,9 +801,9 @@ linters:
         text: 'commentedOutCode: may want to remove commented-out code'
       - path: (.+)\.go$
         text: ST1000
-      # --- специфика этого репозитория ---
-      # AST-анализаторы сравнивают имена идентификаторов и арности сигнатур —
-      # строковые и числовые литералы здесь законны
+      # --- specifics of this repository ---
+      # AST analyzers compare identifier names and signature arities —
+      # string and numeric literals are legitimate here
       - path: analyzers/
         linters:
           - goconst
@@ -776,7 +816,7 @@ linters:
       - third_party$
       - builtin$
       - examples$
-      # eval-фикстуры намеренно нарушают правила (специфика этого репозитория)
+      # eval fixtures violate the rules on purpose (specific to this repository)
       - testdata
 
 formatters:

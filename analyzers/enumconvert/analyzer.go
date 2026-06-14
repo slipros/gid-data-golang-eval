@@ -1,20 +1,20 @@
-// Package enumconvert реализует правило GID-143 (линтер gidenumconvert):
-// map-конвертация enum обязана обрабатывать отсутствующий ключ через
+// Package enumconvert implements rule GID-143 (linter gidenumconvert):
+// a map-based enum conversion must handle a missing key via
 // gderror.NewUnhandledValueError.
 //
-// Действует только в convert-пакетах (последний сегмент пути — convert).
-// Детектируется индексация мапы m[key], у которой тип ключа — именованный
-// тип с underlying string (enum по GID-123), а тип значения — тоже
-// именованный тип (конвертация enum→enum / enum→модельный тип):
+// Applies only in convert packages (the last path segment is convert).
+// Detected is a map indexing m[key] whose key type is a named type with
+// underlying string (an enum per GID-123), and whose value type is also
+// a named type (an enum→enum / enum→model-type conversion):
 //
-//   - индексация не в comma-ok форме (одиночное присваивание / выражение) —
-//     отсутствующий ключ молча даёт zero-value, его нельзя обработать;
-//   - comma-ok форма есть, но в теле той же функции нет вызова
-//     gderror.NewUnhandledValueError — отсутствующий ключ не обрабатывается.
+//   - the indexing is not in comma-ok form (a single assignment / expression) —
+//     a missing key silently yields the zero value and cannot be handled;
+//   - the comma-ok form is present, but the body of the same function has no
+//     call to gderror.NewUnhandledValueError — the missing key is not handled.
 //
-// Мапы с базовыми ключами (string, int) не матчятся. Вне convert-пакетов
-// не матчится. Сгенерированный код (ast.IsGenerated) пропускается.
-// LoadMode — TypesInfo (нужны типы ключа/значения).
+// Maps with basic keys (string, int) are not matched. Outside convert packages
+// nothing is matched. Generated code (ast.IsGenerated) is skipped.
+// LoadMode — TypesInfo (the key/value types are needed).
 package enumconvert
 
 import (
@@ -29,8 +29,8 @@ import (
 
 const ruleID = "GID-143"
 
-// Analyzer — правило GID-143: enum-конвертация через map обрабатывает
-// отсутствующий ключ через gderror.NewUnhandledValueError.
+// Analyzer — rule GID-143: a map-based enum conversion handles
+// a missing key via gderror.NewUnhandledValueError.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidenumconvert",
 	Doc:  ruleID + ": enum map conversion must handle a missing key via gderror.NewUnhandledValueError. Fix: use comma-ok and return gderror.NewUnhandledValueError",
@@ -38,7 +38,7 @@ var Analyzer = &analysis.Analyzer{
 }
 
 func run(pass *analysis.Pass) (any, error) {
-	// Scope: только convert-пакеты (последний сегмент пути).
+	// Scope: only convert packages (the last path segment).
 	if !pathseg.EndsWith(pass.Pkg.Path(), "convert") {
 		return nil, nil
 	}
@@ -57,7 +57,7 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-// checkFunc проверяет все enum-индексации мапы в теле функции.
+// checkFunc checks all enum map indexings in the function body.
 func checkFunc(pass *analysis.Pass, fn *ast.FuncDecl) {
 	hasHandler := callsUnhandledValueError(pass, fn.Body)
 	commaOk := commaOkIndexes(fn.Body)
@@ -70,7 +70,7 @@ func checkFunc(pass *analysis.Pass, fn *ast.FuncDecl) {
 			return true
 		}
 		if _, ok := commaOk[idx]; ok {
-			// comma-ok форма есть — нужен явный вызов обработчика в этой же функции.
+			// the comma-ok form is present — an explicit handler call is needed in the same function.
 			if !hasHandler {
 				pass.Reportf(idx.Pos(),
 					"%s: a missing enum-conversion key must be handled with gderror.NewUnhandledValueError",
@@ -78,7 +78,7 @@ func checkFunc(pass *analysis.Pass, fn *ast.FuncDecl) {
 			}
 			return true
 		}
-		// Не comma-ok: отсутствующий ключ молча даёт zero-value.
+		// Not comma-ok: a missing key silently yields the zero value.
 		pass.Reportf(idx.Pos(),
 			"%s: enum conversion via map without comma-ok. "+
 				"Fix: a missing key must return gderror.NewUnhandledValueError",
@@ -87,8 +87,8 @@ func checkFunc(pass *analysis.Pass, fn *ast.FuncDecl) {
 	})
 }
 
-// isEnumMapIndex сообщает, что idx — индексация мапы, у которой ключ —
-// именованный string-тип (enum), а значение — именованный тип.
+// isEnumMapIndex reports that idx is an indexing of a map whose key is
+// a named string type (an enum) and whose value is a named type.
 func isEnumMapIndex(pass *analysis.Pass, idx *ast.IndexExpr) bool {
 	t := pass.TypesInfo.TypeOf(idx.X)
 	if t == nil {
@@ -101,7 +101,7 @@ func isEnumMapIndex(pass *analysis.Pass, idx *ast.IndexExpr) bool {
 	return isNamedString(m.Key()) && isNamed(m.Elem())
 }
 
-// isNamedString: именованный тип с underlying string (enum по GID-123).
+// isNamedString: a named type with underlying string (an enum per GID-123).
 func isNamedString(t types.Type) bool {
 	named, ok := t.(*types.Named)
 	if !ok {
@@ -111,14 +111,14 @@ func isNamedString(t types.Type) bool {
 	return ok && basic.Kind() == types.String
 }
 
-// isNamed: именованный тип (enum→enum / enum→модельный тип).
+// isNamed: a named type (enum→enum / enum→model type).
 func isNamed(t types.Type) bool {
 	_, ok := t.(*types.Named)
 	return ok
 }
 
-// commaOkIndexes собирает индексации мапы, использованные в comma-ok форме
-// (v, ok := m[k] / v, ok = m[k]) — RHS из одного выражения при двух LHS.
+// commaOkIndexes collects the map indexings used in comma-ok form
+// (v, ok := m[k] / v, ok = m[k]) — an RHS of one expression with two LHS.
 func commaOkIndexes(body *ast.BlockStmt) map[*ast.IndexExpr]struct{} {
 	out := map[*ast.IndexExpr]struct{}{}
 	ast.Inspect(body, func(n ast.Node) bool {
@@ -134,13 +134,13 @@ func commaOkIndexes(body *ast.BlockStmt) map[*ast.IndexExpr]struct{} {
 	return out
 }
 
-// callsUnhandledValueError сообщает, что в теле есть вызов
+// callsUnhandledValueError reports that the body contains a call to
 // gderror.NewUnhandledValueError.
 func callsUnhandledValueError(pass *analysis.Pass, body *ast.BlockStmt) bool {
 	const (
-		// gderrorPath — import-путь внутренней библиотеки ошибок.
+		// gderrorPath — the import path of the internal errors library.
 		gderrorPath = "gitlab.gid.team/gid-data/tech/golang/libs/helper.git/errors"
-		// unhandledCtor — конструктор обработки отсутствующего ключа.
+		// unhandledCtor — the constructor for handling a missing key.
 		unhandledCtor = "NewUnhandledValueError"
 	)
 	found := false

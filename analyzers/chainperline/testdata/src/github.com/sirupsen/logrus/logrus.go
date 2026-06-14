@@ -1,4 +1,4 @@
-// Стаб logrus для eval GID-196: цепочки logrus — зона GID-156.
+// Logrus stub for the GID-196 eval: logrus chains are the domain of GID-156.
 package logrus
 
 type Entry struct{}

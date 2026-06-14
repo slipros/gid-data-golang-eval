@@ -1,5 +1,5 @@
-// Неприменимость: правило действует только в /domain/service —
-// у репозитория entity в сигнатурах обязательна.
+// Not applicable: the rule applies only in /domain/service —
+// for a repository entity in signatures is mandatory.
 package repository
 
 import (

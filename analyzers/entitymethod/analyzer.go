@@ -1,28 +1,28 @@
-// Package entitymethod реализует правило GID-114: экспортируемые методы
-// структур в корневых пакетах слоёв /dal/repository и /domain/service
-// именуются от сущности.
+// Package entitymethod implements rule GID-114: exported struct methods
+// in the root packages of the /dal/repository and /domain/service layers
+// are named after the entity.
 //
-// Три проверки:
-//  1. префикс List запрещён — множественное число вместо него (Jobs, не ListJobs);
-//  2. суффикс ByID запрещён — Job(ctx, id) вместо JobByID
-//     (только точный суффикс ByID; ByStageID и прочие By<Field>ID разрешены —
-//     это уточнение выборки, не получение по первичному ключу);
-//  3. имя метода обязано содержать имя сущности — имя типа-ресивера
-//     как CamelCase-подстроку (Job → Job, Jobs, CreateJob, JobsByStageID).
+// Three checks:
+//  1. the List prefix is forbidden — use the plural instead (Jobs, not ListJobs);
+//  2. the ByID suffix is forbidden — Job(ctx, id) instead of JobByID
+//     (only the exact ByID suffix; ByStageID and other By<Field>ID are allowed —
+//     that is a query refinement, not fetching by primary key);
+//  3. the method name must contain the entity name — the receiver type name
+//     as a CamelCase substring (Job → Job, Jobs, CreateJob, JobsByStageID).
 //
-// Проверка 3 применяется только к ресиверам с осмысленным именем сущности
-// (len > 2); однобуквенные/служебные имена не проверяются. Методы-глаголы
-// без имени сущности (Close, Ping, Flush) попадут под проверку 3 — они
-// легитимны редко и выключаются через exclude/nolint.
+// Check 3 applies only to receivers with a meaningful entity name
+// (len > 2); single-letter/utility names are not checked. Verb methods
+// without an entity name (Close, Ping, Flush) will hit check 3 — they are
+// rarely legitimate and are disabled via exclude/nolint.
 //
-// Scope — только корневые пакеты слоя (pathseg.EndsWith); подпакеты
-// convert/build не задеваются. Конструкторы New* — это функции, а не
-// методы, и сюда не попадают.
+// Scope — only the root packages of the layer (pathseg.EndsWith); the
+// convert/build subpackages are not touched. New* constructors are functions,
+// not methods, and do not fall under this rule.
 //
-// Исключения:
-//   - точечно: //nolint:gidentitymethod
-//   - централизованно: settings.exclude в .golangci.yml —
-//     записи вида "Close" (имя метода) или "Job.Close" (конкретный тип).
+// Exceptions:
+//   - targeted: //nolint:gidentitymethod
+//   - centralized: settings.exclude in .golangci.yml —
+//     entries like "Close" (a method name) or "Job.Close" (a specific type).
 package entitymethod
 
 import (
@@ -44,16 +44,16 @@ var scopes = [][]string{
 	{"domain", "service"},
 }
 
-// Analyzer — вариант с настройками по умолчанию (без исключений).
+// Analyzer — the variant with default settings (no exclusions).
 var Analyzer = NewAnalyzer(Settings{})
 
-// Settings — настройки линтера из .golangci.yml.
+// Settings — linter settings from .golangci.yml.
 type Settings struct {
-	// Exclude — методы-исключения: "Метод" или "Тип.Метод".
+	// Exclude — excluded methods: "Method" or "Type.Method".
 	Exclude []string `json:"exclude"`
 }
 
-// NewAnalyzer строит анализатор GID-114 из настроек линтера (.golangci.yml).
+// NewAnalyzer builds the GID-114 analyzer from the linter settings (.golangci.yml).
 func NewAnalyzer(s Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name: "gidentitymethod",
@@ -90,23 +90,23 @@ func run(pass *analysis.Pass, s Settings) (any, error) {
 }
 
 func checkName(pass *analysis.Pass, fn *ast.FuncDecl, recv, name string) {
-	// Проверка 1: префикс List запрещён.
+	// Check 1: the List prefix is forbidden.
 	if hasWordPrefix(name, "List") {
 		pass.Reportf(fn.Name.Pos(),
 			"%s: drop the List prefix. Fix: use the plural Jobs instead of ListJobs",
 			ruleID)
 		return
 	}
-	// Проверка 2: точный суффикс ByID запрещён (ByStageID и прочие разрешены).
+	// Check 2: the exact ByID suffix is forbidden (ByStageID and others are allowed).
 	if hasExactByIDSuffix(name) {
 		pass.Reportf(fn.Name.Pos(),
 			"%s: drop the ByID suffix. Fix: use Job(ctx, id) instead of JobByID",
 			ruleID)
 		return
 	}
-	// Проверка 3: имя метода обязано содержать имя сущности (имя ресивера)
-	// как CamelCase-подстроку. Только для осмысленных имён сущности:
-	// имена длиной <= 2 (T, ID, и т.п.) считаем служебными и не проверяем.
+	// Check 3: the method name must contain the entity name (the receiver name)
+	// as a CamelCase substring. Only for meaningful entity names:
+	// names of length <= 2 (T, ID, etc.) are treated as utility names and skipped.
 	const minEntityLen = 2
 	if len(recv) <= minEntityLen {
 		return
@@ -128,8 +128,8 @@ func inScope(pkgPath string) bool {
 	return false
 }
 
-// hasWordPrefix: имя начинается со слова word по границе CamelCase
-// (List, ListJobs — да; Listen — нет, т.к. следующая руна не заглавная).
+// hasWordPrefix: the name starts with the word at a CamelCase boundary
+// (List, ListJobs — yes; Listen — no, since the next rune is not uppercase).
 func hasWordPrefix(name, word string) bool {
 	if name == word {
 		return true
@@ -141,9 +141,9 @@ func hasWordPrefix(name, word string) bool {
 	return unicode.IsUpper(r) || unicode.IsDigit(r)
 }
 
-// hasExactByIDSuffix: имя оканчивается ровно на "ByID" по границе слова.
-// JobByID — да; JobsByStageID — нет (перед ID не "By"); ByID самостоятельно — нет
-// (это не имя сущности с суффиксом, но и не валидно — отловит проверка 3).
+// hasExactByIDSuffix: the name ends exactly with "ByID" at a word boundary.
+// JobByID — yes; JobsByStageID — no (the part before ID is not "By"); a standalone
+// ByID — no (it is not an entity name with a suffix, but also not valid — check 3 catches it).
 func hasExactByIDSuffix(name string) bool {
 	const suffix = "ByID"
 	if !strings.HasSuffix(name, suffix) {
@@ -152,9 +152,9 @@ func hasExactByIDSuffix(name string) bool {
 	return len(name) > len(suffix)
 }
 
-// containsEntity: имя метода содержит entity как CamelCase-подстроку.
-// Граница слова — начало имени, либо предыдущая руна нижнего регистра
-// перед заглавной первой руной entity (CreateJob: ...e|Job).
+// containsEntity: the method name contains entity as a CamelCase substring.
+// A word boundary is the start of the name, or a preceding lowercase rune
+// before the uppercase first rune of entity (CreateJob: ...e|Job).
 func containsEntity(name, entity string) bool {
 	for idx := strings.Index(name, entity); idx >= 0; idx = nextIndex(name, entity, idx) {
 		if isWordBoundary(name, idx) {
@@ -172,9 +172,9 @@ func nextIndex(name, entity string, prev int) int {
 	return prev + 1 + rest
 }
 
-// isWordBoundary: позиция idx начинает CamelCase-слово.
-// Истина, если idx == 0 или предыдущая руна не заглавная
-// (граница camelCase: lowerUpper). Это отсекает совпадения внутри слова.
+// isWordBoundary: the position idx starts a CamelCase word.
+// True if idx == 0 or the preceding rune is not uppercase
+// (the camelCase boundary: lowerUpper). This cuts off matches inside a word.
 func isWordBoundary(name string, idx int) bool {
 	if idx == 0 {
 		return true

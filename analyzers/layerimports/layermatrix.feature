@@ -1,135 +1,135 @@
-# language: ru
+# language: en
 
-Функция: GID-224…229 — матрица изоляции слоёв
-  Как архитектор сервиса
-  Я хочу, чтобы каждый слой импортировал только то, что ему положено
-  Чтобы зависимости текли в одну сторону, а wiring жил в composition root
+Feature: GID-224…229 — the layer-isolation matrix
+  As a service architect
+  I want each layer to import only what it is allowed to
+  So that dependencies flow in one direction and wiring lives in the composition root
 
-  # GID-224: транспорт видит только domain/model (и validate)
+  # GID-224: transport sees only domain/model (and validate)
 
-  Сценарий: server импортирует domain/service — нарушение
-    Допустим пакет "svc/server/http/handler" импортирует "svc/domain/service"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-224" на импорте "svc/domain/service"
+  Scenario: server imports domain/service — violation
+    Given the package "svc/server/http/handler" imports "svc/domain/service"
+    When the analyzer checks the file
+    Then a "GID-224" diagnostic is reported on the import "svc/domain/service"
 
-  Сценарий: server импортирует dal/repository — нарушение
-    Допустим пакет "svc/server/http/handler" импортирует "svc/dal/repository"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-224" на импорте "svc/dal/repository"
+  Scenario: server imports dal/repository — violation
+    Given the package "svc/server/http/handler" imports "svc/dal/repository"
+    When the analyzer checks the file
+    Then a "GID-224" diagnostic is reported on the import "svc/dal/repository"
 
-  Сценарий: schedule импортирует domain/service — нарушение
-    Допустим пакет "svc/schedule/sync" импортирует "svc/domain/service"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-224" на импорте "svc/domain/service"
+  Scenario: schedule imports domain/service — violation
+    Given the package "svc/schedule/sync" imports "svc/domain/service"
+    When the analyzer checks the file
+    Then a "GID-224" diagnostic is reported on the import "svc/domain/service"
 
-  Сценарий: validate импортирует dal/entity — нарушение
-    Допустим пакет "svc/validate" импортирует "svc/dal/entity"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-224" на импорте "svc/dal/entity"
+  Scenario: validate imports dal/entity — violation
+    Given the package "svc/validate" imports "svc/dal/entity"
+    When the analyzer checks the file
+    Then a "GID-224" diagnostic is reported on the import "svc/dal/entity"
 
-  Сценарий: event-consumer импортирует dal/entity и domain/service — нарушения
-    Допустим пакет "svc/event/consumer" импортирует "svc/dal/entity" и "svc/domain/service"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-224" на обоих импортах
+  Scenario: event consumer imports dal/entity and domain/service — violations
+    Given the package "svc/event/consumer" imports "svc/dal/entity" and "svc/domain/service"
+    When the analyzer checks the file
+    Then a "GID-224" diagnostic is reported on both imports
 
-  Сценарий: транспорт импортирует domain/model и validate — ок
-    Допустим пакет "svc/server/http/handler" импортирует "svc/domain/model" и "svc/validate"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: transport imports domain/model and validate — ok
+    Given the package "svc/server/http/handler" imports "svc/domain/model" and "svc/validate"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  # GID-225: composition root и транспорт — листья
+  # GID-225: the composition root and transport are leaves
 
-  Сценарий: domain импортирует app — нарушение
-    Допустим пакет "svc/domain/notifier" импортирует "svc/app"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-225" на импорте "svc/app"
+  Scenario: domain imports app — violation
+    Given the package "svc/domain/notifier" imports "svc/app"
+    When the analyzer checks the file
+    Then a "GID-225" diagnostic is reported on the import "svc/app"
 
-  Сценарий: domain импортирует server — нарушение
-    Допустим пакет "svc/domain/notifier" импортирует "svc/server/middleware"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-225" на импорте "svc/server/middleware"
+  Scenario: domain imports server — violation
+    Given the package "svc/domain/notifier" imports "svc/server/middleware"
+    When the analyzer checks the file
+    Then a "GID-225" diagnostic is reported on the import "svc/server/middleware"
 
-  Сценарий: app импортирует все слои — ок (composition root)
-    Допустим пакет "svc/app" импортирует repository, service, producer, client и metric
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: app imports all layers — ok (composition root)
+    Given the package "svc/app" imports repository, service, producer, client and metric
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  # GID-226: metric самостоятелен
+  # GID-226: metric is self-contained
 
-  Сценарий: metric импортирует domain/model — нарушение
-    Допустим пакет "svc/metric" импортирует "svc/domain/model"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-226" на импорте "svc/domain/model"
+  Scenario: metric imports domain/model — violation
+    Given the package "svc/metric" imports "svc/domain/model"
+    When the analyzer checks the file
+    Then a "GID-226" diagnostic is reported on the import "svc/domain/model"
 
-  Сценарий: domain/service импортирует metric — нарушение
-    Допустим пакет "svc/domain/service" импортирует "svc/metric"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-226" на импорте "svc/metric"
+  Scenario: domain/service imports metric — violation
+    Given the package "svc/domain/service" imports "svc/metric"
+    When the analyzer checks the file
+    Then a "GID-226" diagnostic is reported on the import "svc/metric"
 
-  Сценарий: domain импортирует пакет с сегментом "metrics" — граница, ок
-    Допустим пакет "svc/domain/boundary" импортирует "svc/metrics/registry"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: domain imports a package with the segment "metrics" — boundary, ok
+    Given the package "svc/domain/boundary" imports "svc/metrics/registry"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  # GID-227: model — чистый словарь
+  # GID-227: model is a pure vocabulary
 
-  Сценарий: model импортирует транспорт — нарушение
-    Допустим пакет "svc/domain/model" импортирует "svc/server/middleware"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-227" на импорте "svc/server/middleware"
+  Scenario: model imports transport — violation
+    Given the package "svc/domain/model" imports "svc/server/middleware"
+    When the analyzer checks the file
+    Then a "GID-227" diagnostic is reported on the import "svc/server/middleware"
 
-  Сценарий: usecase импортирует подпакет model — ок (model-слой)
-    Допустим пакет "svc/domain/usecase" импортирует "svc/domain/model/filter"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: usecase imports a model subpackage — ok (the model layer)
+    Given the package "svc/domain/usecase" imports "svc/domain/model/filter"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  # GID-228: клиент — через интерфейс в domain/model
+  # GID-228: the client — via an interface in domain/model
 
-  Сценарий: domain/service импортирует client — нарушение
-    Допустим пакет "svc/domain/service" импортирует "svc/client/billing"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-228" на импорте "svc/client/billing"
+  Scenario: domain/service imports client — violation
+    Given the package "svc/domain/service" imports "svc/client/billing"
+    When the analyzer checks the file
+    Then a "GID-228" diagnostic is reported on the import "svc/client/billing"
 
-  Сценарий: dal/repository импортирует client — нарушение
-    Допустим пакет "svc/dal/repository" импортирует "svc/client/billing"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-228" на импорте "svc/client/billing"
+  Scenario: dal/repository imports client — violation
+    Given the package "svc/dal/repository" imports "svc/client/billing"
+    When the analyzer checks the file
+    Then a "GID-228" diagnostic is reported on the import "svc/client/billing"
 
-  # GID-229: клиент изолирован
+  # GID-229: the client is isolated
 
-  Сценарий: client импортирует domain/model — нарушение
-    Допустим пакет "svc/client/billing" импортирует "svc/domain/model"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-229" на импорте "svc/domain/model"
+  Scenario: client imports domain/model — violation
+    Given the package "svc/client/billing" imports "svc/domain/model"
+    When the analyzer checks the file
+    Then a "GID-229" diagnostic is reported on the import "svc/domain/model"
 
-  Сценарий: client импортирует сторонний пакет — правило не применяется
-    Допустим пакет "svc/client/billing" импортирует "strconv"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: client imports a third-party package — the rule does not apply
+    Given the package "svc/client/billing" imports "strconv"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  # Сторонние библиотеки и настройки
+  # Third-party libraries and settings
 
-  Сценарий: слой импортирует стороннюю библиотеку с сегментом "client" — ок
-    Допустим импорт принадлежит другому модулю (префикс модуля не совпадает)
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a layer imports a third-party library with the segment "client" — ok
+    Given the import belongs to another module (the module prefix does not match)
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: правило отключено через settings.disable — диагностики нет
-    Допустим в .golangci.yml задано settings.disable: [GID-224]
-    И пакет "custom/server/handler" импортирует "custom/domain/service"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a rule is disabled via settings.disable — no diagnostic
+    Given settings.disable: [GID-224] is set in .golangci.yml
+    And the package "custom/server/handler" imports "custom/domain/service"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: своё правило через settings.rules — диагностика с его ID
-    Допустим в .golangci.yml задано правило SVC-1: scope "domain/service", banned [legacy]
-    И пакет "custom/domain/service" импортирует "custom/legacy/store"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "SVC-1" на импорте "custom/legacy/store"
+  Scenario: a custom rule via settings.rules — a diagnostic with its ID
+    Given the rule SVC-1 is set in .golangci.yml: scope "domain/service", banned [legacy]
+    And the package "custom/domain/service" imports "custom/legacy/store"
+    When the analyzer checks the file
+    Then an "SVC-1" diagnostic is reported on the import "custom/legacy/store"
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр RULES.md
-#  [x] Выбран слой: go/analysis (нужны сегменты import-пути)
-#  [x] Заданы severity и сообщение
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [x] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the RULES.md registry
+#  [x] Layer chosen: go/analysis (import-path segments are needed)
+#  [x] Severity and message are defined
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [x] Rule enabled in .golangci.yml

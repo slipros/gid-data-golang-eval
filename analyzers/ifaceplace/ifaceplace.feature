@@ -1,106 +1,106 @@
-# language: ru
+# language: en
 
-Функция: GID-134 — интерфейсы живут там, где используются
-  Как разработчик
-  Я хочу, чтобы интерфейс зависимости объявлялся рядом со своим потребителем
-  Чтобы пакеты не тянули чужие абстракции и оставались слабо связанными
-  Источники: styleguide.md#интерфейсы + требование 2026-06-07
+Feature: GID-134 — interfaces live where they are used
+  As a developer
+  I want a dependency interface to be declared next to its consumer
+  So that packages do not pull in foreign abstractions and stay loosely coupled
+  Sources: styleguide.md#interfaces + requirement of 2026-06-07
 
-  Линтер: gidifaceplace. LoadMode: TypesInfo (нужен types.Interface и пакет
-  объявления интерфейса через Named.Obj().Pkg()).
+  Linter: gidifaceplace. LoadMode: TypesInfo (types.Interface and the package
+  of the interface declaration via Named.Obj().Pkg() are needed).
 
-  Scope: поля структур и параметры/результаты функций и методов любого пакета.
-  Проверяется только ИМЕНОВАННЫЙ interface-тип в этих позициях. Смотрим пакет
-  объявления интерфейса и решаем:
-    - тот же пакет — ОК;
-    - stdlib или внешняя библиотека — ОК; «свой» пакет сервиса отличаем от
-      библиотеки по сегментам пути (pathseg): путь содержит слой-сегмент
-      (dal, domain, client, server, event, app, metric) — это наш пакет,
-      иначе библиотека;
-    - интерфейс из model-слоя (/domain/model, включая подпакеты) — ОК, но
-      только если потребитель в /domain/service или /domain/usecase;
-    - любой другой «свой» пакет — нарушение.
+  Scope: struct fields and parameters/results of functions and methods of any package.
+  Only a NAMED interface type in these positions is checked. We look at the package
+  of the interface declaration and decide:
+    - the same package — OK;
+    - stdlib or an external library — OK; a service's "own" package is told apart
+      from a library by path segments (pathseg): the path contains a layer segment
+      (dal, domain, client, server, event, app, metric) — it is our package,
+      otherwise a library;
+    - an interface from the model layer (/domain/model, including subpackages) — OK, but
+      only if the consumer is in /domain/service or /domain/usecase;
+    - any other "own" package — violation.
 
-  Не задеваются: анонимные интерфейсы, error, any/interface{},
-  generic-констрейнты. Сгенерированный код (ast.IsGenerated) пропускается.
+  Not affected: anonymous interfaces, error, any/interface{},
+  generic constraints. Generated code (ast.IsGenerated) is skipped.
 
-  # --- Позитивный класс: нарушение ловится ---
+  # --- Positive class: the violation is caught ---
 
-  Сценарий: service использует интерфейс из чужого server-пакета (поле)
-    Допустим в /domain/service поле структуры имеет тип "grpc.Notifier" из /server/grpc
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-134" с именем интерфейса и пакетом объявления
+  Scenario: service uses an interface from a foreign server package (field)
+    Given a struct field in /domain/service has the type "grpc.Notifier" from /server/grpc
+    When the analyzer checks the file
+    Then a "GID-134" diagnostic is reported with the interface name and the declaration package
 
-  Сценарий: service использует интерфейс из чужого server-пакета (параметр)
-    Допустим в /domain/service метод принимает "grpc.Notifier"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-134"
+  Scenario: service uses an interface from a foreign server package (parameter)
+    Given a method in /domain/service takes "grpc.Notifier"
+    When the analyzer checks the file
+    Then a "GID-134" diagnostic is reported
 
-  Сценарий: service использует интерфейс из чужого server-пакета (результат)
-    Допустим в /domain/service метод возвращает "grpc.Notifier"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-134"
+  Scenario: service uses an interface from a foreign server package (result)
+    Given a method in /domain/service returns "grpc.Notifier"
+    When the analyzer checks the file
+    Then a "GID-134" diagnostic is reported
 
-  # --- Негативный класс: чистый код проходит ---
+  # --- Negative class: clean code passes ---
 
-  Сценарий: интерфейс объявлен в том же пакете — ок
-    Допустим в /domain/service используется интерфейс "LocalRepository" из того же пакета
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: the interface is declared in the same package — ok
+    Given the interface "LocalRepository" from the same package is used in /domain/service
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: интерфейс из /domain/model у потребителя service — ок
-    Допустим в /domain/service используется "model.JobRepository"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: an interface from /domain/model with a service consumer — ok
+    Given "model.JobRepository" is used in /domain/service
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: библиотечный io.Reader (stdlib) — ок
-    Допустим в /domain/service метод принимает "io.Reader"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: the library io.Reader (stdlib) — ok
+    Given a method in /domain/service takes "io.Reader"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: интерфейс внешней библиотеки (без слой-сегментов) — ок
-    Допустим в /domain/service метод принимает "extlib.Encoder" из example.com/extlib
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: an interface of an external library (no layer segments) — ok
+    Given a method in /domain/service takes "extlib.Encoder" from example.com/extlib
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  # --- Граничный класс ---
+  # --- Boundary class ---
 
-  Сценарий: model-интерфейс в /dal/repository — нарушение
-    Допустим в /dal/repository используется "model.JobRepository"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-134" (исключение model только для service/usecase)
+  Scenario: a model interface in /dal/repository — violation
+    Given "model.JobRepository" is used in /dal/repository
+    When the analyzer checks the file
+    Then a "GID-134" diagnostic is reported (the model exception is only for service/usecase)
 
-  Сценарий: model-интерфейс в /domain/usecase — ок
-    Допустим в /domain/usecase используется "model.JobRepository"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a model interface in /domain/usecase — ok
+    Given "model.JobRepository" is used in /domain/usecase
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  # --- Класс неприменимости ---
+  # --- Non-applicability class ---
 
-  Сценарий: error в результате — не интерфейс с пакетом, пропускается
-    Допустим метод возвращает "error"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: error in a result — not an interface with a package, skipped
+    Given a method returns "error"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: анонимный interface{ Foo() } в параметре — не именованный, пропускается
-    Допустим метод принимает "interface{ Foo() }"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: an anonymous interface{ Foo() } in a parameter — not named, skipped
+    Given a method takes "interface{ Foo() }"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: any / interface{} в параметре — пропускается
-    Допустим метод принимает "any"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: any / interface{} in a parameter — skipped
+    Given a method takes "any"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: не-интерфейсные типы (struct, string) — пропускаются
-    Допустим метод принимает "model.Job" и "string"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: non-interface types (struct, string) — skipped
+    Given a method takes "model.Job" and "string"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (RULES.md, GID-134)
-#  [x] Выбран слой: go/analysis (TypesInfo — нужны типы интерфейса и пакет объявления)
-#  [x] Заданы severity и сообщение ("GID-134: ...")
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [ ] Правило включено в .golangci.yml (вне scope этой задачи)
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (RULES.md, GID-134)
+#  [x] Layer chosen: go/analysis (TypesInfo — interface types and the declaration package are needed)
+#  [x] Severity and message are defined ("GID-134: ...")
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [ ] Rule enabled in .golangci.yml (outside the scope of this task)

@@ -1,105 +1,105 @@
-# language: ru
+# language: en
 
-Функция: GID-183 — make(map) без capacity при заполнении из range (map-capacity-hint)
-  Как разработчик
-  Я хочу указывать хинт ёмкости make(map[K]V, len(src)) при заполнении мапы из range
-  Чтобы избежать лишних реаллокаций мапы (стандартный prealloc покрывает только слайсы)
+Feature: GID-183 — make(map) without capacity while filling from range (map-capacity-hint)
+  As a developer
+  I want to give a capacity hint make(map[K]V, len(src)) when filling a map from range
+  So that unnecessary map reallocations are avoided (the standard prealloc covers only slices)
 
-  # Правило Uber (perf): map capacity hints.
-  # Анализатор gidmapcap, LoadMode TypesInfo (нужны типы, чтобы отличить
-  #   слайс/мапу/строку от канала). Сгенерированный код (ast.IsGenerated) пропускается.
+  # Uber rule (perf): map capacity hints.
+  # Analyzer gidmapcap, LoadMode TypesInfo (types are needed to tell a
+  #   slice/map/string apart from a channel). Generated code (ast.IsGenerated) is skipped.
   #
-  # Паттерн в пределах ОДНОЙ функции (и одного блока операторов):
-  #   1. m := make(map[K]V)        — или var m = make(map[K]V), без аргумента-ёмкости;
-  #   2. for ... := range src {    — src слайс/массив/мапа/строка (известная длина);
-  #          m[...] = ...          — безусловное присваивание по индексу в m.
-  #   → диагностика на make.
+  # The pattern within ONE function (and one statement block):
+  #   1. m := make(map[K]V)        — or var m = make(map[K]V), without a capacity argument;
+  #   2. for ... := range src {    — src is a slice/array/map/string (known length);
+  #          m[...] = ...          — an unconditional index assignment into m.
+  #   → a diagnostic on make.
   #
-  # Это ЭВРИСТИКА. Сознательные ограничения (консервативно, чтобы не давать FP):
-  #   - матчим только когда между make и циклом m НИКАК не используется; любое
-  #     упоминание m в этом промежутке (заполнение вне цикла, передача в вызов,
-  #     чтение) отменяет диагностику — длина к моменту цикла уже неизвестна;
-  #   - range по каналу НЕ матчим (у канала нет len);
-  #   - присваивание m[...] = ... внутри if в теле цикла (условное заполнение)
-  #     НЕ матчим — реальное число вставок < len(src), хинт может навредить;
-  #   - make с уже указанной ёмкостью make(map[K]V, n) — корректен, не матчим;
-  #   - проверка локальна для одного блока операторов (паттерн внутри вложенного
-  #     блока ловится отдельно); межблочные/межфункциональные потоки — за review.
+  # This is a HEURISTIC. Deliberate limitations (conservative, to avoid FPs):
+  #   - matched only when m is not used in ANY way between make and the loop; any
+  #     mention of m in that span (filling outside the loop, passing into a call,
+  #     reading) cancels the diagnostic — the length is no longer known by loop time;
+  #   - range over a channel is NOT matched (a channel has no len);
+  #   - an assignment m[...] = ... inside an if in the loop body (conditional filling)
+  #     is NOT matched — the actual number of inserts is < len(src), the hint may hurt;
+  #   - make with a capacity already given, make(map[K]V, n), is correct, not matched;
+  #   - the check is local to one statement block (the pattern inside a nested
+  #     block is caught separately); cross-block/cross-function flows are left to review.
 
-  # === Класс 1: позитивные (make(map) без cap + безусловное заполнение в range) ===
+  # === Class 1: positive (make(map) without cap + unconditional filling in range) ===
 
-  Сценарий: позитивный — заполнение из range по слайсу
-    Допустим "m := make(map[int]int)" и цикл "for _, v := range src { m[v] = v }"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-183: make без capacity при заполнении из range — укажите хинт: make(map[K]V, len(src))"
+  Scenario: positive — filling from range over a slice
+    Given "m := make(map[int]int)" and the loop "for _, v := range src { m[v] = v }"
+    When the analyzer checks the file
+    Then the diagnostic "GID-183: make without capacity while filling from range. Fix: make(map[K]V, len(src))" is reported
 
-  Сценарий: позитивный — var-форма объявления мапы
-    Допустим "var m = make(map[string]bool)" и заполнение в range по слайсу
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-183: make без capacity при заполнении из range — укажите хинт: make(map[K]V, len(src))"
+  Scenario: positive — the var form of the map declaration
+    Given "var m = make(map[string]bool)" and filling in a range over a slice
+    When the analyzer checks the file
+    Then the diagnostic "GID-183: make without capacity while filling from range. Fix: make(map[K]V, len(src))" is reported
 
-  Сценарий: позитивный — заполнение из range по мапе
-    Допустим "m := make(map[string]int)" и цикл "for k, v := range src { m[k] = v }" по мапе
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-183: make без capacity при заполнении из range — укажите хинт: make(map[K]V, len(src))"
+  Scenario: positive — filling from range over a map
+    Given "m := make(map[string]int)" and the loop "for k, v := range src { m[k] = v }" over a map
+    When the analyzer checks the file
+    Then the diagnostic "GID-183: make without capacity while filling from range. Fix: make(map[K]V, len(src))" is reported
 
-  Сценарий: позитивный — заполнение из range по строке
-    Допустим "m := make(map[rune]int)" и цикл "for _, r := range src { m[r] = 1 }" по строке
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-183: make без capacity при заполнении из range — укажите хинт: make(map[K]V, len(src))"
+  Scenario: positive — filling from range over a string
+    Given "m := make(map[rune]int)" and the loop "for _, r := range src { m[r] = 1 }" over a string
+    When the analyzer checks the file
+    Then the diagnostic "GID-183: make without capacity while filling from range. Fix: make(map[K]V, len(src))" is reported
 
-  # === Класс 2: негативные ===
+  # === Class 2: negative ===
 
-  Сценарий: негативный — make с указанной ёмкостью
-    Допустим "m := make(map[int]int, len(src))" и заполнение в range
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — make with a capacity given
+    Given "m := make(map[int]int, len(src))" and filling in a range
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: негативный — заполнение мапы без range
-    Допустим "m := make(map[int]int)" и присваивания "m[1] = 1; m[2] = 2"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — filling the map without range
+    Given "m := make(map[int]int)" and the assignments "m[1] = 1; m[2] = 2"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: негативный — range по каналу
-    Допустим "m := make(map[int]int)" и цикл "for v := range ch { m[v] = v }"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
-    # У канала нет len — размер заранее неизвестен.
+  Scenario: negative — range over a channel
+    Given "m := make(map[int]int)" and the loop "for v := range ch { m[v] = v }"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+    # A channel has no len — the size is unknown in advance.
 
-  # === Класс 3: граничные (не матчатся) ===
+  # === Class 3: boundary (not matched) ===
 
-  Сценарий: граничный — условное заполнение m[...] внутри if в теле цикла
-    Допустим "m := make(map[int]int)" и цикл "for _, v := range src { if v > 0 { m[v] = v } }"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
-    # Реальное число вставок меньше len(src) — хинт может навредить.
+  Scenario: boundary — conditional filling m[...] inside an if in the loop body
+    Given "m := make(map[int]int)" and the loop "for _, v := range src { if v > 0 { m[v] = v } }"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+    # The actual number of inserts is less than len(src) — the hint may hurt.
 
-  Сценарий: граничный — m используется между make и циклом (заполнение вне цикла)
-    Допустим "m := make(map[int]int)", затем "m[0] = 0", затем цикл range
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: boundary — m is used between make and the loop (filling outside the loop)
+    Given "m := make(map[int]int)", then "m[0] = 0", then a range loop
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: граничный — m передаётся в вызов между make и циклом
-    Допустим "m := make(map[int]int)", затем "consume(m)", затем цикл range
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: boundary — m is passed into a call between make and the loop
+    Given "m := make(map[int]int)", then "consume(m)", then a range loop
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  # === Класс 4: неприменимость ===
+  # === Class 4: non-applicability ===
 
-  Сценарий: неприменимость — make слайса, не мапы
-    Допустим "s := make([]int, 0)" с заполнением append в range
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: non-applicability — make of a slice, not a map
+    Given "s := make([]int, 0)" with append filling in a range
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: неприменимость — пакет без единого make(map)
-    Допустим пакет без вызовов make(map[K]V)
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: non-applicability — a package without a single make(map)
+    Given a package without make(map[K]V) calls
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (RULES.md, GID-183)
-#  [x] Выбран слой: go/analysis (анализатор gidmapcap в analyzers/mapcap)
-#  [x] Заданы severity и сообщение ("GID-183: …")
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [ ] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (RULES.md, GID-183)
+#  [x] Layer chosen: go/analysis (analyzer gidmapcap in analyzers/mapcap)
+#  [x] Severity and message are defined ("GID-183: …")
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [ ] Rule enabled in .golangci.yml

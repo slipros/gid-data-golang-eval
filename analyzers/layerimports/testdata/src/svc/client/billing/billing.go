@@ -1,5 +1,5 @@
-// Позитив (GID-229): клиент изолирован — domain ему недоступен;
-// сторонний пакет (strconv) — правило не применяется.
+// Positive (GID-229): the client is isolated — domain is not available to it;
+// for a third-party package (strconv) the rule does not apply.
 package billing
 
 import (

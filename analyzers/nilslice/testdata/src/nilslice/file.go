@@ -1,20 +1,20 @@
-// Eval для GID-185 (nil is a valid slice).
+// Eval for GID-185 (nil is a valid slice).
 package nilslice
 
-// --- Класс 1: позитивные ---
+// --- Class 1: positive ---
 
-// return пустым литералом слайса.
+// return with an empty slice literal.
 func retEmptyInt() []int {
 	return []int{} // want `GID-185: return nil instead of an empty slice\. Fix: a nil slice is valid`
 }
 
-// инициализация через := пустым литералом.
+// initialization via := with an empty literal.
 func defineEmpty() {
 	s := []string{} // want `GID-185: declare a zero-value slice\. Fix: var s \[\]T`
 	_ = s
 }
 
-// инициализация через var = пустым литералом.
+// initialization via var = with an empty literal.
 var pkgEmpty = []byte{} // want `GID-185: declare a zero-value slice\. Fix: var s \[\]T`
 
 func varEmptyLocal() {
@@ -22,20 +22,20 @@ func varEmptyLocal() {
 	_ = s
 }
 
-// --- Класс 2: негативные ---
+// --- Class 2: negative ---
 
-// nil-слайс в return — правильно.
+// a nil slice in return — correct.
 func retNil() []int {
 	return nil
 }
 
-// zero-value объявление — правильно.
+// a zero-value declaration — correct.
 func varZero() {
 	var s []int
 	_ = s
 }
 
-// непустой литерал — это данные, не «пустота».
+// a non-empty literal is data, not "emptiness".
 func retNonEmpty() []int {
 	return []int{1, 2, 3}
 }
@@ -45,7 +45,7 @@ func defineNonEmpty() {
 	_ = s
 }
 
-// --- Класс 3: граничные (не матчатся) ---
+// --- Class 3: boundary (not matched) ---
 
 func consume(_ []int) {}
 
@@ -53,23 +53,23 @@ type holder struct {
 	X []int
 }
 
-// []T{} аргументом вызова — пустота может быть семантикой (json [] vs null).
+// []T{} as a call argument — emptiness may be semantics (json [] vs null).
 func emptyAsArg() {
 	consume([]int{})
 }
 
-// []T{} значением поля структуры — не матчим.
+// []T{} as a struct field value — not matched.
 func emptyAsField() {
 	_ = holder{X: []int{}}
 }
 
-// массив [0]T{} — не слайс.
+// an array [0]T{} is not a slice.
 func emptyArray() {
 	a := [0]int{}
 	_ = a
 }
 
-// map-литерал — не слайс.
+// a map literal is not a slice.
 func emptyMap() {
 	m := map[string]int{}
 	_ = m

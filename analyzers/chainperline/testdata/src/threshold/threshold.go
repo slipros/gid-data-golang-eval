@@ -1,10 +1,10 @@
-// Eval для GID-196 с порогом min-calls: 3 — короткие цепочки inline допустимы.
+// Eval for GID-196 with the min-calls threshold: 3 — short inline chains are allowed.
 package threshold
 
 import "strings"
 
 func two() string {
-	return strings.NewReplacer("a", "b").Replace("aa") // 2 звена < порога — нормы
+	return strings.NewReplacer("a", "b").Replace("aa") // 2 links < threshold — OK
 }
 
 func three() string {

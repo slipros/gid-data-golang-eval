@@ -1,10 +1,10 @@
-// Класс «неприменимость»: обычный .go файл без testing —
-// здесь нет t.Run/b.Run, диагностик быть не должно.
+// The "not applicable" class: an ordinary .go file without testing —
+// there is no t.Run/b.Run here, there must be no diagnostics.
 package plain
 
 type Runner struct{}
 
-// Run с похожей сигнатурой, но не из пакета testing.
+// Run with a similar signature, but not from the testing package.
 func (Runner) Run(name string, fn func()) {}
 
 func use() {

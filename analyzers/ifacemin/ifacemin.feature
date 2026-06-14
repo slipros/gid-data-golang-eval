@@ -1,88 +1,88 @@
-# language: ru
+# language: en
 
-Функция: GID-197 — интерфейс содержит только используемые методы
-  Как разработчик
-  Я хочу, чтобы интерфейсы-зависимости в service/usecase/repository/server/event
-  не содержали методов, которые потребитель не использует
-  Чтобы контракт зависимости отражал реальные потребности кода,
-  а не возможности реализации
+Feature: GID-197 — an interface contains only used methods
+  As a developer
+  I want dependency interfaces in service/usecase/repository/server/event
+  not to contain methods the consumer does not use
+  So that the dependency contract reflects the real needs of the code,
+  not the capabilities of the implementation
 
-  # Семантика (перенос из «Частично проверяемые», требование 2026-06-07):
-  # - опирается на GID-134: интерфейс объявлен у потребителя, значит все
-  #   использования его методов видны в пакете;
-  # - использование = вызов или метод-значение вне *_test.go;
-  #   метод «только для тестов» — нарушение (контракт описывает прод);
-  # - embedded-интерфейсы не проверяются (только явные методы);
-  #   через embedding ссылка приходит на тот же объект метода — засчитывается;
-  # - FP-safe escape: значение интерфейса в неотслеживаемом контексте
-  #   (присваивание/аргумент/возврат под другим типом, type assertion,
-  #   generic-constraint, неизвестный контекст) — интерфейс пропускается;
-  # - исключения: //nolint:gidifacemin или settings.exclude
-  #   ("Интерфейс" целиком | "Интерфейс.Метод").
+  # Semantics (moved from "Partially checkable", requirement of 2026-06-07):
+  # - relies on GID-134: the interface is declared at the consumer, so all
+  #   usages of its methods are visible in the package;
+  # - usage = a call or a method value outside *_test.go;
+  #   a "tests-only" method is a violation (the contract describes production);
+  # - embedded interfaces are not checked (explicit methods only);
+  #   via embedding a reference resolves to the same method object — it counts;
+  # - FP-safe escape: an interface value in an untrackable context
+  #   (assignment/argument/return under a different type, type assertion,
+  #   generic constraint, unknown context) — the interface is skipped;
+  # - exclusions: //nolint:gidifacemin or settings.exclude
+  #   ("Interface" as a whole | "Interface.Method").
 
-  Сценарий: позитив — неиспользуемый метод интерфейса-зависимости
-    Допустим пакет оканчивается сегментами "domain/service"
-    И интерфейс "SnapshotRepository" содержит метод "DeleteSnapshot"
-    И ни вызова, ни метода-значения "DeleteSnapshot" в пакете нет
-    Когда анализатор проверяет пакет
-    Тогда выводится диагностика "GID-197" на методе "DeleteSnapshot"
+  Scenario: positive — an unused method of a dependency interface
+    Given the package path ends with the segments "domain/service"
+    And the interface "SnapshotRepository" contains the method "DeleteSnapshot"
+    And there is neither a call nor a method value of "DeleteSnapshot" in the package
+    When the analyzer checks the package
+    Then a "GID-197" diagnostic is reported on the method "DeleteSnapshot"
 
-  Сценарий: позитив — метод используется только из *_test.go
-    Допустим метод "Ping" интерфейса "SnapshotProbe" вызывается только в тесте
-    Когда анализатор проверяет пакет
-    Тогда выводится диагностика "GID-197" на методе "Ping"
+  Scenario: positive — a method used only from *_test.go
+    Given the method "Ping" of the interface "SnapshotProbe" is called only in a test
+    When the analyzer checks the package
+    Then a "GID-197" diagnostic is reported on the method "Ping"
 
-  Сценарий: негатив — все методы вызываются
-    Допустим методы интерфейса вызываются через поле структуры-потребителя
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
+  Scenario: negative — all methods are called
+    Given the interface methods are called via a field of the consumer struct
+    When the analyzer checks the package
+    Then no diagnostic is reported
 
-  Сценарий: негатив — метод-значение
-    Допустим метод "Warm" берётся методом-значением "warm := c.cache.Warm"
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
+  Scenario: negative — a method value
+    Given the method "Warm" is taken as a method value "warm := c.cache.Warm"
+    When the analyzer checks the package
+    Then no diagnostic is reported
 
-  Сценарий: граница — значение интерфейса уходит под другим типом
-    Допустим значение "AuditSink" присваивается переменной типа "any"
-    И метод "Flush" нигде не вызывается
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
-    # потребление методов не отследить — интерфейс пропускается целиком
+  Scenario: boundary — the interface value escapes under a different type
+    Given an "AuditSink" value is assigned to a variable of type "any"
+    And the method "Flush" is never called
+    When the analyzer checks the package
+    Then no diagnostic is reported
+    # method consumption cannot be tracked — the interface is skipped entirely
 
-  Сценарий: граница — embedded-интерфейс того же пакета
-    Допустим "snapshotReadWriter" встраивает "snapshotReader"
-    И "ReadSnapshot" вызывается через значение "snapshotReadWriter"
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
-    # объект метода общий — использование засчитывается обоим
+  Scenario: boundary — an embedded interface of the same package
+    Given "snapshotReadWriter" embeds "snapshotReader"
+    And "ReadSnapshot" is called via a "snapshotReadWriter" value
+    When the analyzer checks the package
+    Then no diagnostic is reported
+    # the method object is shared — the usage counts for both
 
-  Сценарий: граница — embedded-интерфейс стандартной библиотеки
-    Допустим интерфейс встраивает "io.Closer"
-    Когда анализатор проверяет пакет
-    Тогда "Close" не проверяется — только явные методы
+  Scenario: boundary — an embedded standard-library interface
+    Given the interface embeds "io.Closer"
+    When the analyzer checks the package
+    Then "Close" is not checked — explicit methods only
 
-  Сценарий: граница — сгенерированный файл
-    Допустим интерфейс объявлен в "zz_generated.go"
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
+  Scenario: boundary — a generated file
+    Given the interface is declared in "zz_generated.go"
+    When the analyzer checks the package
+    Then no diagnostic is reported
 
-  Сценарий: неприменимость — model-слой
-    Допустим пакет оканчивается сегментами "domain/model"
-    И интерфейс содержит неиспользуемые методы
-    Когда анализатор проверяет пакет
-    Тогда диагностика GID-197 не выводится
-    # model-интерфейсы могут описывать контракт для внешних потребителей
+  Scenario: non-applicability — the model layer
+    Given the package path ends with the segments "domain/model"
+    And the interface contains unused methods
+    When the analyzer checks the package
+    Then no GID-197 diagnostic is reported
+    # model interfaces may describe a contract for external consumers
 
-  Сценарий: неприменимость — settings.exclude
-    Допустим в настройках линтера "exclude: [LegacyGateway, AlertSink.Flush]"
-    Когда анализатор проверяет пакет
-    Тогда "LegacyGateway" пропускается целиком, "AlertSink.Flush" — точечно
-    И прочие нарушения пакета по-прежнему ловятся
+  Scenario: non-applicability — settings.exclude
+    Given the linter setting "exclude: [LegacyGateway, AlertSink.Flush]"
+    When the analyzer checks the package
+    Then "LegacyGateway" is skipped entirely, "AlertSink.Flush" — pointwise
+    And other violations of the package are still caught
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (GID-197, interface-minimal)
-#  [x] Выбран слой: go/analysis (объекты методов, escape-анализ значений)
-#  [x] Заданы severity и сообщение ("GID-197: метод %q интерфейса %q ...")
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [x] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (GID-197, interface-minimal)
+#  [x] Layer chosen: go/analysis (method objects, escape analysis of values)
+#  [x] Severity and message are defined ("GID-197: method %q of interface %q ...")
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [x] Rule enabled in .golangci.yml

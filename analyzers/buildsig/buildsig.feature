@@ -1,94 +1,94 @@
-# language: ru
+# language: en
 
-Функция: GID-212 — контракт build-функций репозитория
-  Как разработчик
-  Я хочу, чтобы build-функции репозитория имели единый контракт результата
-  А squirrel жил только в build-пакетах
-  Чтобы построение запросов было предсказуемым и изолированным
-  Источник: repo.md
+Feature: GID-212 — contract of repository build functions
+  As a developer
+  I want repository build functions to share a single result contract
+  And squirrel to live only in build packages
+  So that query construction is predictable and isolated
+  Source: repo.md
   Scope:
-    - проверка сигнатуры: экспортируемые функции без получателя
-      в пакетах /dal/repository/build/**;
-    - бан squirrel: импорт github.com/Masterminds/squirrel в любом пакете
-      вне /dal/repository/build/**.
-  Контракт сигнатуры результата:
-    - (string, []any, error) — одиночный запрос (sql, args, err); ИЛИ
-    - (*<...>.Batch, error) — batch-операция (матч по имени типа Batch,
-      пакет любой).
-  Сгенерированный код пропускается.
+    - signature check: exported functions without a receiver
+      in packages /dal/repository/build/**;
+    - squirrel ban: importing github.com/Masterminds/squirrel in any package
+      outside /dal/repository/build/**.
+  Result-signature contract:
+    - (string, []any, error) — a single query (sql, args, err); OR
+    - (*<...>.Batch, error) — a batch operation (matched by the type name Batch,
+      any package).
+  Generated code is skipped.
 
-  # --- Позитивный класс: нарушение ловится ---
+  # --- Positive class: the violation is caught ---
 
-  Сценарий: build-функция возвращает (string, error) — нарушение
-    Допустим в /dal/repository/build объявлена "func BuildBad(...) (string, error)"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-212" с текстом "build-функция возвращает (sql string, args []any, err error) или (*batch.Batch, error)"
+  Scenario: a build function returns (string, error) — violation
+    Given "func BuildBad(...) (string, error)" is declared in /dal/repository/build
+    When the analyzer checks the file
+    Then a "GID-212" diagnostic is reported with the text "a build function must return (sql string, args []any, err error) or (*batch.Batch, error)"
 
-  Сценарий: build-функция возвращает *squirrel.SelectBuilder — нарушение
-    Допустим в /dal/repository/build объявлена "func BuildBuilder() *squirrel.SelectBuilder"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-212" с текстом "build-функция возвращает ..."
+  Scenario: a build function returns *squirrel.SelectBuilder — violation
+    Given "func BuildBuilder() *squirrel.SelectBuilder" is declared in /dal/repository/build
+    When the analyzer checks the file
+    Then a "GID-212" diagnostic is reported with the text "a build function must return ..."
 
-  Сценарий: импорт squirrel в /dal/repository — нарушение
-    Допустим в /dal/repository импортирован "github.com/Masterminds/squirrel"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-212" с текстом "squirrel используется только в build-пакетах репозитория (/dal/repository/build)"
+  Scenario: squirrel import in /dal/repository — violation
+    Given "github.com/Masterminds/squirrel" is imported in /dal/repository
+    When the analyzer checks the file
+    Then a "GID-212" diagnostic is reported with the text "squirrel is allowed only in repository build packages (/dal/repository/build)"
 
-  Сценарий: импорт squirrel в /domain/service — нарушение
-    Допустим в /domain/service импортирован "github.com/Masterminds/squirrel"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-212" с текстом "squirrel используется только в build-пакетах ..."
+  Scenario: squirrel import in /domain/service — violation
+    Given "github.com/Masterminds/squirrel" is imported in /domain/service
+    When the analyzer checks the file
+    Then a "GID-212" diagnostic is reported with the text "squirrel is allowed only in repository build packages ..."
 
-  # --- Негативный класс: корректный код проходит ---
+  # --- Negative class: correct code passes ---
 
-  Сценарий: build-функция возвращает (string, []any, error) — ок
-    Допустим в /dal/repository/build объявлена "func SelectJobs(...) (string, []any, error)"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a build function returns (string, []any, error) — ok
+    Given "func SelectJobs(...) (string, []any, error)" is declared in /dal/repository/build
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: build-функция возвращает (*batch.Batch, error) — ок
-    Допустим в /dal/repository/build объявлена "func InsertJobsBatch(...) (*batch.Batch, error)"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a build function returns (*batch.Batch, error) — ok
+    Given "func InsertJobsBatch(...) (*batch.Batch, error)" is declared in /dal/repository/build
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: импорт squirrel в /dal/repository/build — ок
-    Допустим в /dal/repository/build импортирован "github.com/Masterminds/squirrel"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: squirrel import in /dal/repository/build — ok
+    Given "github.com/Masterminds/squirrel" is imported in /dal/repository/build
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  # --- Граничный класс ---
+  # --- Boundary class ---
 
-  Сценарий: неэкспортируемый хелпер build-пакета с другой сигнатурой — не флагается
-    Допустим в /dal/repository/build объявлена "func helper(n int) int"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: an unexported helper in a build package with a different signature — not flagged
+    Given "func helper(n int) int" is declared in /dal/repository/build
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: build-функция без результатов — нарушение
-    Допустим в /dal/repository/build объявлена "func BuildVoid()"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-212" с текстом "build-функция возвращает ..."
+  Scenario: a build function with no results — violation
+    Given "func BuildVoid()" is declared in /dal/repository/build
+    When the analyzer checks the file
+    Then a "GID-212" diagnostic is reported with the text "a build function must return ..."
 
-  Сценарий: сгенерированный файл — пропускается
-    Допустим файл помечен "// Code generated ... DO NOT EDIT."
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a generated file — skipped
+    Given the file is marked "// Code generated ... DO NOT EDIT."
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  # --- Класс неприменимости: проверка сигнатуры вне build не действует ---
+  # --- Non-applicability class: the signature check does not apply outside build ---
 
-  Сценарий: функция с произвольной сигнатурой в /dal/repository — не флагается
-    Допустим в /dal/repository объявлена "func DoStuff(id string) (int, error)"
-    Когда анализатор проверяет файл
-    Тогда диагностика результата не выводится
+  Scenario: a function with an arbitrary signature in /dal/repository — not flagged
+    Given "func DoStuff(id string) (int, error)" is declared in /dal/repository
+    When the analyzer checks the file
+    Then no result diagnostic is reported
 
-  Сценарий: функция с произвольной сигнатурой в /domain/service — не флагается
-    Допустим в /domain/service объявлена "func Process(id string) (bool, error)"
-    Когда анализатор проверяет файл
-    Тогда диагностика результата не выводится
+  Scenario: a function with an arbitrary signature in /domain/service — not flagged
+    Given "func Process(id string) (bool, error)" is declared in /domain/service
+    When the analyzer checks the file
+    Then no result diagnostic is reported
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (RULES.md, GID-212) — вне scope правки
-#  [x] Выбран слой: go/analysis (go/types, LoadModeTypesInfo)
-#  [x] Заданы severity и сообщение ("GID-212: ...")
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [ ] Правило включено в .golangci.yml (вне scope этой задачи)
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (RULES.md, GID-212) — outside the scope of this change
+#  [x] Layer chosen: go/analysis (go/types, LoadModeTypesInfo)
+#  [x] Severity and message are defined ("GID-212: ...")
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [ ] Rule enabled in .golangci.yml (outside the scope of this task)

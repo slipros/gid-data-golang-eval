@@ -1,4 +1,4 @@
-// Eval для GID-195 (modelmethod): сервисный пакет — scope правила.
+// Eval for GID-195 (modelmethod): the service package is in the rule's scope.
 package service
 
 import (
@@ -11,43 +11,43 @@ type SnapshotService struct {
 	prefix string
 }
 
-// --- Позитив: приватная функция с единственным model-параметром ---
+// --- Positive: a private function with a single model parameter ---
 
 func snapshotTitle(s *model.Snapshot) string { // want `GID-195: private function "snapshotTitle" works only with the model.Snapshot value\. Fix: this is model behaviour, make it a public method of that type`
 	return strings.ToUpper(s.Name)
 }
 
-// --- Позитив: model-enum по значению ---
+// --- Positive: a model enum by value ---
 
 func isDone(st model.Status) bool { // want `GID-195: private function "isDone" works only with the model.Status value\. Fix: this is model behaviour, make it a public method of that type`
 	return st == model.StatusDone
 }
 
-// --- Позитив: метод, не использующий ресивер ---
+// --- Positive: a method that does not use its receiver ---
 
 func (s *SnapshotService) renderSnapshot(snap *model.Snapshot) string { // want `GID-195: method "renderSnapshot" ignores its receiver and works only with the model.Snapshot value\. Fix: this is model behaviour, make it a public method of that type`
 	return snap.ID + ":" + snap.Name
 }
 
-// --- Позитив: безымянный ресивер ---
+// --- Positive: an unnamed receiver ---
 
 func (*SnapshotService) pingSnapshot(s *model.Snapshot) bool { // want `GID-195: method "pingSnapshot" ignores its receiver and works only with the model.Snapshot value\. Fix: this is model behaviour, make it a public method of that type`
 	return s.ID != ""
 }
 
-// --- Негатив: метод использует ресивер — легитимно принадлежит структуре ---
+// --- Negative: the method uses its receiver — legitimately belongs to the struct ---
 
 func (s *SnapshotService) decorate(snap *model.Snapshot) string {
 	return s.prefix + snap.Name
 }
 
-// --- Негатив: два значения одного типа ---
+// --- Negative: two values of the same type ---
 
 func equalSnapshots(a, b *model.Snapshot) bool {
 	return a.ID == b.ID
 }
 
-// --- Негатив: функция зависит от package-level символа своего пакета ---
+// --- Negative: the function depends on a package-level symbol of its own package ---
 
 const serviceTag = "svc:"
 
@@ -55,13 +55,13 @@ func tagSnapshot(s *model.Snapshot) string {
 	return serviceTag + s.Name
 }
 
-// --- Негатив: результат — тип своего пакета, непереносима ---
+// --- Negative: the result is a type of its own package — not movable ---
 
 func wrapSnapshot(s *model.Snapshot) *SnapshotService {
 	return &SnapshotService{prefix: s.Name}
 }
 
-// --- Граница: variadic ---
+// --- Boundary: variadic ---
 
 func joinSnapshots(ss ...model.Snapshot) string {
 	names := make([]string, 0, len(ss))
@@ -71,7 +71,7 @@ func joinSnapshots(ss ...model.Snapshot) string {
 	return strings.Join(names, ",")
 }
 
-// --- Граница: слайс model-типа — не одно значение ---
+// --- Boundary: a slice of a model type — not a single value ---
 
 func firstName(ss []model.Snapshot) string {
 	if len(ss) == 0 {
@@ -80,13 +80,13 @@ func firstName(ss []model.Snapshot) string {
 	return ss[0].Name
 }
 
-// --- Граница: интерфейс model-слоя — метод не добавить ---
+// --- Boundary: a model-layer interface — cannot add a method ---
 
 func validateAny(v model.Validator) bool {
 	return v.Validate() == nil
 }
 
-// --- Граница: параметр типа своего пакета — не model ---
+// --- Boundary: a parameter of its own package's type — not model ---
 
 type ServiceOptions struct {
 	Name string
@@ -96,13 +96,13 @@ func optionsName(o *ServiceOptions) string {
 	return o.Name
 }
 
-// --- Граница: generic-функция ---
+// --- Boundary: a generic function ---
 
 func anyTitle[T any](v T) T {
 	return v
 }
 
-// --- Граница: экспортируемая функция — вне правила ---
+// --- Boundary: an exported function — outside the rule ---
 
 func TitleSnapshot(s *model.Snapshot) string {
 	return s.Name

@@ -1,10 +1,10 @@
-// Package privatefunc реализует правило GID-133: в service, usecase и
-// repository нет приватных функций, принадлежащих пакету, — приватная
-// функция обязана быть методом структуры. Исключение: функция,
-// используемая методами нескольких сущностей одного пакета (общий хелпер).
+// Package privatefunc implements rule GID-133: in service, usecase, and
+// repository there are no private functions belonging to the package — a
+// private function must be a struct method. The exception: a function used by
+// methods of several entities of the same package (a shared helper).
 //
-// Конструкторы New<Entity> и приватные функции, используемые из них,
-// считаются принадлежащими своей сущности.
+// New<Entity> constructors and the private functions used from them are
+// considered to belong to their entity.
 package privatefunc
 
 import (
@@ -25,7 +25,7 @@ var scopes = [][]string{
 	{"domain", "usecase"},
 }
 
-// Analyzer — правило GID-133: приватные функции в service/usecase/repository — методы структур.
+// Analyzer — rule GID-133: private functions in service/usecase/repository are struct methods.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidprivatefunc",
 	Doc:  ruleID + ": private functions in service/usecase/repository must be struct methods, not package functions. Fix: make it a method",
@@ -60,7 +60,7 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-// privateFuncs — приватные package-level функции (кандидаты в нарушители).
+// privateFuncs — private package-level functions (violation candidates).
 func privateFuncs(pass *analysis.Pass) []*ast.FuncDecl {
 	var out []*ast.FuncDecl
 	for _, file := range pass.Files {
@@ -78,7 +78,7 @@ func privateFuncs(pass *analysis.Pass) []*ast.FuncDecl {
 	return out
 }
 
-// collectOwners: какие сущности используют каждую приватную функцию.
+// collectOwners: which entities use each private function.
 func collectOwners(
 	pass *analysis.Pass,
 	structs map[string]struct{},
@@ -97,7 +97,7 @@ func collectOwners(
 			}
 			owner := ownerOf(fn, structs)
 			if owner == "" {
-				continue // использование из других функций пакета сущность не задаёт
+				continue // usage from other package functions does not define an entity
 			}
 			ast.Inspect(fn.Body, func(n ast.Node) bool {
 				id, ok := n.(*ast.Ident)
@@ -122,8 +122,8 @@ func collectOwners(
 	return owners
 }
 
-// ownerOf — сущность, которой принадлежит функция: ресивер метода
-// или сущность конструктора New<Entity>.
+// ownerOf — the entity the function belongs to: a method's receiver
+// or the entity of a New<Entity> constructor.
 func ownerOf(fn *ast.FuncDecl, structs map[string]struct{}) string {
 	if fn.Recv != nil {
 		return recvTypeName(fn)

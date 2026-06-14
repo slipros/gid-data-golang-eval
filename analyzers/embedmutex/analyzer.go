@@ -1,17 +1,17 @@
-// Package embedmutex реализует правило GID-178 (gidembedmutex):
-// запрет встраивания (анонимное поле) sync.Mutex / sync.RWMutex
-// (а также указателей на них) в структуры.
+// Package embedmutex implements rule GID-178 (gidembedmutex):
+// a ban on embedding (an anonymous field) sync.Mutex / sync.RWMutex
+// (as well as pointers to them) into structs.
 //
-// Встраивание мьютекса промотирует его методы Lock/Unlock в публичный
-// API типа: внешний код может залочить чужой мьютекс. Мьютекс хранится
-// именованным неэкспортируемым полем (mu sync.Mutex), оставаясь деталью
-// реализации.
+// Embedding a mutex promotes its Lock/Unlock methods into the type's public
+// API: external code can lock someone else's mutex. The mutex is kept as a
+// named unexported field (mu sync.Mutex), remaining an implementation
+// detail.
 //
-// Детект — через go/types (pass.TypesInfo), а не по тексту селектора,
-// чтобы устойчиво работать при алиасах импорта пакета sync. Анонимное
-// поле структуры, тип которого после снятия указателя — именованный тип
-// Mutex или RWMutex из стандартного пакета "sync". Именованное поле любого
-// вида допустимо. Сгенерированный код пропускается.
+// Detection goes through go/types (pass.TypesInfo), not the selector text,
+// to work reliably with aliased imports of the sync package. An anonymous
+// struct field whose type, after stripping the pointer, is the named type
+// Mutex or RWMutex from the standard "sync" package. A named field of any
+// kind is allowed. Generated code is skipped.
 package embedmutex
 
 import (
@@ -23,7 +23,7 @@ import (
 
 const ruleID = "GID-178"
 
-// Analyzer — правило GID-178: do not embed sync.Mutex/sync.RWMutex; use a named field (mu sync.Mutex). Fix: give the mutex a name.
+// Analyzer — rule GID-178: do not embed sync.Mutex/sync.RWMutex; use a named field (mu sync.Mutex). Fix: give the mutex a name.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidembedmutex",
 	Doc:  ruleID + ": do not embed sync.Mutex/sync.RWMutex; use a named field (mu sync.Mutex). Fix: give the mutex a name",
@@ -41,7 +41,7 @@ func run(pass *analysis.Pass) (any, error) {
 				return true
 			}
 			for _, field := range st.Fields.List {
-				// Анонимное (встроенное) поле — без имён.
+				// An anonymous (embedded) field has no names.
 				if len(field.Names) != 0 {
 					continue
 				}
@@ -60,9 +60,9 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-// embeddedMutexName возвращает имя типа мьютекса ("Mutex" или "RWMutex"),
-// если t (после снятия указателя) — именованный тип Mutex/RWMutex из пакета
-// "sync". Иначе ok == false.
+// embeddedMutexName returns the mutex type name ("Mutex" or "RWMutex")
+// if t (after stripping the pointer) is the named type Mutex/RWMutex from the
+// "sync" package. Otherwise ok == false.
 func embeddedMutexName(t types.Type) (string, bool) {
 	if t == nil {
 		return "", false

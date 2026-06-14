@@ -1,4 +1,4 @@
-// Негатив: чистый model без зависимостей.
+// Negative: a pure model with no dependencies.
 package model
 
 type Snapshot struct {

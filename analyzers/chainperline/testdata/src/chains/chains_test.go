@@ -1,4 +1,4 @@
-// Тестовые файлы вне scope GID-196: цепочки inline допустимы.
+// Test files are out of scope for GID-196: inline chains are allowed.
 package chains
 
 import "strings"

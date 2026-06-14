@@ -2,8 +2,8 @@
 
 package plain
 
-// Константы сгенерированного файла не проверяются, а его использования
-// делают константу из обычного файла непереносимой.
+// Constants of a generated file are not checked, and its uses
+// make a constant from an ordinary file immovable.
 
 const GeneratedName = "generated"
 

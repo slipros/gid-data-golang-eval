@@ -1,4 +1,4 @@
-// Позитив (settings.rules): своё правило SVC-1 банит legacy в domain/service.
+// Positive (settings.rules): the custom rule SVC-1 bans legacy in domain/service.
 package service
 
 import "custom/legacy/store" // want `SVC-1: package "custom/domain/service" must not import "custom/legacy/store"\. Fix: the legacy package is being removed`

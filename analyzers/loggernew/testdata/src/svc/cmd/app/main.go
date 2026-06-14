@@ -1,4 +1,4 @@
-// Eval GID-214: негатив — package main, создание логгера разрешено.
+// Eval GID-214: negative — package main, creating a logger is allowed.
 package main
 
 import (
@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	logger := logrus.New()      // composition root (main) — ок
-	_ = logrus.StandardLogger() // composition root (main) — ок
+	logger := logrus.New()      // composition root (main) — ok
+	_ = logrus.StandardLogger() // composition root (main) — ok
 	_ = logger
 }

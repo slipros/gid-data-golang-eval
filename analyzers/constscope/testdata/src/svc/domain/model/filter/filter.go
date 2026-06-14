@@ -1,4 +1,4 @@
-// Eval для GID-194: подпакет model-слоя — полноправный model, тоже легален.
+// Eval for GID-194: a subpackage of the model layer is a full-fledged model, also legal.
 package filter
 
 const DefaultLimit = 50

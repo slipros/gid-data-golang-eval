@@ -1,8 +1,8 @@
-// Package receivernaming реализует правило GID-103: ресивер именуется
-// первой буквой названия структуры в нижнем регистре; для слайс-типов —
-// двумя буквами (type Snapshots []Snapshot -> ss).
+// Package receivernaming implements rule GID-103: a receiver is named by the
+// lowercase first letter of the struct name; for slice types — by two letters
+// (type Snapshots []Snapshot -> ss).
 //
-// Исключения стайлгайда: в validate-пакетах ресивер v, в handler-пакетах — h.
+// Styleguide exceptions: in validate packages the receiver is v, in handler packages — h.
 package receivernaming
 
 import (
@@ -19,7 +19,7 @@ import (
 
 const ruleID = "GID-103"
 
-// Analyzer — правило GID-103: ресивер — первая буква типа (две — для слайс-типов).
+// Analyzer — rule GID-103: a receiver is the type's first letter (two for slice types).
 var Analyzer = &analysis.Analyzer{
 	Name: "gidreceiver",
 	Doc:  ruleID + ": a receiver is the lowercase first letter of the type, two for slice types. Fix: rename the receiver",
@@ -45,7 +45,7 @@ func run(pass *analysis.Pass) (any, error) {
 func checkReceiver(pass *analysis.Pass, fn *ast.FuncDecl) {
 	recv := fn.Recv.List[0]
 	if len(recv.Names) == 0 || recv.Names[0].Name == "_" {
-		return // безымянный ресивер не именуется
+		return // an unnamed receiver has no name to check
 	}
 	got := recv.Names[0].Name
 	typeName, isSlice := recvType(pass, recv)
@@ -84,7 +84,7 @@ func expected(typeName string, isSlice bool) string {
 	return letter
 }
 
-// allowedException: v в validate-пакетах, h в handler-пакетах.
+// allowedException: v in validate packages, h in handler packages.
 func allowedException(pkgPath, got string) bool {
 	switch got {
 	case "v":

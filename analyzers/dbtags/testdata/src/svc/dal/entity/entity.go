@@ -1,9 +1,9 @@
-// Eval GID-125 (db-теги в entity).
+// Eval GID-125 (db tags in entity).
 package entity
 
 import "time"
 
-// --- Позитивные кейсы ---
+// --- Positive cases ---
 
 type Snapshot struct {
 	ID        string    `db:"id"`
@@ -11,7 +11,7 @@ type Snapshot struct {
 	CreatedAt time.Time `json:"created_at"` // want `GID-125: field Snapshot\.CreatedAt has no mapping tag \(db\)`
 }
 
-// --- Негативные кейсы ---
+// --- Negative cases ---
 
 type Job struct {
 	ID        string    `db:"id"`
@@ -19,7 +19,7 @@ type Job struct {
 	CreatedAt time.Time `db:"created_at" json:"created_at"`
 }
 
-// Неприменимость: приватные поля не маппятся напрямую.
+// Not applicable: private fields are not mapped directly.
 type cursor struct {
 	offset int
 }

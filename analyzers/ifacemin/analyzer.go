@@ -1,16 +1,16 @@
-// Package ifacemin реализует правило GID-197: интерфейс-зависимость
-// содержит только методы, которые потребитель реально использует.
+// Package ifacemin implements rule GID-197: a dependency interface
+// contains only the methods the consumer actually uses.
 //
-// GID-134 гарантирует, что интерфейс объявлен в пакете-потребителе, —
-// значит, все использования его методов видны анализатору. Метод считается
-// используемым, если на него есть ссылка (вызов или метод-значение) вне
-// *_test.go: интерфейс описывает потребности продакшн-кода, метод «ради
-// мока» — раздувание контракта.
+// GID-134 guarantees the interface is declared in the consumer package —
+// so all uses of its methods are visible to the analyzer. A method counts as
+// used when there is a reference to it (a call or a method value) outside
+// *_test.go: the interface describes the needs of production code, a method
+// "for the sake of a mock" is contract bloat.
 //
-// FP-safe: если значение интерфейса уходит туда, где потребление методов
-// не отследить (присваивание/передача под другим типом, type assertion,
-// generic-constraint и любой нераспознанный контекст), интерфейс
-// пропускается целиком. Embedded-интерфейсы не проверяются.
+// FP-safe: if an interface value escapes to where method consumption
+// cannot be tracked (assignment/passing under a different type, a type
+// assertion, a generic constraint and any unrecognized context), the
+// interface is skipped entirely. Embedded interfaces are not checked.
 package ifacemin
 
 import (
@@ -29,16 +29,16 @@ import (
 
 const ruleID = "GID-197"
 
-// Analyzer — правило GID-197 с настройками по умолчанию.
+// Analyzer — rule GID-197 with default settings.
 var Analyzer = NewAnalyzer(Settings{})
 
-// Settings — настройки правила GID-197 из .golangci.yml.
+// Settings — settings of rule GID-197 from .golangci.yml.
 type Settings struct {
-	// Exclude — исключения: "Интерфейс" (целиком) или "Интерфейс.Метод".
+	// Exclude — exclusions: "Interface" (as a whole) or "Interface.Method".
 	Exclude []string `json:"exclude"`
 }
 
-// NewAnalyzer строит анализатор GID-197 из настроек линтера (.golangci.yml).
+// NewAnalyzer builds the GID-197 analyzer from the linter settings (.golangci.yml).
 func NewAnalyzer(s Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name: "gidifacemin",
@@ -49,7 +49,7 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 	}
 }
 
-// ifaceDecl — проверяемый интерфейс пакета.
+// ifaceDecl — a checked interface of the package.
 type ifaceDecl struct {
 	name     string
 	typeName *types.TypeName
@@ -88,8 +88,8 @@ func run(pass *analysis.Pass, s Settings) (any, error) {
 	return nil, nil
 }
 
-// collectIfaces — интерфейсы пакета с их явными методами
-// (embedded-интерфейсы не проверяются).
+// collectIfaces — the package's interfaces with their explicit methods
+// (embedded interfaces are not checked).
 func collectIfaces(pass *analysis.Pass, s Settings) []*ifaceDecl {
 	var out []*ifaceDecl
 	for _, file := range pass.Files {
@@ -127,7 +127,7 @@ func newIfaceDecl(pass *analysis.Pass, s Settings, ts *ast.TypeSpec, it *ast.Int
 	d := &ifaceDecl{name: ts.Name.Name, typeName: tn}
 	for _, field := range it.Methods.List {
 		if len(field.Names) == 0 {
-			continue // embedded-интерфейс
+			continue // an embedded interface
 		}
 		for _, name := range field.Names {
 			if exclude.Match(s.Exclude, d.name, name.Name) {
@@ -144,9 +144,9 @@ func newIfaceDecl(pass *analysis.Pass, s Settings, ts *ast.TypeSpec, it *ast.Int
 	return d
 }
 
-// collectUsedMethods — на какие методы проверяемых интерфейсов есть ссылки
-// вне *_test.go (вызов и метод-значение; через embedding ссылка приходит
-// на тот же объект метода).
+// collectUsedMethods — which methods of the checked interfaces are referenced
+// outside *_test.go (a call and a method value; via embedding the reference
+// resolves to the same method object).
 func collectUsedMethods(pass *analysis.Pass, ifaces []*ifaceDecl) map[types.Object]bool {
 	cands := map[types.Object]struct{}{}
 	for _, d := range ifaces {
@@ -177,8 +177,8 @@ func collectUsedMethods(pass *analysis.Pass, ifaces []*ifaceDecl) map[types.Obje
 	return used
 }
 
-// collectEscapes отмечает интерфейсы, чьи значения уходят в контексты,
-// где потребление методов не отследить, — такие пропускаются целиком.
+// collectEscapes marks interfaces whose values escape into contexts where
+// method consumption cannot be tracked — those are skipped entirely.
 func collectEscapes(pass *analysis.Pass, ifaces []*ifaceDecl) map[*types.TypeName]bool {
 	checked := map[*types.TypeName]bool{}
 	for _, d := range ifaces {
@@ -209,8 +209,8 @@ func collectEscapes(pass *analysis.Pass, ifaces []*ifaceDecl) map[*types.TypeNam
 				}
 				return true
 			}
-			// Тип в generic-constraint: вызовы через type parameter
-			// разрешаются в объект ограничения — не отследить.
+			// A type in a generic constraint: calls through a type parameter
+			// resolve to the constraint's object — untrackable.
 			if tv.IsType() && inTypeParams(parents, e) {
 				escaped[tn] = true
 			}
@@ -231,7 +231,7 @@ func checkedIface(checked map[*types.TypeName]bool, t types.Type) *types.TypeNam
 	return nil
 }
 
-// parentMap — родитель каждого узла файла.
+// parentMap — the parent of every node in the file.
 func parentMap(file *ast.File) map[ast.Node]ast.Node {
 	parents := map[ast.Node]ast.Node{}
 	var stack []ast.Node
@@ -249,9 +249,9 @@ func parentMap(file *ast.File) map[ast.Node]ast.Node {
 	return parents
 }
 
-// safeContext: значение интерфейса используется так, что потребление его
-// методов остаётся видимым (вызов метода, хранение/передача под тем же
-// типом, сравнение). Любой нераспознанный контекст — не safe.
+// safeContext: the interface value is used so that the consumption of its
+// methods stays visible (a method call, storing/passing under the same
+// type, a comparison). Any unrecognized context is not safe.
 func safeContext(pass *analysis.Pass, parents map[ast.Node]ast.Node, e ast.Expr) bool {
 	p := parents[e]
 	for {
@@ -265,8 +265,8 @@ func safeContext(pass *analysis.Pass, parents map[ast.Node]ast.Node, e ast.Expr)
 	eType := pass.TypesInfo.TypeOf(e)
 	switch ctx := p.(type) {
 	case *ast.SelectorExpr:
-		// e.M — вызов/метод-значение (учтены сканом Uses); e == Sel —
-		// значение поля, классифицируется на уровне родителя селектора.
+		// e.M — a call/method value (covered by the Uses scan); e == Sel —
+		// a field value, classified at the level of the selector's parent.
 		return true
 	case *ast.CallExpr:
 		if ctx.Fun == e {
@@ -284,24 +284,24 @@ func safeContext(pass *analysis.Pass, parents map[ast.Node]ast.Node, e ast.Expr)
 	case *ast.ReturnStmt:
 		return returnIdentical(pass, parents, ctx, e, eType)
 	case *ast.BinaryExpr, *ast.ExprStmt, *ast.CaseClause, *ast.SwitchStmt:
-		return true // сравнение или голое выражение — методы не потребляются
+		return true // a comparison or a bare expression — no methods consumed
 	default:
 		return false
 	}
 }
 
-// argIdentical: аргумент попадает в параметр того же интерфейсного типа.
+// argIdentical: the argument lands in a parameter of the same interface type.
 func argIdentical(pass *analysis.Pass, call *ast.CallExpr, e ast.Expr, eType types.Type) bool {
 	funType := pass.TypesInfo.TypeOf(call.Fun)
 	if funType == nil {
 		return false
 	}
 	if tv, ok := pass.TypesInfo.Types[call.Fun]; ok && tv.IsType() {
-		return types.Identical(funType, eType) // конверсия
+		return types.Identical(funType, eType) // a conversion
 	}
 	sig, ok := funType.Underlying().(*types.Signature)
 	if !ok {
-		return false // builtin и пр.
+		return false // a builtin, etc.
 	}
 	idx := slices.IndexFunc(call.Args, func(a ast.Expr) bool { return a == e })
 	if idx < 0 {
@@ -330,7 +330,7 @@ func assignIdentical(pass *analysis.Pass, st *ast.AssignStmt, e ast.Expr, eType 
 	}
 	idx := slices.IndexFunc(st.Rhs, func(a ast.Expr) bool { return a == e })
 	if idx < 0 {
-		return true // e в Lhs — запись в него, методы не потребляются
+		return true // e is in Lhs — a write into it, no methods consumed
 	}
 	if id, ok := st.Lhs[idx].(*ast.Ident); ok && id.Name == "_" {
 		return true
@@ -458,7 +458,7 @@ func enclosingSignature(pass *analysis.Pass, parents map[ast.Node]ast.Node, n as
 	return nil
 }
 
-// inTypeParams: тип используется в списке type parameters (constraint).
+// inTypeParams: the type is used in a type parameter list (a constraint).
 func inTypeParams(parents map[ast.Node]ast.Node, e ast.Expr) bool {
 	for cur := parents[e]; cur != nil; cur = parents[cur] {
 		switch p := cur.(type) {

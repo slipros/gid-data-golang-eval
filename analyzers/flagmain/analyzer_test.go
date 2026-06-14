@@ -10,13 +10,13 @@ import (
 
 func TestAnalyzer(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), flagmain.Analyzer,
-		"libflag",     // позитив: flag.String в библиотечном пакете
-		"libparse",    // позитив: flag.Parse в библиотеке
-		"mainbad",     // позитив: имена флагов не snake_case (maxRetries, max-retries)
-		"maingood",    // негатив: snake_case имя + flag.Parse в main
-		"ownflag",     // граничный: свой пакет с именем flag — не матчится
-		"dynamicname", // граничный: имя не константа (main — часть 2 пропуск; в либе часть 1 ловит)
-		"testskip",    // граничный: *_test.go с flag пропускается; обычный файл чист
-		"cleanlib",    // неприменимость: библиотечный пакет без flag
+		"libflag",     // positive: flag.String in a library package
+		"libparse",    // positive: flag.Parse in a library
+		"mainbad",     // positive: flag names not in snake_case (maxRetries, max-retries)
+		"maingood",    // negative: a snake_case name + flag.Parse in main
+		"ownflag",     // boundary: a local package named flag — not matched
+		"dynamicname", // boundary: the name is not a constant (main — part 2 skips; in a library part 1 catches)
+		"testskip",    // boundary: *_test.go with flag is skipped; the regular file is clean
+		"cleanlib",    // inapplicability: a library package without flag
 	)
 }

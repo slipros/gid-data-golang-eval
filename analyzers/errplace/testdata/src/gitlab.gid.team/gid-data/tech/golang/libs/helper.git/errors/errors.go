@@ -1,5 +1,5 @@
-// Stub gderror для eval: типизированные ошибки внутренней библиотеки
-// разрешены в любом слое.
+// Stub of gderror for eval: typed errors of the internal library
+// are allowed in any layer.
 package errors
 
 type UnhandledValueError struct {

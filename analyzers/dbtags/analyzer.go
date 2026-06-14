@@ -1,12 +1,12 @@
-// Package dbtags реализует правила про db-теги полей структур по слоям:
+// Package dbtags implements the per-layer rules about db tags on struct fields:
 //
-//   - GID-125 (giddbtags): поля entity-структур (DAL) имеют тег маппинга
-//     на колонки БД. По умолчанию это db-тег; список допустимых тегов
-//     настраивается — например, библиотека для ClickHouse использует тег ch.
-//   - GID-168 (gidmodeltags): в /domain/** запрещены db-теги у полей
-//     структур. model — чистый бизнес-объект, маппинг на колонки БД живёт
-//     в entity (DAL). Список тегов маппинга настраивается тем же Settings
-//     (по умолчанию ["db"]); прочие теги (json и пр.) не трогаем.
+//   - GID-125 (giddbtags): fields of entity structs (DAL) have a tag mapping
+//     them to DB columns. By default this is the db tag; the list of allowed
+//     tags is configurable — e.g. the ClickHouse library uses the ch tag.
+//   - GID-168 (gidmodeltags): db tags on struct fields are forbidden in
+//     /domain/**. A model is a pure business object; mapping to DB columns lives
+//     in entity (DAL). The list of mapping tags is configured by the same Settings
+//     (default ["db"]); other tags (json, etc.) are left alone.
 package dbtags
 
 import (
@@ -25,19 +25,19 @@ const (
 	modelRuleID = "GID-168"
 )
 
-// Analyzer — вариант с дефолтным тегом db.
+// Analyzer — the variant with the default db tag.
 var Analyzer = NewAnalyzer(Settings{})
 
-// ModelAnalyzer — вариант с дефолтным тегом db.
+// ModelAnalyzer — the variant with the default db tag.
 var ModelAnalyzer = NewModelAnalyzer(Settings{})
 
-// Settings — настройки линтера из .golangci.yml.
+// Settings — linter settings from .golangci.yml.
 type Settings struct {
-	// Tags — допустимые теги маппинга (заменяют дефолтный ["db"]).
+	// Tags — allowed mapping tags (they replace the default ["db"]).
 	Tags []string `json:"tags"`
 }
 
-// NewAnalyzer строит анализатор GID-125 из настроек линтера (.golangci.yml).
+// NewAnalyzer builds the GID-125 analyzer from the linter settings (.golangci.yml).
 func NewAnalyzer(s Settings) *analysis.Analyzer {
 	tags := resolveTags(s)
 	return &analysis.Analyzer{
@@ -49,8 +49,8 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 	}
 }
 
-// NewModelAnalyzer создаёт анализатор GID-168: запрет db-тегов у полей
-// структур в /domain/**.
+// NewModelAnalyzer creates the GID-168 analyzer: a ban on db tags on struct
+// fields in /domain/**.
 func NewModelAnalyzer(s Settings) *analysis.Analyzer {
 	tags := resolveTags(s)
 	return &analysis.Analyzer{
@@ -101,7 +101,7 @@ func run(pass *analysis.Pass, tags []string) (any, error) {
 func checkStruct(pass *analysis.Pass, name string, st *ast.StructType, tags []string) {
 	for _, field := range st.Fields.List {
 		if len(field.Names) == 0 || !field.Names[0].IsExported() {
-			continue // embedded и приватные поля не маппятся напрямую
+			continue // embedded and private fields are not mapped directly
 		}
 		if hasMappingTag(field, tags) {
 			continue
@@ -145,7 +145,7 @@ func checkModelStruct(pass *analysis.Pass, name string, st *ast.StructType, tags
 	for _, field := range st.Fields.List {
 		tag := mappingTag(field, tags)
 		if tag == "" {
-			continue // нет тега маппинга — поле не нарушает правило
+			continue // no mapping tag — the field does not violate the rule
 		}
 		pass.Reportf(field.Pos(),
 			"%s: field %s.%s has a %q tag in the domain layer. Fix: keep db mapping in /dal/entity",
@@ -153,7 +153,7 @@ func checkModelStruct(pass *analysis.Pass, name string, st *ast.StructType, tags
 	}
 }
 
-// fieldName возвращает имя поля; для embedded-поля — имя встроенного типа.
+// fieldName returns the field name; for an embedded field — the embedded type name.
 func fieldName(field *ast.Field) string {
 	if len(field.Names) > 0 {
 		return field.Names[0].Name
@@ -171,7 +171,7 @@ func fieldName(field *ast.Field) string {
 	return "<embedded>"
 }
 
-// mappingTag возвращает первый из tags, присутствующий у поля, либо "".
+// mappingTag returns the first of tags present on the field, or "".
 func mappingTag(field *ast.Field, tags []string) string {
 	if field.Tag == nil {
 		return ""

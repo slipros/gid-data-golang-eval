@@ -1,5 +1,5 @@
-// Позитив (GID-224): schedule дёргает service напрямую — запрещено;
-// негатив: model разрешён.
+// Positive (GID-224): schedule calls service directly — forbidden;
+// negative: model is allowed.
 package sync
 
 import (
@@ -11,7 +11,7 @@ type Job struct {
 	svc *service.Snapshot
 }
 
-// Негатив: model в schedule — норма.
+// Negative: model in schedule is fine.
 func (j *Job) Run() model.Snapshot {
 	return model.Snapshot{}
 }

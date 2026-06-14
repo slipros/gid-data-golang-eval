@@ -1,5 +1,5 @@
-// Класс 2 (негативный) — convert-пакет сервиса: конвертация здесь и живёт,
-// инлайн-литералы entity разрешены.
+// Class 2 (negative) — the service's convert package: conversion lives here,
+// inline entity literals are allowed.
 package convert
 
 import (

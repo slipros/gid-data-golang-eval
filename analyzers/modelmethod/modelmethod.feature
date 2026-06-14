@@ -1,109 +1,109 @@
-# language: ru
+# language: en
 
-Функция: GID-195 — поведение модели живёт методом модели
-  Как разработчик
-  Я хочу, чтобы приватные функции service/usecase, работающие с единственным
-  значением model-типа, оформлялись публичными методами этого типа в model
-  Чтобы поведение модели принадлежало самой модели, а не размазывалось
-  хелперами по бизнес-слоям
+Feature: GID-195 — model behavior lives as a model method
+  As a developer
+  I want private service/usecase functions working with a single
+  value of a model type to become public methods of that type in model
+  So that model behavior belongs to the model itself rather than being smeared
+  across business layers as helpers
 
-  # Семантика (зафиксирована требованием 2026-06-07):
-  # - scope: корни /domain/service и /domain/usecase (EndsWith) — подпакеты
-  #   convert/ и repository не задеваются;
-  # - триггер: приватная функция со строго одним параметром T или *T, где
-  #   T — именованный тип model-слоя (struct, enum; не интерфейс);
-  # - приватный метод, НЕ использующий ресивер, — тот же случай;
-  # - непереносимые не задеваются: метод с обращением к ресиверу; функция,
-  #   ссылающаяся на package-level символы своего пакета (в т.ч. типы пакета
-  #   в результатах);
-  # - дополняет GID-133: тот загоняет приватные функции в методы своей
-  #   структуры, GID-195 уточняет — если функция целиком про model-значение,
-  #   её дом — сам model-тип;
-  # - исключения: //nolint:gidmodelmethod или settings.exclude
-  #   ("Функция" | "Тип.Метод").
+  # Semantics (fixed by the requirement of 2026-06-07):
+  # - scope: the roots of /domain/service and /domain/usecase (EndsWith) — the
+  #   convert/ and repository subpackages are not affected;
+  # - trigger: a private function with strictly one parameter T or *T, where
+  #   T is a named type of the model layer (struct, enum; not an interface);
+  # - a private method NOT using its receiver is the same case;
+  # - non-movable ones are not affected: a method accessing its receiver; a function
+  #   referencing package-level symbols of its own package (including package types
+  #   in the results);
+  # - complements GID-133: that one pushes private functions into methods of their
+  #   struct, GID-195 refines — if the function is entirely about a model value,
+  #   its home is the model type itself;
+  # - exclusions: //nolint:gidmodelmethod or settings.exclude
+  #   ("Function" | "Type.Method").
 
-  Сценарий: позитив — приватная функция над model-структурой
-    Допустим пакет оканчивается сегментами "domain/service"
-    И объявлена функция "snapshotTitle(s *model.Snapshot) string", использующая только "s"
-    Когда анализатор проверяет пакет
-    Тогда выводится диагностика "GID-195" с подсказкой оформить публичный метод model.Snapshot
+  Scenario: positive — a private function over a model struct
+    Given the package path ends with the segments "domain/service"
+    And the function "snapshotTitle(s *model.Snapshot) string" using only "s" is declared
+    When the analyzer checks the package
+    Then a "GID-195" diagnostic is reported with a hint to make it a public method of model.Snapshot
 
-  Сценарий: позитив — model-enum по значению
-    Допустим объявлена функция "isDone(st model.Status) bool"
-    Когда анализатор проверяет пакет
-    Тогда выводится диагностика "GID-195" про model.Status
+  Scenario: positive — a model enum by value
+    Given the function "isDone(st model.Status) bool" is declared
+    When the analyzer checks the package
+    Then a "GID-195" diagnostic about model.Status is reported
 
-  Сценарий: позитив — метод, не использующий ресивер
-    Допустим объявлен метод "(s *SnapshotService) renderSnapshot(snap *model.Snapshot) string"
-    И тело не обращается к "s"
-    Когда анализатор проверяет пакет
-    Тогда выводится диагностика "GID-195" про метод
+  Scenario: positive — a method not using its receiver
+    Given the method "(s *SnapshotService) renderSnapshot(snap *model.Snapshot) string" is declared
+    And the body does not access "s"
+    When the analyzer checks the package
+    Then a "GID-195" diagnostic about the method is reported
 
-  Сценарий: позитив — безымянный ресивер
-    Допустим объявлен метод "(*SnapshotService) pingSnapshot(s *model.Snapshot) bool"
-    Когда анализатор проверяет пакет
-    Тогда выводится диагностика "GID-195" про метод
+  Scenario: positive — an unnamed receiver
+    Given the method "(*SnapshotService) pingSnapshot(s *model.Snapshot) bool" is declared
+    When the analyzer checks the package
+    Then a "GID-195" diagnostic about the method is reported
 
-  Сценарий: негатив — метод использует ресивер
-    Допустим метод "decorate" читает "s.prefix"
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
-    # метод легитимно принадлежит структуре
+  Scenario: negative — the method uses its receiver
+    Given the method "decorate" reads "s.prefix"
+    When the analyzer checks the package
+    Then no diagnostic is reported
+    # the method legitimately belongs to the struct
 
-  Сценарий: негатив — функция зависит от своего пакета
-    Допустим функция "tagSnapshot" использует package-level константу пакета
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
-    # непереносима в model без переноса зависимостей
+  Scenario: negative — the function depends on its own package
+    Given the function "tagSnapshot" uses a package-level constant of the package
+    When the analyzer checks the package
+    Then no diagnostic is reported
+    # non-movable into model without moving the dependencies
 
-  Сценарий: негатив — результат содержит тип своего пакета
-    Допустим функция "wrapSnapshot(s *model.Snapshot) *SnapshotService"
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
-    # перенос в model создал бы обратную зависимость model → service
+  Scenario: negative — the result contains a type of its own package
+    Given the function "wrapSnapshot(s *model.Snapshot) *SnapshotService"
+    When the analyzer checks the package
+    Then no diagnostic is reported
+    # moving it into model would create a reverse dependency model → service
 
-  Сценарий: граница — не одно значение
-    Допустим объявлены "equalSnapshots(a, b *model.Snapshot)", "joinSnapshots(...model.Snapshot)" и "firstName([]model.Snapshot)"
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
+  Scenario: boundary — not a single value
+    Given "equalSnapshots(a, b *model.Snapshot)", "joinSnapshots(...model.Snapshot)" and "firstName([]model.Snapshot)" are declared
+    When the analyzer checks the package
+    Then no diagnostic is reported
 
-  Сценарий: граница — интерфейс model-слоя
-    Допустим объявлена функция "validateAny(v model.Validator)"
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
-    # интерфейсу метод не добавить
+  Scenario: boundary — an interface of the model layer
+    Given the function "validateAny(v model.Validator)" is declared
+    When the analyzer checks the package
+    Then no diagnostic is reported
+    # a method cannot be added to an interface
 
-  Сценарий: граница — параметр типа своего пакета
-    Допустим объявлена функция "optionsName(o *ServiceOptions)"
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
+  Scenario: boundary — a parameter of a type from its own package
+    Given the function "optionsName(o *ServiceOptions)" is declared
+    When the analyzer checks the package
+    Then no diagnostic is reported
 
-  Сценарий: граница — generic-функция и экспортируемая функция
-    Допустим объявлены "anyTitle[T any](v T)" и "TitleSnapshot(s *model.Snapshot)"
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
+  Scenario: boundary — a generic function and an exported function
+    Given "anyTitle[T any](v T)" and "TitleSnapshot(s *model.Snapshot)" are declared
+    When the analyzer checks the package
+    Then no diagnostic is reported
 
-  Сценарий: неприменимость — /dal/repository
-    Допустим пакет оканчивается сегментами "dal/repository"
-    И объявлена приватная функция с единственным model-параметром
-    Когда анализатор проверяет пакет
-    Тогда диагностика GID-195 не выводится
+  Scenario: non-applicability — /dal/repository
+    Given the package path ends with the segments "dal/repository"
+    And a private function with a single model parameter is declared
+    When the analyzer checks the package
+    Then no GID-195 diagnostic is reported
 
-  Сценарий: неприменимость — convert-подпакет service
-    Допустим пакет оканчивается сегментами "domain/service/convert"
-    Когда анализатор проверяет пакет
-    Тогда диагностика GID-195 не выводится
+  Scenario: non-applicability — the convert subpackage of service
+    Given the package path ends with the segments "domain/service/convert"
+    When the analyzer checks the package
+    Then no GID-195 diagnostic is reported
 
-  Сценарий: неприменимость — settings.exclude
-    Допустим в настройках линтера "exclude: [legacyTitle, Service.legacyRender]"
-    Когда анализатор проверяет пакет
-    Тогда диагностика на "legacyTitle" и "Service.legacyRender" не выводится
-    И прочие нарушения пакета по-прежнему ловятся
+  Scenario: non-applicability — settings.exclude
+    Given the linter setting "exclude: [legacyTitle, Service.legacyRender]"
+    When the analyzer checks the package
+    Then no diagnostic is reported on "legacyTitle" and "Service.legacyRender"
+    And other violations of the package are still caught
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (GID-195, belongs-to-model)
-#  [x] Выбран слой: go/analysis (нужны типы параметров и TypesInfo.Uses)
-#  [x] Заданы severity и сообщение ("GID-195: ... оформите публичным методом этого типа")
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [x] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (GID-195, belongs-to-model)
+#  [x] Layer chosen: go/analysis (parameter types and TypesInfo.Uses are needed)
+#  [x] Severity and message are defined ("GID-195: ... make it a public method of this type")
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [x] Rule enabled in .golangci.yml

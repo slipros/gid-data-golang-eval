@@ -1,4 +1,4 @@
-// Неприменимость: model — не entity, db-теги не требуются.
+// Not applicable: a model is not an entity, db tags are not required.
 package model
 
 type Snapshot struct {

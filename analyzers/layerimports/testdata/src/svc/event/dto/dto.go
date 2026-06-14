@@ -1,4 +1,4 @@
-// event-слой: DTO для kafka producer/consumer.
+// event layer: DTO for the kafka producer/consumer.
 package dto
 
 type SnapshotDTO struct {

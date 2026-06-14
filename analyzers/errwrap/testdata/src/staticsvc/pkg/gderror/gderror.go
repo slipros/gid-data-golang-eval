@@ -1,4 +1,4 @@
-// Stub gderror: конструктор сам собирает стек (исключение GID-177).
+// Stub of gderror: the constructor collects the stack itself (a GID-177 exclusion).
 package gderror
 
 type unhandledValueError struct{ v any }

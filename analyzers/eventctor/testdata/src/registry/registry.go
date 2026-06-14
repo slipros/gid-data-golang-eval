@@ -1,5 +1,5 @@
-// Stub чужого пакета registry: schema-функции возвращают *registry.Schema.
+// Stub of the foreign registry package: schema functions return *registry.Schema.
 package registry
 
-// Schema — тип чужого пакета, к консьюмерам/продьюсерам не относится.
+// Schema — a foreign package type, unrelated to consumers/producers.
 type Schema struct{}

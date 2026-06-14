@@ -12,7 +12,7 @@ func TestAnalyzer(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), validatorshape.Analyzer, "svc/...")
 }
 
-// TestExclude — типы из settings.exclude не репортятся.
+// TestExclude — types from settings.exclude are not reported.
 func TestExclude(t *testing.T) {
 	a := validatorshape.NewAnalyzer(validatorshape.Settings{
 		Exclude: []string{"HealthCheck"},

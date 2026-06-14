@@ -1,9 +1,9 @@
-// Eval для GID-216: вне event-слоя правило не применяется (неприменимость).
+// Eval for GID-216: outside the event layer the rule does not apply (inapplicability).
 package service
 
 type Service struct{}
 
-// Конструктор без logger вне event-слоя — НЕ флагается.
+// A constructor without a logger outside the event layer is NOT flagged.
 func NewService() *Service {
 	return &Service{}
 }

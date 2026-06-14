@@ -1,4 +1,4 @@
-// Позитив (GID-170): dal не зависит от event-слоя.
+// Positive (GID-170): dal does not depend on the event layer.
 package outbox
 
 import (
@@ -8,8 +8,8 @@ import (
 
 type Snapshot struct{}
 
-// Негатив: entity в dal — норма.
+// Negative: entity in dal is fine.
 func (o *Snapshot) Store(in entity.Snapshot) {}
 
-// Позитив выше: event-DTO в dal-слое запрещён.
+// Positive above: event DTO is forbidden in the dal layer.
 func (o *Snapshot) leak(in dto.SnapshotDTO) {}

@@ -1,10 +1,10 @@
-// Eval GID-180: неприменимость — пакет без init().
+// Eval GID-180: not applicable — a package without init().
 package noinit
 
 import "os"
 
-// Нет ни одной func init() → правило не активируется,
-// даже при наличии go-statement и I/O-вызовов в обычных функциях.
+// No func init() at all → the rule is not activated,
+// even with a go statement and I/O calls present in ordinary functions.
 
 func Run() {
 	go func() {}()

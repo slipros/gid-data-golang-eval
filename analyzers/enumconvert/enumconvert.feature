@@ -1,77 +1,77 @@
-# language: ru
+# language: en
 
-Функция: GID-143 — обработка отсутствующего ключа enum-конвертации (enumconvert)
-  Как разработчик
-  Я хочу, чтобы map-конвертация enum обрабатывала отсутствующий ключ
-  через gderror.NewUnhandledValueError
-  Чтобы неизвестное значение enum не превращалось молча в zero-value
+Feature: GID-143 — handling of a missing enum-conversion key (enumconvert)
+  As a developer
+  I want a map-based enum conversion to handle a missing key
+  via gderror.NewUnhandledValueError
+  So that an unknown enum value does not silently turn into a zero value
 
-  # Анализатор enumconvert, линтер gidenumconvert, LoadMode TypesInfo.
-  # Scope: только convert-пакеты (последний сегмент пути — convert),
-  #   матчится через internal/pathseg.EndsWith.
-  # Детект (по типам): индексация мапы m[key], где тип ключа — именованный
-  #   тип с underlying string (enum по GID-123), а тип значения — тоже
-  #   именованный тип (enum→enum / enum→модельный тип).
-  # gderror распознаётся по import-пути
+  # Analyzer enumconvert, linter gidenumconvert, LoadMode TypesInfo.
+  # Scope: only convert packages (the last path segment is convert),
+  #   matched via internal/pathseg.EndsWith.
+  # Detection (by types): a map index expression m[key] where the key type is a
+  #   named type with underlying string (enum per GID-123), and the value type is
+  #   also a named type (enum→enum / enum→model type).
+  # gderror is recognized by the import path
   #   gitlab.gid.team/gid-data/tech/golang/libs/helper.git/errors
-  #   и имени конструктора NewUnhandledValueError (стаб в testdata).
-  # Сгенерированный код (ast.IsGenerated) пропускается.
+  #   and the constructor name NewUnhandledValueError (a stub in testdata).
+  # Generated code (ast.IsGenerated) is skipped.
 
-  # --- Класс 1: позитивный (нарушение ловится) ---
+  # --- Class 1: positive (the violation is caught) ---
 
-  Сценарий: позитивный — индексация без comma-ok (одиночное присваивание)
-    Допустим convert-пакет с "v := statusMap[s]", где ключ — enum, значение — именованный тип
-    Когда анализатор gidenumconvert проверяет файл
-    Тогда выводится диагностика "GID-143: enum-конвертация через map без comma-ok — отсутствующий ключ должен давать gderror.NewUnhandledValueError" на "statusMap[s]"
+  Scenario: positive — indexing without comma-ok (single assignment)
+    Given a convert package with "v := statusMap[s]" where the key is an enum and the value is a named type
+    When the gidenumconvert analyzer checks the file
+    Then the diagnostic "GID-143: enum conversion via map without comma-ok. Fix: a missing key must return gderror.NewUnhandledValueError" is reported on "statusMap[s]"
 
-  Сценарий: позитивный — индексация без comma-ok (использование выражением)
-    Допустим convert-пакет с "return statusMap[s]"
-    Когда анализатор gidenumconvert проверяет файл
-    Тогда выводится диагностика "GID-143: enum-конвертация через map без comma-ok …"
+  Scenario: positive — indexing without comma-ok (used as an expression)
+    Given a convert package with "return statusMap[s]"
+    When the gidenumconvert analyzer checks the file
+    Then the diagnostic "GID-143: enum conversion via map without comma-ok …" is reported
 
-  Сценарий: позитивный — comma-ok есть, но в функции нет NewUnhandledValueError
-    Допустим convert-пакет с "v, ok := statusMap[s]" и без вызова gderror.NewUnhandledValueError в теле функции
-    Когда анализатор gidenumconvert проверяет файл
-    Тогда выводится диагностика "GID-143: отсутствующий ключ enum-конвертации обрабатывается gderror.NewUnhandledValueError" на "statusMap[s]"
+  Scenario: positive — comma-ok is present but the function has no NewUnhandledValueError
+    Given a convert package with "v, ok := statusMap[s]" and no call to gderror.NewUnhandledValueError in the function body
+    When the gidenumconvert analyzer checks the file
+    Then the diagnostic "GID-143: a missing enum-conversion key must be handled with gderror.NewUnhandledValueError" is reported on "statusMap[s]"
 
-  # --- Класс 2: негативный (чистый код проходит) ---
+  # --- Class 2: negative (clean code passes) ---
 
-  Сценарий: негативный — comma-ok + обработка отсутствующего ключа
-    Допустим convert-пакет с "v, ok := statusMap[s]; if !ok { return \"\", gderror.NewUnhandledValueError(s) }"
-    Когда анализатор gidenumconvert проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — comma-ok + handling of the missing key
+    Given a convert package with "v, ok := statusMap[s]; if !ok { return \"\", gderror.NewUnhandledValueError(s) }"
+    When the gidenumconvert analyzer checks the file
+    Then no diagnostic is reported
 
-  # --- Класс 3: граничный (похоже на нарушение, но допустимо) ---
+  # --- Class 3: boundary (looks like a violation but is allowed) ---
 
-  Сценарий: граничный — ключ мапы базовый string (не enum)
-    Допустим convert-пакет с "titleMap[s]", где ключ — string, а не именованный enum
-    Когда анализатор gidenumconvert проверяет файл
-    Тогда диагностика не выводится
-    # Базовый ключ string/int — не enum-конвертация.
+  Scenario: boundary — the map key is a plain string (not an enum)
+    Given a convert package with "titleMap[s]" where the key is string, not a named enum
+    When the gidenumconvert analyzer checks the file
+    Then no diagnostic is reported
+    # A plain string/int key is not an enum conversion.
 
-  Сценарий: граничный — значение мапы базовый тип (не именованный)
-    Допустим convert-пакет с "weightMap[s]", где значение — int
-    Когда анализатор gidenumconvert проверяет файл
-    Тогда диагностика не выводится
-    # Значение не именованный тип — это не enum→enum/модель.
+  Scenario: boundary — the map value is a basic type (not named)
+    Given a convert package with "weightMap[s]" where the value is int
+    When the gidenumconvert analyzer checks the file
+    Then no diagnostic is reported
+    # The value is not a named type — this is not enum→enum/model.
 
-  Сценарий: граничный — та же конструкция вне convert-пакета
-    Допустим пакет в "/domain/service" (не convert) с "return statusMap[s]"
-    Когда анализатор gidenumconvert проверяет файл
-    Тогда диагностика не выводится
-    # Scope — только convert-пакеты.
+  Scenario: boundary — the same construct outside a convert package
+    Given a package in "/domain/service" (not convert) with "return statusMap[s]"
+    When the gidenumconvert analyzer checks the file
+    Then no diagnostic is reported
+    # The scope is convert packages only.
 
-  # --- Класс 4: неприменимость ---
+  # --- Class 4: non-applicability ---
 
-  Сценарий: неприменимость — convert-пакет без map-индексаций enum
-    Допустим convert-пакет с обычными полевыми конвертерами без мап
-    Когда анализатор gidenumconvert проверяет файл
-    Тогда диагностика не выводится
+  Scenario: non-applicability — a convert package without enum map indexing
+    Given a convert package with ordinary field converters without maps
+    When the gidenumconvert analyzer checks the file
+    Then no diagnostic is reported
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (RULES.md, GID-143)
-#  [x] Выбран слой: go/analysis (пакет enumconvert: gidenumconvert)
-#  [x] Заданы сообщения ("GID-143: …")
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [ ] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (RULES.md, GID-143)
+#  [x] Layer chosen: go/analysis (package enumconvert: gidenumconvert)
+#  [x] Messages are defined ("GID-143: …")
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [ ] Rule enabled in .golangci.yml

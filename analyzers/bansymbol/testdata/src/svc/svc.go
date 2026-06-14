@@ -6,21 +6,21 @@ import (
 	"example.com/otherdb"
 )
 
-// --- Класс 1: позитивный (нарушение ловится) ---
+// --- Class 1: positive (the violation is caught) ---
 
-// Прямой вызов запрещённого gdpostgres.TQuery.
+// A direct call of the banned gdpostgres.TQuery.
 func callTQuery(conn *gdpostgres.Conn) (int, error) {
 	return gdpostgres.TQuery[int](conn, "select 1") // want `GID-217: gdpostgres\.TQuery is banned\. Fix: use conn methods directly: Select, ScanRow, NamedStruct or Transaction \(repo\.md\)`
 }
 
-// Generic-инстанциация с явным типовым аргументом — резолвится так же.
+// A generic instantiation with an explicit type argument — resolves the same way.
 func callTQueryString(conn *gdpostgres.Conn) (string, error) {
 	return gdpostgres.TQuery[string](conn, "select name") // want `GID-217: gdpostgres\.TQuery is banned\. Fix: use conn methods directly: Select, ScanRow, NamedStruct or Transaction \(repo\.md\)`
 }
 
-// --- Класс 2: негативный (чистый код проходит) ---
+// --- Class 2: negative (clean code passes) ---
 
-// Разрешённые прямые методы conn.
+// Allowed direct conn methods.
 func callSelect(conn *gdpostgres.Conn, dest any) error {
 	return gdpostgres.Select(conn, dest, "select 1")
 }
@@ -29,7 +29,7 @@ func callNamedStruct(conn *gdpostgres.Conn, arg any) (string, error) {
 	return gdpostgres.NamedStruct(conn, arg)
 }
 
-// TQuery из ДРУГОГО пакета с тем же именем — не флагается.
+// TQuery from a DIFFERENT package with the same name — not flagged.
 func callOtherTQuery() (int, error) {
 	return otherdb.TQuery[int]("select 1")
 }

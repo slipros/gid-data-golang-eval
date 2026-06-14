@@ -1,4 +1,4 @@
-// Eval GID-176 (часть 2): /domain/** — Wrap нестатичной ошибки запрещён.
+// Eval of GID-176 (part 2): /domain/** — Wrap of a non-static error is forbidden.
 package service
 
 import (
@@ -11,7 +11,7 @@ type Service struct{}
 
 func (s *Service) call() error { return nil }
 
-// --- Позитив: Wrap пришедшей нестатичной ошибки ---
+// --- Positive: Wrap of an incoming non-static error ---
 
 func (s *Service) badWrap() error {
 	err := s.call()
@@ -22,20 +22,20 @@ func (s *Service) badWrapParam(err error) error {
 	return errors.Wrap(err, "ctx") // want `GID-176: the stack is already collected at the boundary\. Fix: use errors\.WithMessage instead of errors\.Wrap for an incoming error`
 }
 
-// --- Негатив: WithMessage для пришедшей ошибки ---
+// --- Negative: WithMessage for an incoming error ---
 
 func (s *Service) goodWithMessage() error {
 	err := s.call()
 	return errors.WithMessage(err, "ctx")
 }
 
-// --- Граничный: Wrap статичной ошибки из model — разрешено ---
+// --- Boundary: Wrap of a static error from model — allowed ---
 
 func (s *Service) goodWrapStatic() error {
 	return errors.Wrap(model.ErrSnapshotNotFound, "ctx")
 }
 
-// --- Неприменимость: не Wrap (WithStack пришедшей ошибки) — здесь GID-176-часть-2 молчит ---
+// --- Inapplicable: not Wrap (WithStack of an incoming error) — GID-176 part 2 stays silent here ---
 
 func (s *Service) notWrap() error {
 	err := s.call()

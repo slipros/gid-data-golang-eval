@@ -1,7 +1,7 @@
-// Eval GID-171: подпакет model/filter — полноправный model-слой, ок.
+// Eval of GID-171: the model/filter subpackage is a full-fledged model layer, fine.
 package filter
 
-// --- Негативный класс: чистый код проходит ---
+// --- Negative class: clean code passes ---
 
 type JobsFilter struct {
 	Status string

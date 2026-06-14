@@ -1,11 +1,11 @@
-// Eval для GID-191 (subtest names: без пробелов и слешей).
+// Eval for GID-191 (subtest names: no spaces or slashes).
 package subtestname
 
 import "testing"
 
 const nameWithSpace = "has space"
 
-// --- Позитивные кейсы (нарушение ловится) ---
+// --- Positive cases (the violation is caught) ---
 
 func TestPositive(t *testing.T) {
 	t.Run("with space", func(t *testing.T) {}) // want `GID-191: subtest name "with space" contains a space\. Fix: use snake_case, go test -run 'Test/name' will not match it`
@@ -17,16 +17,16 @@ func BenchmarkPositive(b *testing.B) {
 	b.Run("x y", func(b *testing.B) {}) // want `GID-191: subtest name "x y" contains a space\. Fix: use snake_case, go test -run 'Test/name' will not match it`
 }
 
-// --- Негативные кейсы (чистый код проходит) ---
+// --- Negative cases (clean code passes) ---
 
 func TestNegative(t *testing.T) {
 	t.Run("ok_name", func(t *testing.T) {})
 	t.Run("CamelCase", func(t *testing.T) {})
 }
 
-// --- Граничные кейсы ---
+// --- Boundary cases ---
 
-// table-driven: имя из tt.name — не константа, не матчится.
+// table-driven: a name from tt.name is not a constant, not matched.
 func TestTableDriven(t *testing.T) {
 	tests := []struct {
 		name string
@@ -39,7 +39,7 @@ func TestTableDriven(t *testing.T) {
 	}
 }
 
-// Свой тип с методом Run(string, func) — не *testing.T/*testing.B, не матчится.
+// A custom type with a Run(string, func) method — not *testing.T/*testing.B, not matched.
 type fakeT struct{}
 
 func (fakeT) Run(name string, fn func()) {}

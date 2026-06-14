@@ -1,4 +1,4 @@
-// Позитив (GID-170): domain не зависит от event-слоя.
+// Positive (GID-170): domain does not depend on the event layer.
 package notifier
 
 import (
@@ -10,15 +10,15 @@ import (
 
 type Snapshot struct{}
 
-// Негатив: model в domain — норма.
+// Negative: model in domain is fine.
 func (n *Snapshot) Build() model.Snapshot {
 	return model.Snapshot{}
 }
 
-// Позитив выше: event-DTO в domain-слое запрещён.
+// Positive above: event DTO is forbidden in the domain layer.
 func (n *Snapshot) leak(in dto.SnapshotDTO) {}
 
-// Позитивы выше (GID-225): composition root и транспорт — листья.
+// Positives above (GID-225): the composition root and transport are leaves.
 func (n *Snapshot) leakLeaves() {
 	app.Wire()
 	middleware.Noop()

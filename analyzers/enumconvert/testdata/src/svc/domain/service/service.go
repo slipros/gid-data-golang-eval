@@ -1,5 +1,5 @@
-// Граничный: та же конструкция вне convert-пакета — не матчится.
-// Пакет service (последний сегмент пути не convert) → вне scope.
+// Edge: the same construct outside a convert package — not matched.
+// The service package (the last path segment is not convert) → out of scope.
 package service
 
 type (
@@ -9,7 +9,7 @@ type (
 
 var statusMap = map[EntityStatus]ModelStatus{"active": "active"}
 
-// Та же enum-индексация мапы без comma-ok — но вне convert-пакета, не матчим.
+// The same enum map indexing without comma-ok — but outside a convert package, not matched.
 func mapStatus(s EntityStatus) ModelStatus {
 	return statusMap[s]
 }

@@ -1,4 +1,4 @@
-// Eval для GID-137 (only-gofrs-uuid).
+// Eval for GID-137 (only-gofrs-uuid).
 package onlygofrsuuid
 
 import (
@@ -11,16 +11,16 @@ import (
 	"example.com/uuidutil"
 )
 
-// --- Позитив: запрещённые импорты пойманы выше (включая граничный кейс с алиасом) ---
+// --- Positive: the forbidden imports are caught above (including the alias boundary case) ---
 
 func bad() googleuuid.UUID { return googleuuid.New() }
 
 func badSatori() satori.UUID { return satori.NewV4() }
 
-// --- Негатив: разрешённая библиотека проходит ---
+// --- Negative: the allowed library passes ---
 
 func good() uuid.UUID { return uuid.Must(uuid.NewV7()) }
 
-// --- Неприменимость: пакет с "uuid" в имени, но не uuid-библиотека ---
+// --- Not applicable: a package with "uuid" in the name, but not a uuid library ---
 
 func notApplicable() string { return uuidutil.Normalize("x") }

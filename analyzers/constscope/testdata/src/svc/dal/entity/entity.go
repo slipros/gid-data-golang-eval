@@ -1,4 +1,4 @@
-// Eval для GID-194: entity-слой — package-level константы легальны.
+// Eval for GID-194: the entity layer — package-level constants are legal.
 package entity
 
 const TableSnapshots = "snapshots"

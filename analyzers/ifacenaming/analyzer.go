@@ -1,14 +1,14 @@
-// Package ifacenaming реализует правило GID-173 (iface-entity-prefix):
+// Package ifacenaming implements rule GID-173 (iface-entity-prefix):
 //
-//   - GID-173 (gidifacenaming): интерфейсы зависимостей именуются с
-//     префиксом сущности (`HelloRepository`, `HelloConnection`). Голое имя
-//     роли (`Repository`, `Connection`, …) запрещено: по нему нельзя понять,
-//     зависимостью какой сущности является интерфейс.
+//   - GID-173 (gidifacenaming): dependency interfaces are named with an
+//     entity prefix (`HelloRepository`, `HelloConnection`). A bare role name
+//     (`Repository`, `Connection`, …) is forbidden: it does not reveal which
+//     entity the interface is a dependency of.
 //
-// Scope: пакеты в слоях /domain/service, /domain/usecase, /dal/repository,
-// /server/**, /event/** (pathseg.Contains). Проверяются объявления
-// interface-типов, чьё имя ТОЧНО совпадает с голой ролью из словаря.
-// Сгенерированный код пропускается.
+// Scope: packages in the layers /domain/service, /domain/usecase, /dal/repository,
+// /server/**, /event/** (pathseg.Contains). Declarations of interface types
+// whose name EXACTLY matches a bare role from the dictionary are checked.
+// Generated code is skipped.
 package ifacenaming
 
 import (
@@ -21,16 +21,16 @@ import (
 
 const ruleID = "GID-173"
 
-// Analyzer — вариант с дефолтным словарём ролей.
+// Analyzer — variant with the default role dictionary.
 var Analyzer = NewAnalyzer(Settings{})
 
-// Settings — настройки линтера из .golangci.yml.
+// Settings — linter settings from .golangci.yml.
 type Settings struct {
-	// Names — словарь голых ролей (заменяет дефолтный список).
+	// Names — the dictionary of bare roles (replaces the default list).
 	Names []string `json:"names"`
 }
 
-// NewAnalyzer строит анализатор GID-173 из настроек линтера (.golangci.yml).
+// NewAnalyzer builds the GID-173 analyzer from the linter settings (.golangci.yml).
 func NewAnalyzer(s Settings) *analysis.Analyzer {
 	names := resolveNames(s)
 	roles := make(map[string]struct{}, len(names))
@@ -82,10 +82,10 @@ func run(pass *analysis.Pass, roles map[string]struct{}) (any, error) {
 					continue
 				}
 				if _, ok := ts.Type.(*ast.InterfaceType); !ok {
-					continue // не интерфейс — правило не применяется
+					continue // not an interface — the rule does not apply
 				}
 				if _, ok := roles[ts.Name.Name]; !ok {
-					continue // имя не совпадает с голой ролью точно
+					continue // the name does not exactly match a bare role
 				}
 				pass.Reportf(ts.Name.Pos(),
 					"%s: interface %q must be named with an entity prefix. Fix: e.g. HelloRepository",
@@ -96,7 +96,7 @@ func run(pass *analysis.Pass, roles map[string]struct{}) (any, error) {
 	return nil, nil
 }
 
-// inScope сообщает, относится ли пакет к слою, где действует правило.
+// inScope reports whether the package belongs to a layer where the rule applies.
 func inScope(path string) bool {
 	return pathseg.Contains(path, "domain", "service") ||
 		pathseg.Contains(path, "domain", "usecase") ||

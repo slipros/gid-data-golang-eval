@@ -1,9 +1,9 @@
-// Package ctornaming реализует правило GID-104: конструктор именуется
-// New<Entity> (NewHello, NewPlaceOrder). Голый New не подходит — все
-// сущности слоя живут в одном пакете, будет конфликт имён.
+// Package ctornaming implements rule GID-104: a constructor is named
+// New<Entity> (NewHello, NewPlaceOrder). Bare New does not work — all
+// entities of a layer live in one package, so names would clash.
 //
-// Исключение: composition root (internal/app/...) — там по шаблону
-// живёт функция New() приложения.
+// Exception: the composition root (internal/app/...) — by the template
+// the application's New() function lives there.
 package ctornaming
 
 import (
@@ -16,7 +16,7 @@ import (
 
 const ruleID = "GID-104"
 
-// Analyzer — правило GID-104: a constructor must be named New<Entity>, not bare New. Fix: rename New to New<Entity>.
+// Analyzer — rule GID-104: a constructor must be named New<Entity>, not bare New. Fix: rename New to New<Entity>.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidctor",
 	Doc:  ruleID + ": a constructor must be named New<Entity>, not bare New. Fix: rename New to New<Entity>",

@@ -1,67 +1,68 @@
 # gid-data-golang-eval
 
-Кастомный плагин golangci-lint, переносящий правила внутреннего стайлгайда
-(skill `go-styleguide`) в детерминированный линтер для **локальной разработки**.
+A custom golangci-lint plugin that turns the internal style guide
+(skill `go-styleguide`) into a deterministic linter for **local development**.
 
-## Статус: линтер полностью заменяет стилевую часть скилла `go-styleguide`
+## Status: the linter fully replaces the style part of the `go-styleguide` skill
 
-Верифицировано 2026-06-07 полной сверкой всех доков скилла (31 файл) с реестром:
+Verified on 2026-06-07 by a full cross-check of all skill docs (31 files) against the registry:
 
-- каждое детерминируемое правило стайлгайда реализовано (GID-001…GID-217, все со
-  статусом ✅ и обязательным eval) либо покрыто стандартными линтерами golangci-lint
-  (слой 3, GID-201…GID-209);
-- непереносимые эвристики явно перечислены в [RULES.md](RULES.md) «Не переносим»
-  и [FINDINGS.md](FINDINGS.md) §2.4/2.5 — остаются на code review осознанно;
-- сверх скилла добавлены правила Uber/Google best practices (GID-178…GID-197),
-  которых скилл не проверял, — итоговый контроль стиля строже ручного review по скиллу;
-- `make eval` — все analysistest зелёные; `make lint-fast` на самом репозитории —
+- every deterministically checkable style-guide rule is implemented (GID-001…GID-234,
+  all ✅ with a mandatory eval) or covered by standard golangci-lint linters
+  (layer 3, GID-201…GID-209);
+- heuristics that cannot be ported are explicitly listed in [RULES.md](RULES.md)
+  ("Not portable") and [FINDINGS.md](FINDINGS.md) §2.4/2.5 — they deliberately stay
+  on code review;
+- on top of the skill, Uber/Google best-practice rules were added (GID-178…GID-197)
+  that the skill never checked — the resulting style control is stricter than a
+  manual skill-based review.
+- `make eval` — all analysistest suites green; `make lint-fast` on this repository —
   0 issues.
 
-Скилл остаётся источником шаблонов кода и формата проектной документации
-(спеки задач, README-индексы); проверку стиля кода он больше не выполняет —
-это делает линтер детерминированно.
+The skill remains the source of code templates and the project documentation format
+(task specs, README indexes); it no longer performs code style checking —
+the linter does that deterministically.
 
-- **[RULES.md](RULES.md)** — реестр правил со статусами; у каждого правила обязателен eval
-- **[PRD.md](PRD.md)** — концепция
-- `analyzers/` — собственные go/analysis-анализаторы (одно правило = один линтер)
-- `ruleguard/rules.go` — простые паттерн-правила (gocritic → ruleguard)
-- `.golangci.yml` — эталонный конфиг со всеми линтерами и примерами настроек;
-  база — боевой конфиг сервиса consent-api (UDMP/backend-go), поверх — слои GID
+- **[RULES.md](RULES.md)** — rule registry with statuses; every rule must have an eval
+- `analyzers/` — go/analysis analyzers (one rule or a group of related GID-IDs = one linter)
+- `analyzers/patterns/` — simple AST pattern rules (GID-001…008), layer 1
+- `.golangci.yml` — reference config with all linters and settings examples;
+  based on the production config of consent-api (UDMP/backend-go) with GID layers on top
 
-## Быстрый старт
+## Quick start
 
-Требуется golangci-lint **v2.9.0** (версия зафиксирована в `.custom-gcl.yml`).
-
-```sh
-make build         # собрать бинарь bin/custom-gcl
-make eval          # прогнать eval всех правил (go test ./...)
-make lint-fast     # проверить код собранным бинарём
-make install-hook  # git pre-commit hook с локальной проверкой
-```
-
-## Подключение в своём сервисе
-
-`gid*`-линтеры — это module-плагины golangci-lint: обычный `golangci-lint run`
-их **не видит**, они вкомпилируются в отдельный бинарь `custom-gcl` (полный
-golangci-lint v2.9.0 + наши линтеры). Собранным бинарём пользуешься как обычным
-golangci-lint — стандартные и `gid*`-линтеры работают одним прогоном по одному
-`.golangci.yml`. Бинарь собирается одним из двух способов.
-
-### Способ A — `go install` (рекомендуется)
-
-Бинарь ставится напрямую, без клонирования golangci-lint:
+Requires golangci-lint **v2.9.0** (pinned in `.custom-gcl.yml`).
 
 ```sh
-go install github.com/slipros/gid-data-golang-eval/cmd/custom-gcl@v0.3.0
+make build         # build the bin/custom-gcl binary
+make eval          # run evals for all rules (go test ./...)
+make lint-fast     # lint this repository with the built binary
+make install-hook  # git pre-commit hook with the local check
 ```
 
-`custom-gcl` появится в `$(go env GOPATH)/bin` (добавь в `PATH`). Обновление —
-тем же `go install` с новым тегом. В каждом сервисе нужны только `.golangci.yml`
-и `ruleguard/rules.go` — клонировать ничего не нужно.
+## Using it in your service
 
-### Способ B — `golangci-lint custom` (.custom-gcl.yml)
+`gid*` linters are golangci-lint module plugins: a regular `golangci-lint run`
+does **not** see them — they are compiled into a separate `custom-gcl` binary
+(full golangci-lint v2.9.0 + our linters). You use the built binary exactly like
+regular golangci-lint — standard and `gid*` linters run in a single pass over a
+single `.golangci.yml`. Build the binary in one of two ways.
 
-Локальный бинарь в проекте (нужен установленный golangci-lint v2.9.0):
+### Option A — `go install` (recommended)
+
+The binary is installed directly, no golangci-lint clone needed:
+
+```sh
+go install github.com/slipros/gid-data-golang-eval/cmd/custom-gcl@latest
+```
+
+`custom-gcl` lands in `$(go env GOPATH)/bin` (add it to `PATH`). To upgrade, rerun
+`go install` with a newer tag. A service only needs its `.golangci.yml` —
+nothing else to clone or copy.
+
+### Option B — `golangci-lint custom` (.custom-gcl.yml)
+
+A local binary inside the project (requires golangci-lint v2.9.0 installed):
 
 ```yaml
 # .custom-gcl.yml
@@ -70,27 +71,25 @@ name: custom-gcl
 destination: ./bin
 plugins:
   - module: 'github.com/slipros/gid-data-golang-eval'
-    version: v0.3.0          # или path: /локальный/путь для разработки
+    version: vX.Y.Z          # latest release tag (see Releases); or path: /local/path for development
 ```
 
-Собрать: `golangci-lint custom` → `./bin/custom-gcl`.
+Build: `golangci-lint custom` → `./bin/custom-gcl`.
 
-### Дальше (для обоих способов)
+### Next (for both options)
 
-1. Взять за основу эталонный [.golangci.yml](.golangci.yml) — включить нужные
-   `gid*`-линтеры, настроить исключения (`settings.exclude`, `settings.tree`,
-   `settings.tags`, …); убрать репо-специфичные куски (exclusions для `testdata`
-   и `ruleguard/rules.go`, `giddirtree.settings.tree`).
-2. Скопировать `ruleguard/rules.go` в сервис (путь задаётся в
-   `settings.gocritic.settings.ruleguard.rules`, по умолчанию `${base-path}/ruleguard/rules.go`).
-3. Запуск: `custom-gcl run ./...` (способ A) или `./bin/custom-gcl run ./...` (способ B).
+1. Start from the reference [.golangci.yml](.golangci.yml) — enable the `gid*`
+   linters you need, configure exceptions (`settings.exclude`, `settings.tree`,
+   `settings.tags`, …); drop the repo-specific bits (exclusions for `testdata`,
+   `giddirtree.settings.tree`).
+2. Run: `custom-gcl run ./...` (option A) or `./bin/custom-gcl run ./...` (option B).
 
 ## IDE
 
-Чтобы диагностики были видны прямо в редакторе, IDE должна вызывать
-`custom-gcl` вместо обычного golangci-lint. Путь — `$(go env GOPATH)/bin/custom-gcl`
-при `go install` (способ A) либо `${workspaceFolder}/bin/custom-gcl` при сборке
-в проект (способ B):
+For diagnostics to show up right in the editor, the IDE must invoke `custom-gcl`
+instead of regular golangci-lint. The path is `$(go env GOPATH)/bin/custom-gcl`
+for `go install` (option A) or `${workspaceFolder}/bin/custom-gcl` for an
+in-project build (option B):
 
 - **VS Code** (`settings.json`):
 
@@ -101,21 +100,21 @@ plugins:
   }
   ```
 
-  (`custom-gcl` из `PATH` при `go install`; иначе абсолютный путь к бинарю.)
+  (`custom-gcl` from `PATH` with `go install`; otherwise the absolute path to the binary.)
 
-- **GoLand**: Settings → Tools → Go Linter (плагин golangci-lint) → указать
-  путь к `custom-gcl`.
+- **GoLand**: Settings → Tools → Go Linter (golangci-lint plugin) → point it
+  at `custom-gcl`.
 
-## Исключения из правил
+## Rule exceptions
 
-Два уровня (подробности в [RULES.md](RULES.md)):
+Two levels (details in [RULES.md](RULES.md)):
 
-- точечно — `//nolint:<линтер>` с комментарием-обоснованием;
-- централизованно — `settings` линтера в `.golangci.yml`
-  (например, `gidcreateupdate.settings.exclude`, `giddbtags.settings.tags`,
+- targeted — `//nolint:<linter>` with a justification comment;
+- centralized — the linter's `settings` in `.golangci.yml`
+  (e.g. `gidcreateupdate.settings.exclude`, `giddbtags.settings.tags`,
   `giddirtree.settings.tree`).
 
-## Добавление нового правила
+## Adding a new rule
 
-Процесс — в конце [RULES.md](RULES.md): строка реестра → реализация →
-**обязательный eval** (analysistest, 4 класса кейсов) → включение в конфиг.
+The process is at the end of [RULES.md](RULES.md): registry row → `.feature` spec →
+implementation → **mandatory eval** (analysistest, 4 case classes) → enable in the config.

@@ -1,8 +1,8 @@
-// Package nogetprefix реализует правило GID-101: методы для получения
-// значений не имеют префикса Get (go-styleguide, «Именование методов»).
+// Package nogetprefix implements rule GID-101: methods that fetch values do
+// not carry the Get prefix (go-styleguide, "Method naming").
 //
-// Исключение — сгенерированный код (protobuf и т.п.), где Get-префикс
-// является частью контракта.
+// The exception is generated code (protobuf and the like), where the Get
+// prefix is part of the contract.
 package nogetprefix
 
 import (
@@ -16,7 +16,7 @@ import (
 
 const ruleID = "GID-101"
 
-// Analyzer — правило GID-101: the Get prefix is forbidden in method names. Fix: name getters without it (GetUser -> User).
+// Analyzer — rule GID-101: the Get prefix is forbidden in method names. Fix: name getters without it (GetUser -> User).
 var Analyzer = &analysis.Analyzer{
 	Name: "gidnogetprefix",
 	Doc:  ruleID + ": the Get prefix is forbidden in method names. Fix: name getters without it (GetUser -> User)",
@@ -43,9 +43,9 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-// hasGetPrefix сообщает, начинается ли имя со слова Get: голое "Get" или
-// "Get" + слово с заглавной буквы ("GetJob"). Имена вида "Getaway",
-// где get — часть другого слова, не считаются нарушением.
+// hasGetPrefix reports whether the name starts with the word Get: a bare "Get"
+// or "Get" + a capitalized word ("GetJob"). Names like "Getaway", where get is
+// part of another word, are not considered a violation.
 func hasGetPrefix(name string) bool {
 	if name == "Get" {
 		return true

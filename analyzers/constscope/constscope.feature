@@ -1,115 +1,115 @@
-# language: ru
+# language: en
 
-Функция: GID-194 — константы объявляются там, где используются
-  Как разработчик
-  Я хочу, чтобы package-level константы вне model/entity-слоёв не появлялись,
-  а объявлялись внутри функции, где непосредственно используются
-  Чтобы область видимости константы совпадала с областью её применения,
-  а общие константы жили в одном месте — /domain/model или /dal/entity
+Feature: GID-194 — constants are declared where they are used
+  As a developer
+  I want package-level constants outside the model/entity layers not to appear,
+  but to be declared inside the function where they are directly used
+  So that the constant's scope matches the scope of its usage,
+  and shared constants live in one place — /domain/model or /dal/entity
 
-  # Семантика (зафиксирована требованием 2026-06-07):
-  # - const внутри функции — целевое состояние, всегда норма;
-  # - /domain/model/** и /dal/entity/** (включая подпакеты) — дом общих
-  #   констант, package-level там легален (согласовано с GID-123/167/169);
-  # - неэкспортируемая package-level const, используемая ≥2 функциями пакета,
-  #   остаётся package-level (аналогично исключению GID-133 для хелперов);
-  # - использование вне тела функции (package-level var/const/type, сигнатура,
-  #   тестовый или сгенерированный файл) делает константу непереносимой;
-  # - экспортируемая const вне model/entity — нарушение: внешнее использование
-  #   анализатору не видно, а общие константы живут в model/entity;
-  # - iota-блок переносится только целиком — оценивается группой;
-  # - исключения: //nolint:gidconstscope или settings.exclude (имена констант).
+  # Semantics (fixed by the requirement of 2026-06-07):
+  # - a const inside a function is the target state, always fine;
+  # - /domain/model/** and /dal/entity/** (including subpackages) are the home of
+  #   shared constants, package-level is legal there (aligned with GID-123/167/169);
+  # - an unexported package-level const used by ≥2 functions of the package
+  #   stays package-level (similar to the GID-133 exception for helpers);
+  # - usage outside a function body (package-level var/const/type, a signature,
+  #   a test or generated file) makes the constant non-movable;
+  # - an exported const outside model/entity is a violation: external usage
+  #   is invisible to the analyzer, and shared constants live in model/entity;
+  # - an iota block can only be moved as a whole — it is evaluated as a group;
+  # - exclusions: //nolint:gidconstscope or settings.exclude (constant names).
 
-  Сценарий: позитив — экспортируемая константа в сервисном пакете
-    Допустим пакет оканчивается сегментами "domain/service"
-    И объявлена package-level константа "DefaultPageSize"
-    Когда анализатор проверяет пакет
-    Тогда выводится диагностика "GID-194" на константе "DefaultPageSize"
+  Scenario: positive — an exported constant in a service package
+    Given the package path ends with the segments "domain/service"
+    And the package-level constant "DefaultPageSize" is declared
+    When the analyzer checks the package
+    Then a "GID-194" diagnostic is reported on the constant "DefaultPageSize"
 
-  Сценарий: позитив — константа используется только одним методом
-    Допустим пакет оканчивается сегментами "domain/service"
-    И package-level константа "snapshotPrefix" используется только методом "Snapshot.Render"
-    Когда анализатор проверяет пакет
-    Тогда выводится диагностика "GID-194" с подсказкой объявить её внутри функции
+  Scenario: positive — a constant used by only one method
+    Given the package path ends with the segments "domain/service"
+    And the package-level constant "snapshotPrefix" is used only by the method "Snapshot.Render"
+    When the analyzer checks the package
+    Then a "GID-194" diagnostic is reported with a hint to declare it inside the function
 
-  Сценарий: негатив — константа разделяется двумя методами пакета
-    Допустим package-level константа "snapshotTable" используется методами "Render" и "Table"
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
+  Scenario: negative — a constant shared by two methods of the package
+    Given the package-level constant "snapshotTable" is used by the methods "Render" and "Table"
+    When the analyzer checks the package
+    Then no diagnostic is reported
 
-  Сценарий: негатив — константа объявлена внутри функции
-    Допустим константа "endpoint" объявлена в теле метода "Endpoint"
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
+  Scenario: negative — a constant declared inside a function
+    Given the constant "endpoint" is declared in the body of the method "Endpoint"
+    When the analyzer checks the package
+    Then no diagnostic is reported
 
-  Сценарий: граница — iota-группа целиком используется одной функцией
-    Допустим объявлен блок "const (stateIdle = iota; stateBusy)"
-    И обе константы используются только функцией "stateName"
-    Когда анализатор проверяет пакет
-    Тогда выводится одна диагностика "GID-194" на блоке const
+  Scenario: boundary — an iota group used entirely by one function
+    Given the block "const (stateIdle = iota; stateBusy)" is declared
+    And both constants are used only by the function "stateName"
+    When the analyzer checks the package
+    Then a single "GID-194" diagnostic is reported on the const block
 
-  Сценарий: граница — iota-группа используется разными функциями
-    Допустим объявлен блок "const (colorRed = iota; colorBlue)"
-    И константы используются функциями "isRed" и "isBlue"
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
+  Scenario: boundary — an iota group used by different functions
+    Given the block "const (colorRed = iota; colorBlue)" is declared
+    And the constants are used by the functions "isRed" and "isBlue"
+    When the analyzer checks the package
+    Then no diagnostic is reported
 
-  Сценарий: граница — iota-группа с экспортируемой константой
-    Допустим объявлен блок "const (ModePrimary = iota; modeSecondary)"
-    Когда анализатор проверяет пакет
-    Тогда выводится диагностика "GID-194" только об экспорте "ModePrimary"
-    И локализация блока не предлагается
+  Scenario: boundary — an iota group with an exported constant
+    Given the block "const (ModePrimary = iota; modeSecondary)" is declared
+    When the analyzer checks the package
+    Then a "GID-194" diagnostic is reported only about the export of "ModePrimary"
+    And localizing the block is not suggested
 
-  Сценарий: граница — использование в package-level var
-    Допустим константа "defaultLabel" используется в инициализации package-level var
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
-    # константу нельзя перенести внутрь функции
+  Scenario: boundary — usage in a package-level var
+    Given the constant "defaultLabel" is used in the initialization of a package-level var
+    When the analyzer checks the package
+    Then no diagnostic is reported
+    # the constant cannot be moved inside a function
 
-  Сценарий: граница — использование в сигнатуре функции
-    Допустим константа "bufSize" задаёт длину массива в параметре функции
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
-    # сигнатура вычисляется вне тела функции
+  Scenario: boundary — usage in a function signature
+    Given the constant "bufSize" defines an array length in a function parameter
+    When the analyzer checks the package
+    Then no diagnostic is reported
+    # the signature is evaluated outside the function body
 
-  Сценарий: граница — неиспользуемая константа
-    Допустим package-level константа "orphan" нигде не используется
-    Когда анализатор проверяет пакет
-    Тогда диагностика GID-194 не выводится
-    # неиспользуемый код — зона линтера unused
+  Scenario: boundary — an unused constant
+    Given the package-level constant "orphan" is not used anywhere
+    When the analyzer checks the package
+    Then no GID-194 diagnostic is reported
+    # unused code is the domain of the unused linter
 
-  Сценарий: граница — использование только из теста или сгенерированного файла
-    Допустим константа используется только в "*_test.go" или "zz_generated.go"
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
+  Scenario: boundary — usage only from a test or generated file
+    Given the constant is used only in "*_test.go" or "zz_generated.go"
+    When the analyzer checks the package
+    Then no diagnostic is reported
 
-  Сценарий: граница — сгенерированный и тестовый файлы не проверяются
-    Допустим package-level константа объявлена в "zz_generated.go" или "*_test.go"
-    Когда анализатор проверяет пакет
-    Тогда диагностика не выводится
+  Scenario: boundary — generated and test files are not checked
+    Given a package-level constant is declared in "zz_generated.go" or "*_test.go"
+    When the analyzer checks the package
+    Then no diagnostic is reported
 
-  Сценарий: неприменимость — /domain/model и подпакеты
-    Допустим пакет оканчивается сегментами "domain/model" или "domain/model/filter"
-    И объявлены package-level константы, включая экспортируемые
-    Когда анализатор проверяет пакет
-    Тогда диагностика GID-194 не выводится
+  Scenario: non-applicability — /domain/model and subpackages
+    Given the package path ends with the segments "domain/model" or "domain/model/filter"
+    And package-level constants are declared, including exported ones
+    When the analyzer checks the package
+    Then no GID-194 diagnostic is reported
 
-  Сценарий: неприменимость — /dal/entity
-    Допустим пакет оканчивается сегментами "dal/entity"
-    И объявлены package-level константы
-    Когда анализатор проверяет пакет
-    Тогда диагностика GID-194 не выводится
+  Scenario: non-applicability — /dal/entity
+    Given the package path ends with the segments "dal/entity"
+    And package-level constants are declared
+    When the analyzer checks the package
+    Then no GID-194 diagnostic is reported
 
-  Сценарий: неприменимость — имя в settings.exclude
-    Допустим в настройках линтера "exclude: [LegacyExported]"
-    И объявлена package-level константа "LegacyExported"
-    Когда анализатор проверяет пакет
-    Тогда диагностика на "LegacyExported" не выводится
+  Scenario: non-applicability — a name in settings.exclude
+    Given the linter setting "exclude: [LegacyExported]"
+    And the package-level constant "LegacyExported" is declared
+    When the analyzer checks the package
+    Then no diagnostic is reported on "LegacyExported"
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (GID-194, no-global-const)
-#  [x] Выбран слой: go/analysis (нужны TypesInfo.Uses для подсчёта использований)
-#  [x] Заданы severity и сообщение ("GID-194: константа %q используется только в %q — ...")
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [x] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (GID-194, no-global-const)
+#  [x] Layer chosen: go/analysis (TypesInfo.Uses needed to count usages)
+#  [x] Severity and message are defined ("GID-194: constant %q is used only in %q — ...")
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [x] Rule enabled in .golangci.yml

@@ -1,5 +1,5 @@
-// Eval: service конвертирует model <-> entity, но от репозитория
-// зависит через интерфейс, а не импортом реализации.
+// Eval: service converts model <-> entity, but depends on the repository
+// through an interface, not by importing the implementation.
 package service
 
 import (
@@ -11,7 +11,7 @@ import (
 	"svc/domain/model"
 )
 
-// Негатив (граница): импорт entity сервису разрешён — конвертация.
+// Negative (boundary): importing entity is allowed for a service — conversion.
 type Snapshot struct {
 	repo *repository.Snapshot
 }
@@ -28,5 +28,5 @@ func fromEntity(in *entity.Snapshot) model.Snapshot {
 	return model.Snapshot{ID: in.ID}
 }
 
-// Позитивы выше: клиент — через интерфейс (GID-228), метрики — интерфейсом (GID-226).
+// Positives above: the client — through an interface (GID-228), metrics — through an interface (GID-226).
 func (s *Snapshot) leakDeps(c *billing.Client, m *metric.Prometheus) {}

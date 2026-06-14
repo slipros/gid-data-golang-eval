@@ -1,4 +1,4 @@
-// Позитив (GID-172): у клиента свои типы, dal-слой ему недоступен.
+// Positive (GID-172): the client has its own types, the dal layer is not available to it.
 package snapshot
 
 import (
@@ -12,10 +12,10 @@ type Client struct {
 	repo *repository.Snapshot
 }
 
-// Позитив (GID-229): domain клиенту недоступен — у него свои типы.
+// Positive (GID-229): domain is not available to the client — it has its own types.
 func (c *Client) Snapshot() model.Snapshot {
 	return model.Snapshot{}
 }
 
-// Позитив выше: entity в client-слое запрещён.
+// Positive above: entity is forbidden in the client layer.
 func (c *Client) leak(in entity.Snapshot) {}

@@ -1,5 +1,5 @@
-// Неприменимость: вне repo/service правило не действует —
-// билдеры и фабрики могут возвращать создаваемое значение.
+// Not applicable: outside repo/service the rule does not apply —
+// builders and factories may return the value being created.
 package builder
 
 type Query struct{}

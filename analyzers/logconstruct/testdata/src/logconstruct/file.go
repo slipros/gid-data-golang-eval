@@ -1,9 +1,9 @@
-// Eval для GID-154 (logger WithField в конструкторе).
+// Eval for GID-154 (logger WithField in the constructor).
 package logconstruct
 
 import "github.com/sirupsen/logrus"
 
-// --- Позитив: конструктор не вызывает WithField ---
+// --- Positive: the constructor does not call WithField ---
 
 type Snapshot struct {
 	logger *logrus.Entry
@@ -13,7 +13,7 @@ func NewSnapshot(logger *logrus.Entry) *Snapshot { // want `GID-154: entity "Sna
 	return &Snapshot{logger: logger}
 }
 
-// --- Негатив: WithField вызван ---
+// --- Negative: WithField is called ---
 
 type Job struct {
 	logger *logrus.Entry
@@ -23,7 +23,7 @@ func NewJob(logger *logrus.Entry) *Job {
 	return &Job{logger: logger.WithField("service", "job")}
 }
 
-// Граничный кейс: logger-интерфейс logrus.FieldLogger.
+// Boundary case: the logrus.FieldLogger logger interface.
 type Upload struct {
 	logger logrus.FieldLogger
 }
@@ -32,7 +32,7 @@ func NewUpload(logger logrus.FieldLogger) *Upload {
 	return &Upload{logger: logger.WithField("service", "upload")}
 }
 
-// --- Неприменимость: сущность без logger ---
+// --- Non-applicability: an entity without a logger ---
 
 type Plain struct {
 	retries int

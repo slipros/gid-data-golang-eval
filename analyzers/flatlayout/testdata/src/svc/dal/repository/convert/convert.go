@@ -1,4 +1,4 @@
-// Негатив (граница): convert/ — легитимный подпакет слоя.
+// Negative (boundary): convert/ is a legitimate layer subpackage.
 package convert
 
 func EntityFromRow() {}

@@ -1,30 +1,31 @@
-// Package inlineconv реализует правило GID-215 (no-inline-entity-literal):
-// конвертация model ↔ entity живёт только в convert-пакетах.
+// Package inlineconv implements the GID-215 rule (no-inline-entity-literal):
+// model ↔ entity conversion lives only in convert packages.
 //
-// Источник: service.md «Конвертация всегда выполняется через пакет convert».
+// Source: service.md "Conversion is always performed via the convert package".
 //
-// Scope: пакеты domain-слоя (pathseg.Contains(pkgPath, "domain")), КРОМЕ
-// пакетов с сегментом convert (там конвертация и должна жить).
+// Scope: domain-layer packages (pathseg.Contains(pkgPath, "domain")), EXCEPT
+// packages with a convert segment (that is where conversion should live).
 //
-// Что запрещено: composite literal с ≥1 элементом, чей именованный тип
-// (struct или именованный слайс) объявлен в пакете entity-слоя
-// (pathseg.Contains(пакет типа, "dal", "entity") — включая подпакеты
-// filter/enum). Инлайн-заполнение entity вне convert-пакета означает, что
-// конвертация размазана по domain-слою.
+// What is forbidden: a composite literal with ≥1 element whose named type
+// (struct or named slice) is declared in an entity-layer package
+// (pathseg.Contains(type's package, "dal", "entity") — including the
+// filter/enum subpackages). Inline-filling an entity outside a convert package
+// means conversion is smeared across the domain layer.
 //
-// Что НЕ запрещено:
-//   - пустой литерал (entity.Snapshot{} — zero value);
-//   - литерал model-типа (model в domain — норма);
-//   - entity-литерал внутри convert-пакета сервиса.
+// What is NOT forbidden:
+//   - an empty literal (entity.Snapshot{} — zero value);
+//   - a model-type literal (model in domain is normal);
+//   - an entity literal inside the service's convert package.
 //
-// Флагается только внешний (outermost) entity-литерал: вложенные внутри уже
-// зафлаганного повторно не репортятся. Карты/слайсы entity-типов (map[K]entity.X,
-// []entity.X) сами по себе не флагаются — флагается именно литерал именованного
-// entity-типа среди их элементов (он будет внешним).
+// Only the outermost entity literal is flagged: literals nested inside an
+// already-flagged one are not reported again. Maps/slices of entity types
+// (map[K]entity.X, []entity.X) are not flagged on their own — what gets flagged
+// is the literal of the named entity type among their elements (it will be the
+// outermost one).
 //
-// LoadMode — TypesInfo (нужны типы, чтобы определить пакет именованного типа).
-// _test.go и сгенерированные файлы (ast.IsGenerated) пропускаются.
-// Точечное отключение: //nolint:gidinlineconv.
+// LoadMode — TypesInfo (types are needed to determine the named type's package).
+// _test.go and generated files (ast.IsGenerated) are skipped.
+// Targeted disabling: //nolint:gidinlineconv.
 package inlineconv
 
 import (
@@ -39,8 +40,8 @@ import (
 
 const ruleID = "GID-215"
 
-// Analyzer — правило GID-215: инлайн-заполнение entity-типа в domain-слое
-// запрещено, конвертация живёт в convert-пакете.
+// Analyzer — the GID-215 rule: inline-filling an entity type in the domain
+// layer is forbidden; conversion lives in a convert package.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidinlineconv",
 	Doc:  ruleID + ": inline-filling an entity type in the domain layer is forbidden; conversion lives in a convert package. Fix: move it to a convert function",
@@ -50,7 +51,7 @@ var Analyzer = &analysis.Analyzer{
 func run(pass *analysis.Pass) (any, error) {
 	pkgPath := pass.Pkg.Path()
 
-	// Зона правила: domain-слой, но не convert-пакеты (там и живёт конвертация).
+	// Rule zone: the domain layer, but not convert packages (that is where conversion lives).
 	if !pathseg.Contains(pkgPath, "domain") || pathseg.Contains(pkgPath, "convert") {
 		return nil, nil
 	}
@@ -67,26 +68,26 @@ func run(pass *analysis.Pass) (any, error) {
 			}
 			name, isEntity := entityLitName(pass, lit)
 			if !isEntity {
-				return true // спускаемся внутрь — нарушение может быть глубже.
+				return true // descend inside — the violation may be deeper.
 			}
 			pass.Reportf(lit.Pos(),
 				"%s: inline-filling the entity type %s in the domain layer is forbidden. "+
 					"Fix: put conversion in a convert package (<Dst><Type>From<Src>)",
 				ruleID, name)
-			// Внешний entity-литерал зафлаган — внутрь не спускаемся,
-			// чтобы не репортить вложенные entity-литералы повторно.
+			// The outermost entity literal is flagged — do not descend,
+			// to avoid reporting nested entity literals again.
 			return false
 		})
 	}
 	return nil, nil
 }
 
-// entityLitName сообщает, является ли lit непустым composite-литералом
-// именованного entity-типа (struct или именованный слайс из /dal/entity),
-// и возвращает его отображаемое имя (pkg.Type).
+// entityLitName reports whether lit is a non-empty composite literal of a
+// named entity type (struct or named slice from /dal/entity), and returns its
+// display name (pkg.Type).
 func entityLitName(pass *analysis.Pass, lit *ast.CompositeLit) (string, bool) {
 	if len(lit.Elts) == 0 {
-		return "", false // пустой литерал — zero value, разрешён.
+		return "", false // empty literal — zero value, allowed.
 	}
 	t := pass.TypesInfo.TypeOf(lit)
 	if t == nil {
@@ -94,10 +95,10 @@ func entityLitName(pass *analysis.Pass, lit *ast.CompositeLit) (string, bool) {
 	}
 	named, ok := types.Unalias(t).(*types.Named)
 	if !ok {
-		return "", false // анонимные struct/slice, map[...], []... — не именованный тип.
+		return "", false // anonymous struct/slice, map[...], []... — not a named type.
 	}
-	// Только struct или именованный слайс — карты/массивы как сам тип литерала
-	// не считаем (их именованные элементы обрабатываются отдельными литералами).
+	// Only a struct or a named slice — maps/arrays as the literal's own type
+	// are not counted (their named elements are handled by separate literals).
 	switch named.Underlying().(type) {
 	case *types.Struct, *types.Slice:
 	default:

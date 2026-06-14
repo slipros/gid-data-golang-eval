@@ -1,4 +1,4 @@
-// Позитив: error-var в /dal/entity вне error.go/errors.go.
+// Positive: an error var in /dal/entity outside error.go/errors.go.
 package entity
 
 import "github.com/pkg/errors"

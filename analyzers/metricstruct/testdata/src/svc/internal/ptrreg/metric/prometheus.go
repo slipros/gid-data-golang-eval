@@ -1,14 +1,14 @@
-// Register с pointer receiver и произвольной сигнатурой — ок (граничный).
+// Register with a pointer receiver and an arbitrary signature — ok (boundary case).
 package metric
 
 import "context"
 
-// Prometheus — агрегатор без полей-групп (метрики плоские).
+// Prometheus — an aggregator without group fields (flat metrics).
 type Prometheus struct {
 	HTTP int
 }
 
-// Register с pointer receiver, параметрами и возвратом.
+// Register with a pointer receiver, parameters, and return values.
 func (p *Prometheus) Register(ctx context.Context, namespace string) (int, error) {
 	return 0, nil
 }

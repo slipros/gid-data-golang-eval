@@ -1,14 +1,14 @@
-// Package ctxkeys реализует правила работы с context:
+// Package ctxkeys implements the context handling rules:
 //
-//   - GID-165: helper'ы, складывающие данные в context, живут только в
-//     /domain/model. Свой contextKey в http middleware (или любом другом
-//     слое) запрещён — иначе бизнес-слои зависят от слоя middleware.
-//   - GID-166: форма helper'ов в model — функция, складывающая в ctx,
-//     публична и именуется ContextWith<Name>; достающая из ctx —
-//     <Name>FromContext; helper живёт в одном файле с сущностью <Name>.
-//   - GID-167: ключ контекста — публичный тип ContextKey
-//     (type ContextKey string); const-значения ContextKey — string
-//     в формате snake_case.
+//   - GID-165: helpers that store data in a context live only in
+//     /domain/model. A custom contextKey in an http middleware (or any other
+//     layer) is forbidden — otherwise business layers depend on the middleware layer.
+//   - GID-166: the shape of helpers in model — the function that stores into ctx
+//     is public and named ContextWith<Name>; the one that reads from ctx is
+//     <Name>FromContext; the helper lives in the same file as the <Name> entity.
+//   - GID-167: the context key is the public type ContextKey
+//     (type ContextKey string); ContextKey const values are strings
+//     in snake_case format.
 package ctxkeys
 
 import (
@@ -35,7 +35,7 @@ const (
 
 var snakeCase = regexp.MustCompile(`^[a-z0-9]+(_[a-z0-9]+)*$`)
 
-// Analyzer — правило GID: см. Doc.
+// Analyzer — GID rule: see Doc.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidctxkeys",
 	Doc: rulePlace + "/" + ruleNaming + "/" + ruleKey +
@@ -52,7 +52,7 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-// checkNoWithValue — GID-165: вне model складывать в ctx запрещено.
+// checkNoWithValue — GID-165: storing into ctx outside model is forbidden.
 func checkNoWithValue(pass *analysis.Pass) {
 	for _, file := range pass.Files {
 		if ast.IsGenerated(file) {
@@ -71,7 +71,7 @@ func checkNoWithValue(pass *analysis.Pass) {
 	}
 }
 
-// checkModelHelpers — GID-166/167: форма helper'ов и ключей в model.
+// checkModelHelpers — GID-166/167: the shape of helpers and keys in model.
 func checkModelHelpers(pass *analysis.Pass) {
 	structFile := structFiles(pass)
 	keyTypeFile := contextKeyFile(pass)
@@ -94,7 +94,7 @@ func checkModelHelpers(pass *analysis.Pass) {
 	}
 }
 
-// contextKeyFile — файл объявления типа ContextKey.
+// contextKeyFile — the file where the ContextKey type is declared.
 func contextKeyFile(pass *analysis.Pass) *ast.File {
 	for _, file := range pass.Files {
 		for _, decl := range file.Decls {
@@ -112,7 +112,7 @@ func contextKeyFile(pass *analysis.Pass) *ast.File {
 	return nil
 }
 
-// checkKeyTypes — GID-167: ключ в WithValue — публичный typed-string ContextKey.
+// checkKeyTypes — GID-167: the key in WithValue is the public typed-string ContextKey.
 func checkKeyTypes(pass *analysis.Pass, file *ast.File) {
 	ast.Inspect(file, func(n ast.Node) bool {
 		call, ok := n.(*ast.CallExpr)
@@ -143,8 +143,8 @@ func checkKeyTypes(pass *analysis.Pass, file *ast.File) {
 	})
 }
 
-// checkKeyConsts — GID-167: const-значения ContextKey — string в snake_case,
-// рядом с объявлением типа ContextKey (в одном файле).
+// checkKeyConsts — GID-167: ContextKey const values are snake_case strings,
+// next to the ContextKey type declaration (in the same file).
 func checkKeyConsts(pass *analysis.Pass, gd *ast.GenDecl, file, keyTypeFile *ast.File) {
 	if gd.Tok != token.CONST {
 		return
@@ -174,7 +174,7 @@ func checkKeyConsts(pass *analysis.Pass, gd *ast.GenDecl, file, keyTypeFile *ast
 			}
 			objVal := obj.Val()
 			if objVal.Kind() != constant.String {
-				continue // не-string ловит checkKeyTypes по типу
+				continue // non-string is caught by checkKeyTypes via the type
 			}
 			if val := constant.StringVal(objVal); !snakeCase.MatchString(val) {
 				pass.Reportf(name.Pos(),
@@ -200,7 +200,7 @@ func checkHelper(pass *analysis.Pass, file *ast.File, fn *ast.FuncDecl, structFi
 	checkHelperFile(pass, file, fn, structFile)
 }
 
-// checkHelperFile: helper живёт в одном файле с сущностью <Name>.
+// checkHelperFile: the helper lives in the same file as the <Name> entity.
 func checkHelperFile(pass *analysis.Pass, file *ast.File, fn *ast.FuncDecl, structFile map[string]*ast.File) {
 	entity := ""
 	if rest, ok := strings.CutPrefix(fn.Name.Name, "ContextWith"); ok {

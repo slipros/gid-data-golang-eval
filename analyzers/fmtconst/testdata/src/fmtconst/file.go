@@ -1,5 +1,5 @@
-// Eval GID-186: format-строка printf-функций — литерал или const,
-// не переменная.
+// Eval of GID-186: the format string of printf functions is a literal or
+// a const, not a variable.
 package fmtconst
 
 import (
@@ -10,16 +10,16 @@ import (
 	"github.com/pkg/errors"
 )
 
-// fmtStr — константа: format из неё разрешён.
+// fmtStr — a constant: using it as the format is allowed.
 const fmtStr = "значение %d"
 
 var errExternal = errors.New("boom")
 
-// printf — локальная функция с printf-подобной сигнатурой; не из целевых
-// пакетов, не должна матчиться (граничный класс).
+// printf — a local function with a printf-like signature; not from the target
+// packages, must not be matched (boundary class).
 func printf(format string, args ...any) {}
 
-// --- Класс 1: позитивный (переменная в позиции format) ---
+// --- Class 1: positive (a variable in the format position) ---
 
 func positiveSprintf(s string, x int) string {
 	return fmt.Sprintf(s, x) // want `GID-186: the format string is a variable\. Fix: declare a const, otherwise vet cannot check the arguments`
@@ -57,7 +57,7 @@ func positiveLogFatalf(s string, x int) {
 	log.Fatalf(s, x) // want `GID-186: the format string is a variable\. Fix: declare a const, otherwise vet cannot check the arguments`
 }
 
-// --- Класс 2: негативный (литерал / const / конкатенация констант) ---
+// --- Class 2: negative (a literal / const / concatenation of constants) ---
 
 func negativeLiteral(x int) string {
 	return fmt.Sprintf("значение %d", x)
@@ -75,14 +75,14 @@ func negativeFprintfLiteral(w io.Writer, x int) {
 	fmt.Fprintf(w, "значение %d", x)
 }
 
-// --- Класс 3: граничный ---
+// --- Class 3: boundary ---
 
 func boundarySprint(s string) string {
-	// fmt.Sprint — не printf (нет позиции format) — не матчится.
+	// fmt.Sprint — not printf (no format position) — not matched.
 	return fmt.Sprint(s)
 }
 
 func boundaryLocalPrintf(s string, x int) {
-	// своя функция printf(format, ...) — не из целевых пакетов — не матчится.
+	// a local printf(format, ...) function — not from the target packages — not matched.
 	printf(s, x)
 }

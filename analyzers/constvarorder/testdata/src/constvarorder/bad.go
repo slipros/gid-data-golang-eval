@@ -1,9 +1,9 @@
-// Eval для GID-130 — нарушения порядка.
+// Eval for GID-130 — order violations.
 package constvarorder
 
 import "time"
 
-var Late = time.Second // объявлен до const — сам по себе не нарушение...
+var Late = time.Second // declared before const — not a violation by itself...
 
 const AfterVar = 1 // want `GID-130: a const block must be at the top of the file, right after import and above var, types and functions\. Fix: move it up`
 

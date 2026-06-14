@@ -1,49 +1,49 @@
-# language: ru
-Функция: Каркас кастомного линтера (custom-gcl)
-  Как разработчик
-  Я хочу, чтобы линтер детерминированно блокировал нарушения правил
-  Чтобы гарантировать соблюдение внутренних правил кода
+# language: en
+Feature: Custom linter framework (custom-gcl)
+  As a developer
+  I want the linter to deterministically block rule violations
+  So that compliance with internal code rules is guaranteed
 
-  # NB по реализации: в Go эти сценарии естественно ложатся на
-  # golang.org/x/tools/go/analysis/analysistest + testdata с комментариями // want.
-  # Gherkin здесь — слой спецификации, не способ запуска тестов.
+  # Implementation note: in Go these scenarios map naturally onto
+  # golang.org/x/tools/go/analysis/analysistest + testdata with // want comments.
+  # Gherkin here is a specification layer, not a way to run tests.
 
-  Предыстория:
-    Допустим собран бинарь "custom-gcl" со всеми анализаторами
-    И в репозитории есть эталонный ".golangci.yml"
+  Background:
+    Given the "custom-gcl" binary is built with all analyzers
+    And the repository contains the reference ".golangci.yml"
 
-  Сценарий: Чистый код проходит проверку
-    Допустим Go-файл не нарушает ни одного правила
-    Когда я запускаю "custom-gcl run"
-    Тогда код возврата равен 0
-    И не выведено ни одного диагностического сообщения
+  Scenario: Clean code passes the check
+    Given a Go file violates no rule
+    When I run "custom-gcl run"
+    Then the exit code equals 0
+    And no diagnostic message is printed
 
-  Сценарий: Нарушение правила блокирует
-    Допустим Go-файл нарушает правило "RULE-001"
-    Когда я запускаю "custom-gcl run"
-    Тогда код возврата не равен 0
-    И выведена диагностика для "RULE-001" с указанием файла и строки
+  Scenario: A rule violation blocks
+    Given a Go file violates rule "RULE-001"
+    When I run "custom-gcl run"
+    Then the exit code is not 0
+    And a diagnostic for "RULE-001" is printed with the file and line
 
-  Сценарий: Несколько нарушений в одном прогоне
-    Допустим Go-файл нарушает правила "RULE-001" и "RULE-002"
-    Когда я запускаю "custom-gcl run"
-    Тогда код возврата не равен 0
-    И выведены отдельные диагностики для "RULE-001" и для "RULE-002"
+  Scenario: Multiple violations in a single run
+    Given a Go file violates rules "RULE-001" and "RULE-002"
+    When I run "custom-gcl run"
+    Then the exit code is not 0
+    And separate diagnostics are printed for "RULE-001" and for "RULE-002"
 
-  Сценарий: Правило можно отключить в конфиге
-    Допустим в ".golangci.yml" линтер "RULE-003" выключен
-    И Go-файл нарушает правило "RULE-003"
-    Когда я запускаю "custom-gcl run"
-    Тогда диагностика для "RULE-003" не выводится
+  Scenario: A rule can be disabled in the config
+    Given linter "RULE-003" is disabled in ".golangci.yml"
+    And a Go file violates rule "RULE-003"
+    When I run "custom-gcl run"
+    Then no diagnostic for "RULE-003" is printed
 
-  Сценарий: ruleguard и собственные анализаторы работают в одном прогоне
-    Допустим Go-файл нарушает ruleguard-правило и go/analysis-правило
-    Когда я запускаю "custom-gcl run"
-    Тогда выведены диагностики обоих типов
-    И код возврата не равен 0
+  Scenario: ruleguard and custom analyzers work in a single run
+    Given a Go file violates a ruleguard rule and a go/analysis rule
+    When I run "custom-gcl run"
+    Then diagnostics of both kinds are printed
+    And the exit code is not 0
 
-  Сценарий: CI-гейт блокирует merge
-    Допустим PR содержит файл с нарушением покрытого правила
-    Когда CI запускает "custom-gcl run" как обязательную проверку
-    Тогда проверка падает
-    И merge заблокирован
+  Scenario: CI gate blocks merge
+    Given a PR contains a file violating a covered rule
+    When CI runs "custom-gcl run" as a required check
+    Then the check fails
+    And the merge is blocked

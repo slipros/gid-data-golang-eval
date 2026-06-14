@@ -12,26 +12,26 @@ import (
 
 const errFileRuleID = "GID-169"
 
-// errFileScopes — корневые пакеты слоёв, для которых действует GID-169.
-// Только корни слоя (pathseg.EndsWith): подпакеты model/filter, entity/...
-// не задеваются.
+// errFileScopes — root layer packages where GID-169 applies.
+// Layer roots only (pathseg.EndsWith): subpackages model/filter, entity/...
+// are not touched.
 var errFileScopes = [][]string{
 	{"domain", "model"},
 	{"dal", "entity"},
 }
 
-// FileAnalyzer — вариант с дефолтным списком файлов (error.go, errors.go, err.go).
+// FileAnalyzer — variant with the default file list (error.go, errors.go, err.go).
 var FileAnalyzer = NewFileAnalyzer(Settings{})
 
-// Settings — настройки правила GID-169 из .golangci.yml.
+// Settings — settings of rule GID-169 from .golangci.yml.
 type Settings struct {
-	// Files — имена файлов, где разрешены объявления ошибок слоя.
-	// Пусто → дефолт ["error.go", "errors.go", "err.go"]
-	// (err.go — каноничное имя из entity.md).
+	// Files — names of files where layer error declarations are allowed.
+	// Empty → default ["error.go", "errors.go", "err.go"]
+	// (err.go is the canonical name from entity.md).
 	Files []string `json:"files"`
 }
 
-// NewFileAnalyzer строит анализатор GID-169 с заданным списком файлов.
+// NewFileAnalyzer builds the GID-169 analyzer with the given file list.
 func NewFileAnalyzer(s Settings) *analysis.Analyzer {
 	files := s.Files
 	if len(files) == 0 {
@@ -84,7 +84,7 @@ func isTestFile(fname string) bool {
 		fname[len(fname)-len("_test.go"):] == "_test.go"
 }
 
-// checkErrFileVars сообщает о package-level var типа error в неположенном файле.
+// checkErrFileVars reports a package-level var of type error in a wrong file.
 func checkErrFileVars(pass *analysis.Pass, fname string, file *ast.File) {
 	for _, decl := range file.Decls {
 		gd, ok := decl.(*ast.GenDecl)

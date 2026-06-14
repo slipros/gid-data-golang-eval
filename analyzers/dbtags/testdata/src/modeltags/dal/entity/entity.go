@@ -1,5 +1,5 @@
-// Неприменимость: та же структура в /dal/entity — db-теги тут обязательны
-// (GID-125), GID-168 здесь не действует.
+// Not applicable: the same struct in /dal/entity — db tags are mandatory here
+// (GID-125), GID-168 does not apply here.
 package entity
 
 import "time"

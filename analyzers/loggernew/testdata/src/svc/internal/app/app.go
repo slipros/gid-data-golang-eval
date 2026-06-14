@@ -1,11 +1,11 @@
-// Eval GID-214: негатив — composition root internal/app, создание разрешено.
+// Eval GID-214: negative — composition root internal/app, creation is allowed.
 package app
 
 import (
 	"github.com/sirupsen/logrus"
 )
 
-// New собирает приложение и создаёт корневой логгер — это разрешено.
+// New assembles the application and creates the root logger — this is allowed.
 func New() *logrus.Entry {
 	logger := logrus.New()
 	std := logrus.StandardLogger()

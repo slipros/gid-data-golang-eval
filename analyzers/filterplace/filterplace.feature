@@ -1,75 +1,75 @@
-# language: ru
+# language: en
 
-Функция: GID-171 — фильтры list-операций живут в своём месте слоя
-  Как разработчик
-  Я хочу, чтобы фильтр-структуры лежали в выделенном месте своего слоя
-  Чтобы entity-фильтры и model-фильтры не растекались по repository/service
-  Источники: model.md, entity.md
-  Scope: пакеты в /dal/** и /domain/**
-  Проверяется объявление STRUCT-типа (только struct — чтобы не флагать
-  FilterFunc, интерфейсы и алиасы) с именем-фильтром.
-  Имя считается фильтром, если слово Filter стоит на границе:
-    - префикс Filter + заглавная буква/цифра или конец имени (Filter, FilterJobs);
-    - суффикс Filter после строчной буквы/цифры или в начале (JobsFilter).
-  Filterable НЕ флагается: после Filter идёт строчная буква — это другое слово.
+Feature: GID-171 — filters of list operations live in their layer's designated place
+  As a developer
+  I want filter structs to live in the dedicated place of their layer
+  So that entity filters and model filters do not sprawl across repository/service
+  Sources: model.md, entity.md
+  Scope: packages in /dal/** and /domain/**
+  A STRUCT type declaration is checked (struct only — to avoid flagging
+  FilterFunc, interfaces and aliases) with a filter name.
+  A name counts as a filter if the word Filter stands at a boundary:
+    - the prefix Filter + an uppercase letter/digit or the end of the name (Filter, FilterJobs);
+    - the suffix Filter after a lowercase letter/digit or at the start (JobsFilter).
+  Filterable is NOT flagged: Filter is followed by a lowercase letter — it is a different word.
 
-  # --- Позитивный класс: нарушение ловится ---
+  # --- Positive class: the violation is caught ---
 
-  Сценарий: struct *Filter в /dal/repository — нарушение
-    Допустим в /dal/repository объявлен "type JobsFilter struct{...}"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-171" с текстом "живёт в /dal/entity/filter"
+  Scenario: a *Filter struct in /dal/repository — violation
+    Given "type JobsFilter struct{...}" is declared in /dal/repository
+    When the analyzer checks the file
+    Then a "GID-171" diagnostic is reported with the text "must live in /dal/entity/filter"
 
-  Сценарий: struct Filter* в /domain/service — нарушение
-    Допустим в /domain/service объявлен "type FilterJobs struct{...}"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-171" с текстом "живёт в /domain/model"
+  Scenario: a Filter* struct in /domain/service — violation
+    Given "type FilterJobs struct{...}" is declared in /domain/service
+    When the analyzer checks the file
+    Then a "GID-171" diagnostic is reported with the text "must live in /domain/model"
 
-  # --- Негативный класс: чистый код проходит ---
+  # --- Negative class: clean code passes ---
 
-  Сценарий: entity-фильтр в /dal/entity/filter — ок
-    Допустим в /dal/entity/filter объявлен "type JobsFilter struct{...}"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: an entity filter in /dal/entity/filter — ok
+    Given "type JobsFilter struct{...}" is declared in /dal/entity/filter
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: model-фильтр в /domain/model — ок
-    Допустим в /domain/model объявлен "type JobsFilter struct{...}"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a model filter in /domain/model — ok
+    Given "type JobsFilter struct{...}" is declared in /domain/model
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: model-фильтр в подпакете /domain/model/filter — ок
-    Допустим в /domain/model/filter объявлен "type JobsFilter struct{...}"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a model filter in the /domain/model/filter subpackage — ok
+    Given "type JobsFilter struct{...}" is declared in /domain/model/filter
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  # --- Граничный класс ---
+  # --- Boundary class ---
 
-  Сценарий: FilterFunc (func-тип) в /dal/repository — не struct, не флагуем
-    Допустим в /dal/repository объявлен "type FilterFunc func(string) bool"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: FilterFunc (a func type) in /dal/repository — not a struct, not flagged
+    Given "type FilterFunc func(string) bool" is declared in /dal/repository
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: struct Filterable в /dal/repository — имя не матчит паттерн, ок
-    Допустим в /dal/repository объявлен "type Filterable struct{...}"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a Filterable struct in /dal/repository — the name does not match the pattern, ok
+    Given "type Filterable struct{...}" is declared in /dal/repository
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: сгенерированный файл — пропускается
-    Допустим файл помечен "// Code generated ... DO NOT EDIT."
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a generated file — skipped
+    Given the file is marked "// Code generated ... DO NOT EDIT."
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  # --- Класс неприменимости: правило не действует вне dal/domain ---
+  # --- Non-applicability class: the rule does not apply outside dal/domain ---
 
-  Сценарий: struct *Filter в /server/http — правило не применяется
-    Допустим в /server/http объявлен "type JobsFilter struct{...}"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a *Filter struct in /server/http — the rule does not apply
+    Given "type JobsFilter struct{...}" is declared in /server/http
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (RULES.md, GID-171)
-#  [x] Выбран слой: go/analysis (чистый AST, LoadModeSyntax)
-#  [x] Заданы severity и сообщение ("GID-171: ...")
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [ ] Правило включено в .golangci.yml (вне scope этой задачи)
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (RULES.md, GID-171)
+#  [x] Layer chosen: go/analysis (pure AST, LoadModeSyntax)
+#  [x] Severity and message are defined ("GID-171: ...")
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [ ] Rule enabled in .golangci.yml (outside the scope of this task)

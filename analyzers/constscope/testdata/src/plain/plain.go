@@ -1,9 +1,9 @@
-// Eval для GID-194: граничные случаи в обычном пакете вне слоёв.
+// Eval for GID-194: edge cases in an ordinary package outside the layers.
 package plain
 
 import "fmt"
 
-// --- Граница: iota-группа целиком используется одной функцией ---
+// --- Edge: an iota group used entirely by a single function ---
 
 const ( // want `GID-194: this constant group is used only in "stateName"\. Fix: declare it inside that function`
 	stateIdle = iota
@@ -20,7 +20,7 @@ func stateName(s int) string {
 	return fmt.Sprintf("unknown:%d", s)
 }
 
-// --- Граница: iota-группа используется разными функциями — норма ---
+// --- Edge: an iota group used by different functions — fine ---
 
 const (
 	colorRed = iota
@@ -31,8 +31,8 @@ func isRed(c int) bool { return c == colorRed }
 
 func isBlue(c int) bool { return c == colorBlue }
 
-// --- Граница: iota-группа с экспортируемой константой — локализацию
-// не предлагаем, диагностика только об экспорте ---
+// --- Edge: an iota group with an exported constant — localization is not
+// suggested, the diagnostic is only about the export ---
 
 const (
 	ModePrimary = iota // want `GID-194: exported constant "ModePrimary" is declared outside model/entity\. Fix: keep shared constants in /domain/model or /dal/entity, and declare local ones where they are used`
@@ -41,27 +41,27 @@ const (
 
 func modeLabel() int { return modeSecondary }
 
-// --- Граница: использование в package-level var — константа непереносима ---
+// --- Edge: a use in a package-level var — the constant is immovable ---
 
 const defaultLabel = "default"
 
 var currentLabel = defaultLabel
 
-// --- Граница: использование в сигнатуре (длина массива) — непереносима ---
+// --- Edge: a use in a signature (an array length) — immovable ---
 
 const bufSize = 8
 
 func fill(buf [bufSize]byte) byte { return buf[0] }
 
-// --- Граница: неиспользуемая константа — зона unused, не GID-194 ---
+// --- Edge: an unused constant is the domain of unused, not GID-194 ---
 
 const orphan = "unused"
 
-// --- Граница: используется только сгенерированным файлом — непереносима ---
+// --- Edge: used only by a generated file — immovable ---
 
 const genLabel = "gen"
 
-// --- Граница: используется только тестом — непереносима ---
+// --- Edge: used only by a test — immovable ---
 
 const testLabel = "test"
 

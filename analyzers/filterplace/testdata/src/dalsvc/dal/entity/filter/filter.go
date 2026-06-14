@@ -1,9 +1,9 @@
-// Eval GID-171: правильное место entity-фильтров — /dal/entity/filter.
+// Eval of GID-171: the correct place for entity filters is /dal/entity/filter.
 package filter
 
-// --- Негативный класс: чистый код проходит ---
+// --- Negative class: clean code passes ---
 
-// Фильтр в своём месте — диагностики нет.
+// A filter in its proper place — no diagnostic.
 type JobsFilter struct {
 	Status string
 }
@@ -12,7 +12,7 @@ type FilterStages struct {
 	StageID string
 }
 
-// Голое имя Filter — тоже фильтр, но в своём месте — ок.
+// The bare name Filter is a filter too, but in its proper place — fine.
 type Filter struct {
 	Limit int
 }

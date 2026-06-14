@@ -4,7 +4,7 @@ package svc
 
 import gdpostgres "gitlab.gid.team/gid-data/tech/golang/libs/postgres.git"
 
-// Неприменимость: сгенерированный код не проверяем — TQuery здесь не флагается.
+// Not applicable: generated code is not checked — TQuery is not flagged here.
 func generatedTQuery(conn *gdpostgres.Conn) (int, error) {
 	return gdpostgres.TQuery[int](conn, "select 1")
 }

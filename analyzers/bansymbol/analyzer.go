@@ -1,18 +1,18 @@
-// Package bansymbol реализует правило GID-217 (линтер gidbansymbol):
-// настраиваемый бан конкретных символов сторонних библиотек.
+// Package bansymbol implements rule GID-217 (linter gidbansymbol):
+// a configurable ban on specific symbols of third-party libraries.
 //
-// Источник: repo.md — «Не используем gdpostgres.TQuery — прямые методы conn
-// проще и достаточны». По умолчанию запрещён символ TQuery из библиотеки
-// gitlab.gid.team/gid-data/tech/golang/libs/postgres.git; список можно
-// переопределить через settings.symbols в .golangci.yml.
+// Source: repo.md — "Do not use gdpostgres.TQuery — direct conn methods are
+// simpler and sufficient". By default the TQuery symbol from the
+// gitlab.gid.team/gid-data/tech/golang/libs/postgres.git library is banned;
+// the list can be overridden via settings.symbols in .golangci.yml.
 //
-// Детекция: любой *ast.SelectorExpr, который через pass.TypesInfo.Uses
-// резолвится в объект с заданным именем из заданного пакета. Generic-
-// инстанциации (gdpostgres.TQuery[T](...)) резолвятся так же и тоже ловятся.
+// Detection: any *ast.SelectorExpr that resolves via pass.TypesInfo.Uses
+// to an object with the given name from the given package. Generic
+// instantiations (gdpostgres.TQuery[T](...)) resolve the same way and are caught too.
 //
-// Match пакета — по точному import-пути ИЛИ по суффиксу из сегментов пути
-// (чтобы покрыть версионные пути вида .../v2). Сгенерированный код
-// (ast.IsGenerated) пропускается.
+// Package match — by exact import path OR by a suffix of path segments
+// (to cover versioned paths like .../v2). Generated code
+// (ast.IsGenerated) is skipped.
 package bansymbol
 
 import (
@@ -26,7 +26,7 @@ import (
 
 const ruleID = "GID-217"
 
-// defaultSymbols — встроенный список: запрет gdpostgres.TQuery.
+// defaultSymbols — built-in list: ban on gdpostgres.TQuery.
 var defaultSymbols = []Symbol{
 	{
 		Pkg:  "gitlab.gid.team/gid-data/tech/golang/libs/postgres.git",
@@ -35,30 +35,30 @@ var defaultSymbols = []Symbol{
 	},
 }
 
-// Analyzer — вариант с настройками по умолчанию.
+// Analyzer — the variant with default settings.
 var Analyzer = NewAnalyzer(Settings{})
 
-// Symbol — описание одного запрещённого символа.
+// Symbol — a description of one banned symbol.
 type Symbol struct {
-	// Pkg — import-путь пакета символа. Матчится точно ИЛИ по суффиксу
-	// сегментов пути (например, ".../postgres.git" совпадёт с
+	// Pkg — import path of the symbol's package. Matched exactly OR by a
+	// suffix of path segments (e.g. ".../postgres.git" matches
 	// ".../postgres.git/v2").
 	Pkg string `json:"pkg"`
-	// Name — имя экспортируемого символа (функция, тип, переменная).
+	// Name — name of the exported symbol (function, type, variable).
 	Name string `json:"name"`
-	// Msg — текст подсказки в диагностике. Опционален: без него
-	// используется общая формулировка.
+	// Msg — hint text for the diagnostic. Optional: without it a
+	// generic wording is used.
 	Msg string `json:"msg"`
 }
 
-// Settings — настройки линтера из .golangci.yml.
+// Settings — linter settings from .golangci.yml.
 type Settings struct {
-	// Symbols — список запрещённых символов. Если пуст — используется
-	// встроенный дефолтный список.
+	// Symbols — the list of banned symbols. If empty, the built-in
+	// default list is used.
 	Symbols []Symbol `json:"symbols"`
 }
 
-// NewAnalyzer строит анализатор GID-217 с указанными настройками.
+// NewAnalyzer builds the GID-217 analyzer with the given settings.
 func NewAnalyzer(cfg Settings) *analysis.Analyzer {
 	symbols := cfg.Symbols
 	if len(symbols) == 0 {
@@ -90,7 +90,7 @@ func run(pass *analysis.Pass, symbols []Symbol) (any, error) {
 			pkg := obj.Pkg()
 			objPkg := pkg.Path()
 			objName := obj.Name()
-			//nolint:gidallptr // плагин не зависит от внутренней библиотеки gdhelper
+			//nolint:gidallptr // the plugin does not depend on the internal gdhelper library
 			for _, s := range symbols {
 				if s.Name != objName {
 					continue
@@ -107,8 +107,8 @@ func run(pass *analysis.Pass, symbols []Symbol) (any, error) {
 	return nil, nil
 }
 
-// pkgMatches сообщает, совпадает ли import-путь пакета символа с настройкой:
-// точное равенство ИЛИ суффикс по сегментам пути.
+// pkgMatches reports whether the symbol's package import path matches the setting:
+// exact equality OR a suffix of path segments.
 func pkgMatches(objPkg, want string) bool {
 	if objPkg == want {
 		return true

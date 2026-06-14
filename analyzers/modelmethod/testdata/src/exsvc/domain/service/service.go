@@ -1,15 +1,15 @@
-// Eval для GID-195: settings.exclude — "Функция" и "Тип.Метод".
+// Eval for GID-195: settings.exclude — "Function" and "Type.Method".
 package service
 
 import "exsvc/domain/model"
 
 type Service struct{}
 
-func legacyTitle(s *model.Snapshot) string { // исключена настройкой по имени
+func legacyTitle(s *model.Snapshot) string { // excluded by name via settings
 	return s.Name
 }
 
-func (s *Service) legacyRender(snap *model.Snapshot) string { // исключён как Тип.Метод
+func (s *Service) legacyRender(snap *model.Snapshot) string { // excluded as Type.Method
 	return snap.Name
 }
 

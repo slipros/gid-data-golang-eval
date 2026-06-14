@@ -1,98 +1,98 @@
-# language: ru
+# language: en
 
-Функция: GID-184 — сообщение ошибки описывает операцию, не факт провала (failedto)
-  Как разработчик
-  Я хочу, чтобы сообщение в errors.Wrap/Wrapf/WithMessage/WithMessagef/Errorf/New
-  описывало выполняемую операцию ("select user"), а не факт провала ("failed to select user")
-  Чтобы при разворачивании цепочки ошибок читалась последовательность операций
+Feature: GID-184 — an error message describes the operation, not the fact of failure (failedto)
+  As a developer
+  I want the message in errors.Wrap/Wrapf/WithMessage/WithMessagef/Errorf/New
+  to describe the operation being performed ("select user"), not the fact of failure ("failed to select user")
+  So that unwinding the error chain reads as a sequence of operations
 
-  # Один анализатор failedto → линтер gidfailedto, LoadModeTypesInfo.
-  # pkg/errors распознаётся по import-пути github.com/pkg/errors через TypesInfo (стаб в testdata).
-  # Проверяется только строковый литерал-сообщение; переменная/конкатенация с переменной — не матчатся.
-  # Запрещённые префиксы (регистронезависимо, по границе слова):
+  # One analyzer failedto → linter gidfailedto, LoadModeTypesInfo.
+  # pkg/errors is recognized by the import path github.com/pkg/errors via TypesInfo (a stub in testdata).
+  # Only a string-literal message is checked; a variable / concatenation with a variable is not matched.
+  # Forbidden prefixes (case-insensitive, at a word boundary):
   #   failed to, failed, unable to, error, couldn't, could not, can't, cannot
-  # Список — дефолт, настраивается Settings{Prefixes []string `json:"prefixes"`} (замещает дефолт целиком).
-  # Сгенерированный код (ast.IsGenerated) пропускается.
+  # The list is the default, configurable via Settings{Prefixes []string `json:"prefixes"`} (fully replaces the default).
+  # Generated code (ast.IsGenerated) is skipped.
 
-  # --- Класс 1: позитивный (нарушение ловится) ---
+  # --- Class 1: positive (the violation is caught) ---
 
-  Сценарий: позитивный — errors.Wrap с "failed to"
-    Допустим "errors.Wrap(err, \"failed to select\")"
-    Когда анализатор gidfailedto проверяет файл
-    Тогда выводится диагностика "GID-184: сообщение ошибки начинается с \"failed to\" — опишите операцию: вместо \"failed to select user\" → \"select user\""
+  Scenario: positive — errors.Wrap with "failed to"
+    Given "errors.Wrap(err, \"failed to select\")"
+    When the gidfailedto analyzer checks the file
+    Then the diagnostic "GID-184: error message starts with \"failed to\". Fix: describe the operation, e.g. \"failed to select user\" → \"select user\"" is reported
 
-  Сценарий: позитивный — errors.New("Failed: x") в var (регистронезависимо)
-    Допустим "var ErrSelect = errors.New(\"Failed: x\")"
-    Когда анализатор gidfailedto проверяет файл
-    Тогда выводится диагностика "GID-184: сообщение ошибки начинается с \"failed\""
+  Scenario: positive — errors.New("Failed: x") in a var (case-insensitive)
+    Given "var ErrSelect = errors.New(\"Failed: x\")"
+    When the gidfailedto analyzer checks the file
+    Then the diagnostic "GID-184: error message starts with \"failed\"" is reported
 
-  Сценарий: позитивный — errors.WithMessage с "unable to"
-    Допустим "errors.WithMessage(err, \"unable to parse\")"
-    Когда анализатор gidfailedto проверяет файл
-    Тогда выводится диагностика "GID-184: сообщение ошибки начинается с \"unable to\""
+  Scenario: positive — errors.WithMessage with "unable to"
+    Given "errors.WithMessage(err, \"unable to parse\")"
+    When the gidfailedto analyzer checks the file
+    Then the diagnostic "GID-184: error message starts with \"unable to\"" is reported
 
-  Сценарий: позитивный — errors.Errorf с "error"
-    Допустим "errors.Errorf(\"error while loading %d\", id)"
-    Когда анализатор gidfailedto проверяет файл
-    Тогда выводится диагностика "GID-184: сообщение ошибки начинается с \"error\""
+  Scenario: positive — errors.Errorf with "error"
+    Given "errors.Errorf(\"error while loading %d\", id)"
+    When the gidfailedto analyzer checks the file
+    Then the diagnostic "GID-184: error message starts with \"error\"" is reported
 
-  Сценарий: позитивный — errors.Wrapf с "cannot" и errors.WithMessagef с "could not"
-    Допустим "errors.Wrapf(err, \"cannot save %d\", id)" и "errors.WithMessagef(err, \"could not commit %d\", id)"
-    Когда анализатор gidfailedto проверяет файл
-    Тогда выводятся диагностики на оба вызова
+  Scenario: positive — errors.Wrapf with "cannot" and errors.WithMessagef with "could not"
+    Given "errors.Wrapf(err, \"cannot save %d\", id)" and "errors.WithMessagef(err, \"could not commit %d\", id)"
+    When the gidfailedto analyzer checks the file
+    Then diagnostics are reported on both calls
 
-  # --- Класс 2: негативный (чистый код проходит) ---
+  # --- Class 2: negative (clean code passes) ---
 
-  Сценарий: негативный — сообщение описывает операцию
-    Допустим "errors.Wrap(err, \"select user\")" и "errors.New(\"parse config\")"
-    Когда анализатор gidfailedto проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — the message describes the operation
+    Given "errors.Wrap(err, \"select user\")" and "errors.New(\"parse config\")"
+    When the gidfailedto analyzer checks the file
+    Then no diagnostic is reported
 
-  # --- Класс 3: граничный (похоже на нарушение, но допустимо) ---
+  # --- Class 3: boundary (looks like a violation but is allowed) ---
 
-  Сценарий: граничный — "failure mode" (слово failure не в списке)
-    Допустим "errors.Wrap(err, \"failure mode handling\")"
-    Когда анализатор gidfailedto проверяет файл
-    Тогда диагностика не выводится
-    # "failure" не равно префиксу "failed"/"failed to"; граница слова защищает от подстрок.
+  Scenario: boundary — "failure mode" (the word failure is not in the list)
+    Given "errors.Wrap(err, \"failure mode handling\")"
+    When the gidfailedto analyzer checks the file
+    Then no diagnostic is reported
+    # "failure" does not equal the prefix "failed"/"failed to"; the word boundary protects against substrings.
 
-  Сценарий: граничный — fmt.Sprintf не матчится (другой пакет)
-    Допустим "errors.Wrap(err, fmt.Sprintf(\"%s\", \"x\"))"
-    Когда анализатор gidfailedto проверяет файл
-    Тогда диагностика не выводится
-    # Аргумент-сообщение — не строковый литерал, а вызов fmt.Sprintf.
+  Scenario: boundary — fmt.Sprintf is not matched (another package)
+    Given "errors.Wrap(err, fmt.Sprintf(\"%s\", \"x\"))"
+    When the gidfailedto analyzer checks the file
+    Then no diagnostic is reported
+    # The message argument is not a string literal but a fmt.Sprintf call.
 
-  Сценарий: граничный — std errors.New не матчится (зона GID-146)
-    Допустим "stderrors.New(\"failed to do thing\")" из стандартного пакета "errors"
-    Когда анализатор gidfailedto проверяет файл
-    Тогда диагностика не выводится
-    # Линтер матчит только github.com/pkg/errors; std errors — зона GID-146.
+  Scenario: boundary — std errors.New is not matched (the domain of GID-146)
+    Given "stderrors.New(\"failed to do thing\")" from the standard "errors" package
+    When the gidfailedto analyzer checks the file
+    Then no diagnostic is reported
+    # The linter matches only github.com/pkg/errors; std errors is the domain of GID-146.
 
-  Сценарий: граничный — не-литеральное сообщение (переменная / конкатенация)
-    Допустим "errors.Wrap(err, msg)" и "errors.Wrap(err, \"failed to \"+name)"
-    Когда анализатор gidfailedto проверяет файл
-    Тогда диагностика не выводится
-    # Переменная и конкатенация с переменной не имеют константного значения — не проверяются.
+  Scenario: boundary — a non-literal message (variable / concatenation)
+    Given "errors.Wrap(err, msg)" and "errors.Wrap(err, \"failed to \"+name)"
+    When the gidfailedto analyzer checks the file
+    Then no diagnostic is reported
+    # A variable and a concatenation with a variable have no constant value — not checked.
 
-  # --- Класс 4: неприменимость ---
+  # --- Class 4: non-applicability ---
 
-  Сценарий: неприменимость — файл без github.com/pkg/errors
-    Допустим пакет с локальной функцией "Wrap(err, \"failed to select\")" без импорта pkg/errors
-    Когда анализатор gidfailedto проверяет файл
-    Тогда диагностика не выводится
-    # Одноимённая локальная функция Wrap — не вызов pkg/errors (проверка через TypesInfo).
+  Scenario: non-applicability — a file without github.com/pkg/errors
+    Given a package with a local function "Wrap(err, \"failed to select\")" and no import of pkg/errors
+    When the gidfailedto analyzer checks the file
+    Then no diagnostic is reported
+    # A same-named local Wrap function is not a pkg/errors call (checked via TypesInfo).
 
-  # --- Класс 5: настройка ---
+  # --- Class 5: configuration ---
 
-  Сценарий: настройка — settings.prefixes замещает дефолт целиком
-    Допустим settings.prefixes = ["oops"], "errors.Wrap(err, \"oops broken\")" и "errors.Wrap(err, \"failed to select\")"
-    Когда анализатор gidfailedto проверяет файл
-    Тогда выводится диагностика только на "oops broken"; "failed to select" не ловится
+  Scenario: configuration — settings.prefixes fully replaces the default
+    Given settings.prefixes = ["oops"], "errors.Wrap(err, \"oops broken\")" and "errors.Wrap(err, \"failed to select\")"
+    When the gidfailedto analyzer checks the file
+    Then a diagnostic is reported only on "oops broken"; "failed to select" is not caught
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (RULES.md, GID-184)
-#  [x] Выбран слой: go/analysis (пакет failedto: gidfailedto), LoadModeTypesInfo
-#  [x] Задано сообщение ("GID-184: …")
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость, настройка
-#  [x] testdata с // want для analysistest + стаб github.com/pkg/errors
-#  [ ] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (RULES.md, GID-184)
+#  [x] Layer chosen: go/analysis (package failedto: gidfailedto), LoadModeTypesInfo
+#  [x] Message is defined ("GID-184: …")
+#  [x] Case classes covered: positive, negative, boundary, non-applicability, configuration
+#  [x] testdata with // want for analysistest + a github.com/pkg/errors stub
+#  [ ] Rule enabled in .golangci.yml

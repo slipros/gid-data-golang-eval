@@ -1,11 +1,11 @@
-// Package dirtree реализует правило GID-158: контроль дерева папок.
-// Для каждой папки из настроек задаётся перечень разрешённых подпапок;
-// появление чужой папки — предупреждение (например, новая папка в
+// Package dirtree implements rule GID-158: folder tree control.
+// For each folder from the settings a list of allowed subfolders is defined;
+// the appearance of a foreign folder is a warning (e.g. a new folder in
 // internal/; perhaps it should be a service or usecase).
 //
-// Дерево настраивается в .golangci.yml (settings.tree), ключ — путь папки
-// (сегменты через /, матчится в любом месте import-пути), значение —
-// разрешённые подпапки. Заданное в settings дерево заменяет дефолтное.
+// The tree is configured in .golangci.yml (settings.tree); the key is a folder
+// path (segments separated by /, matched anywhere in the import path), the
+// value is the allowed subfolders. A tree given in settings replaces the default one.
 package dirtree
 
 import (
@@ -21,8 +21,8 @@ import (
 
 const ruleID = "GID-158"
 
-// defaultTree — каноничная структура сервиса (ARCHITECTURE.md).
-// Папки, не указанные ключом, не ограничиваются.
+// defaultTree — the canonical service structure (ARCHITECTURE.md).
+// Folders not listed as a key are not restricted.
 var defaultTree = map[string][]string{
 	"internal":                {"app", "client", "dal", "domain", "event", "metric", "server"},
 	"internal/dal":            {"entity", "repository"},
@@ -32,16 +32,16 @@ var defaultTree = map[string][]string{
 	"internal/server":         {"grpc", "http"},
 }
 
-// Analyzer — вариант с деревом по умолчанию.
+// Analyzer — the variant with the default tree.
 var Analyzer = NewAnalyzer(Settings{})
 
-// Settings — настройки линтера из .golangci.yml.
+// Settings — linter settings from .golangci.yml.
 type Settings struct {
-	// Tree: "папка" -> разрешённые подпапки. Заменяет дефолтное дерево.
+	// Tree: "folder" -> allowed subfolders. Replaces the default tree.
 	Tree map[string][]string `json:"tree"`
 }
 
-// NewAnalyzer строит анализатор GID-158 из настроек линтера (.golangci.yml).
+// NewAnalyzer builds the GID-158 analyzer from the linter settings (.golangci.yml).
 func NewAnalyzer(s Settings) *analysis.Analyzer {
 	tree := s.Tree
 	if len(tree) == 0 {
@@ -64,7 +64,7 @@ func run(pass *analysis.Pass, tree map[string][]string) (any, error) {
 	for key := range tree {
 		keys = append(keys, key)
 	}
-	sort.Strings(keys) // детерминированный порядок диагностик
+	sort.Strings(keys) // a deterministic order of diagnostics
 
 	for _, key := range keys {
 		seq := pathseg.Segments(key)
@@ -74,7 +74,7 @@ func run(pass *analysis.Pass, tree map[string][]string) (any, error) {
 		}
 		next := idx + len(seq)
 		if next >= len(segs) {
-			continue // пакет — сама папка-ключ
+			continue // the package is the key folder itself
 		}
 		if slices.Contains(tree[key], segs[next]) {
 			continue

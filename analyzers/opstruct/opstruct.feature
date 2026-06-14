@@ -1,68 +1,68 @@
-# language: ru
-# Спека правила GID-210 (op-struct-fields, линтер gidopstruct).
+# language: en
+# Spec of rule GID-210 (op-struct-fields, linter gidopstruct).
 
-Функция: GID-210 — операционные Create-структуры содержат минимальный набор полей
-  Как разработчик
-  Я хочу, чтобы Create-структуры не тащили генерируемые поля
-  Чтобы ID/CreatedAt/UpdatedAt проставлялись на своём слое (service/convert/БД)
+Feature: GID-210 — operational Create structs contain a minimal set of fields
+  As a developer
+  I want Create structs not to drag in generated fields
+  So that ID/CreatedAt/UpdatedAt are set at their own layer (service/convert/DB)
 
-  # --- Позитивный класс: нарушения ---
+  # --- Positive class: violations ---
 
-  Сценарий: model-Create с ID/CreatedAt/UpdatedAt — нарушение
-    Допустим в /domain/model тип "CreateJob" с полями "ID", "CreatedAt", "UpdatedAt"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-210" на каждом из полей "ID", "CreatedAt", "UpdatedAt"
+  Scenario: a model Create with ID/CreatedAt/UpdatedAt — violation
+    Given the type "CreateJob" with the fields "ID", "CreatedAt", "UpdatedAt" in /domain/model
+    When the analyzer checks the file
+    Then a "GID-210" diagnostic is reported on each of the fields "ID", "CreatedAt", "UpdatedAt"
 
-  Сценарий: entity-Create с UpdatedAt — нарушение
-    Допустим в /dal/entity тип "CreateJob" с полем "UpdatedAt"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-210" на поле "UpdatedAt"
+  Scenario: an entity Create with UpdatedAt — violation
+    Given the type "CreateJob" with the field "UpdatedAt" in /dal/entity
+    When the analyzer checks the file
+    Then a "GID-210" diagnostic is reported on the field "UpdatedAt"
 
-  # --- Негативный класс: чистый код проходит ---
+  # --- Negative class: clean code passes ---
 
-  Сценарий: чистая model-Create-структура — ок
-    Допустим в /domain/model тип "CreateJob" с полями "Title", "Status"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a clean model Create struct — ok
+    Given the type "CreateJob" with the fields "Title", "Status" in /domain/model
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: entity-Create с ID и CreatedAt, но без UpdatedAt — ок
-    Допустим в /dal/entity тип "CreateJob" с полями "ID", "CreatedAt", "Title"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: an entity Create with ID and CreatedAt but without UpdatedAt — ok
+    Given the type "CreateJob" with the fields "ID", "CreatedAt", "Title" in /dal/entity
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: обычная не-операционная структура с ID/CreatedAt — ок
-    Допустим в /domain/model тип "Snapshot" с полями "ID", "CreatedAt"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: an ordinary non-operational struct with ID/CreatedAt — ok
+    Given the type "Snapshot" with the fields "ID", "CreatedAt" in /domain/model
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  # --- Граничный класс ---
+  # --- Boundary class ---
 
-  Сценарий: поле CreatedBy не путается с CreatedAt
-    Допустим в /domain/model тип "CreateJob" с полем "CreatedBy"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: the field CreatedBy is not confused with CreatedAt
+    Given the type "CreateJob" with the field "CreatedBy" in /domain/model
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: тип CreatedSnapshot не матчится под ^Create[A-Z]
-    Допустим в /domain/model тип "CreatedSnapshot" с полем "ID"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: the type CreatedSnapshot does not match ^Create[A-Z]
+    Given the type "CreatedSnapshot" with the field "ID" in /domain/model
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: Update-структуры не задеваются
-    Допустим в /domain/model тип "UpdateJob" с полями "ID", "UpdatedAt"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: Update structs are not affected
+    Given the type "UpdateJob" with the fields "ID", "UpdatedAt" in /domain/model
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  # --- Неприменимость ---
+  # --- Non-applicability ---
 
-  Сценарий: Create-структура вне model/entity — правило не применяется
-    Допустим в /client или /event/dto тип "CreateJob" с полями "ID", "CreatedAt", "UpdatedAt"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a Create struct outside model/entity — the rule does not apply
+    Given the type "CreateJob" with the fields "ID", "CreatedAt", "UpdatedAt" in /client or /event/dto
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (RULES.md)
-#  [x] Выбран слой: go/analysis (сложное — зависит от слоя пакета и набора полей)
-#  [x] Заданы severity и сообщение
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [ ] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (RULES.md)
+#  [x] Layer chosen: go/analysis (complex — depends on the package layer and the field set)
+#  [x] Severity and message are defined
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [ ] Rule enabled in .golangci.yml

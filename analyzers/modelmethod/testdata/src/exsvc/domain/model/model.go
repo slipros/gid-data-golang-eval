@@ -1,4 +1,4 @@
-// Model-пакет для eval settings.exclude GID-195.
+// Model package for the GID-195 settings.exclude eval.
 package model
 
 type Snapshot struct {

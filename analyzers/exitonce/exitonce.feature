@@ -1,85 +1,85 @@
-# language: ru
+# language: en
 
-Функция: GID-181 — exit once / exit in main
-  Как разработчик
-  Я хочу, чтобы процесс завершался ровно в одном месте — в func main() пакета main
-  Чтобы ошибки возвращались наверх, а не «гасили» программу в произвольной точке
+Feature: GID-181 — exit once / exit in main
+  As a developer
+  I want the process to terminate in exactly one place — in func main() of the main package
+  So that errors are returned up the call stack instead of killing the program at an arbitrary point
 
-  # Детект через TypesInfo (пути пакетов "os", "log", "github.com/sirupsen/logrus").
-  # Под правило подпадают:
+  # Detection via TypesInfo (package paths "os", "log", "github.com/sirupsen/logrus").
+  # The rule covers:
   #   os.Exit;
   #   log.Fatal / log.Fatalf / log.Fatalln (std log);
-  #   logrus.Fatal* / logrus.Exit, включая методы *logrus.Entry и *logrus.Logger (Fatal*).
-  # Анализатор gidexitonce, LoadMode = TypesInfo. Сгенерированный код (ast.IsGenerated) пропускается.
+  #   logrus.Fatal* / logrus.Exit, including methods of *logrus.Entry and *logrus.Logger (Fatal*).
+  # Analyzer gidexitonce, LoadMode = TypesInfo. Generated code (ast.IsGenerated) is skipped.
   #
-  # Проверки:
-  #   1. exit-вызов вне func main (в другой функции main-пакета или в любом не-main пакете).
-  #   2. более одного exit-вызова внутри func main (второй и далее по порядку в исходнике).
+  # Checks:
+  #   1. an exit call outside func main (in another function of the main package or in any non-main package).
+  #   2. more than one exit call inside func main (the second and subsequent ones in source order).
 
-  # === Класс 1: позитив (нарушения) ===
+  # === Class 1: positive (violations) ===
 
-  Сценарий: позитивный — os.Exit в хелпере пакета main (вне func main)
-    Допустим пакет "main" с функцией "fail", вызывающей "os.Exit(1)"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-181: os.Exit вне func main запрещён — верните error наверх" на вызове os.Exit
+  Scenario: positive — os.Exit in a helper of the main package (outside func main)
+    Given the package "main" with the function "fail" calling "os.Exit(1)"
+    When the analyzer checks the file
+    Then the diagnostic "GID-181: os.Exit is forbidden outside func main. Fix: return an error up the call stack" is reported on the os.Exit call
 
-  Сценарий: позитивный — log.Fatal в не-main пакете
-    Допустим библиотечный пакет с функцией, вызывающей "log.Fatal"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-181: log.Fatal вне func main запрещён — верните error наверх"
+  Scenario: positive — log.Fatal in a non-main package
+    Given a library package with a function calling "log.Fatal"
+    When the analyzer checks the file
+    Then the diagnostic "GID-181: log.Fatal is forbidden outside func main. Fix: return an error up the call stack" is reported
 
-  Сценарий: позитивный — logrus.Fatalf в не-main пакете
-    Допустим библиотечный пакет с вызовом "logrus.Fatalf"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-181: logrus.Fatalf вне func main запрещён — верните error наверх"
+  Scenario: positive — logrus.Fatalf in a non-main package
+    Given a library package with a call to "logrus.Fatalf"
+    When the analyzer checks the file
+    Then the diagnostic "GID-181: logrus.Fatalf is forbidden outside func main. Fix: return an error up the call stack" is reported
 
-  Сценарий: позитивный — метод *logrus.Logger.Fatal в не-main пакете
-    Допустим библиотечный пакет с вызовом "l.Fatal" на "*logrus.Logger"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-181: logrus.Fatal вне func main запрещён — верните error наверх"
+  Scenario: positive — the *logrus.Logger.Fatal method in a non-main package
+    Given a library package with a call to "l.Fatal" on a "*logrus.Logger"
+    When the analyzer checks the file
+    Then the diagnostic "GID-181: logrus.Fatal is forbidden outside func main. Fix: return an error up the call stack" is reported
 
-  Сценарий: позитивный — два os.Exit в func main (повторный)
-    Допустим пакет "main" с func main, содержащей два вызова "os.Exit"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-181: повторный os.Exit в main — выходите из программы в одном месте" на втором вызове
+  Scenario: positive — two os.Exit calls in func main (duplicate)
+    Given the package "main" with a func main containing two "os.Exit" calls
+    When the analyzer checks the file
+    Then the diagnostic "GID-181: duplicate os.Exit in main. Fix: exit the program in a single place" is reported on the second call
 
-  # === Класс 2: негатив (чистый код) ===
+  # === Class 2: negative (clean code) ===
 
-  Сценарий: негативный — ровно один os.Exit в конце func main
-    Допустим пакет "main" с func main, содержащей единственный "os.Exit"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — exactly one os.Exit at the end of func main
+    Given the package "main" with a func main containing a single "os.Exit"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: негативный — функция возвращает error вместо завершения процесса
-    Допустим функция "func run() error", возвращающая ошибку наверх
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — a function returns an error instead of terminating the process
+    Given the function "func run() error" returning the error up the call stack
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  # === Класс 3: граничные кейсы ===
+  # === Class 3: boundary cases ===
 
-  Сценарий: граничный — defer + один os.Exit в main
-    Допустим func main с "defer cleanup()" и единственным "os.Exit(0)"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
-    # defer не влияет на счётчик exit-вызовов; вызов один — ок.
+  Scenario: boundary — defer + a single os.Exit in main
+    Given a func main with "defer cleanup()" and a single "os.Exit(0)"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+    # defer does not affect the exit-call counter; there is one call — ok.
 
-  Сценарий: граничный — os.Exit внутри замыкания в main
-    Допустим func main с замыканием, вызывающим "os.Exit", и единственным таким вызовом
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
-    # Замыкание лексически внутри тела main → вызов считается «в main», а не «вне main».
+  Scenario: boundary — os.Exit inside a closure in main
+    Given a func main with a closure calling "os.Exit", and that is the only such call
+    When the analyzer checks the file
+    Then no diagnostic is reported
+    # The closure is lexically inside the main body → the call counts as "in main", not "outside main".
 
-  # === Класс 4: неприменимость ===
+  # === Class 4: non-applicability ===
 
-  Сценарий: неприменимость — библиотечный пакет без exit-вызовов
-    Допустим библиотечный пакет, использующий только Info/Error/Print (нефатальные)
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: non-applicability — a library package without exit calls
+    Given a library package using only Info/Error/Print (non-fatal)
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (RULES.md, GID-181)
-#  [x] Выбран слой: go/analysis (анализатор gidexitonce в analyzers/exitonce)
-#  [x] Заданы сообщения ("GID-181: …")
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [ ] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (RULES.md, GID-181)
+#  [x] Layer chosen: go/analysis (analyzer gidexitonce in analyzers/exitonce)
+#  [x] Messages are defined ("GID-181: …")
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [ ] Rule enabled in .golangci.yml

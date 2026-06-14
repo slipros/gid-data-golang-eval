@@ -1,23 +1,23 @@
-// Package eventctor реализует правило GID-216 (event-ctor-deps): зависимости
-// конструкторов event-слоя (источник: event.md).
+// Package eventctor implements rule GID-216 (event-ctor-deps): dependencies
+// of event-layer constructors (source: event.md).
 //
-//   - GID-216 (gideventctor): в consumer-слое конструктор обязан принимать
-//     logger (*logrus.Logger или *logrus.Entry) — consumer собирает Entry с
-//     полями broker/consumer; в producer-слое конструктор logger не принимает —
-//     ошибки пробрасываются вызывающему коду.
+//   - GID-216 (gideventctor): in the consumer layer the constructor must take
+//     a logger (*logrus.Logger or *logrus.Entry) — the consumer builds an Entry
+//     with broker/consumer fields; in the producer layer the constructor takes
+//     no logger — errors are propagated to the caller.
 //
-// Scope определяется по сегментам import-пути: consumer — пакет с сегментами
-// event и consumer, producer — с сегментами event и producer. Подпакеты с
-// сегментами validate и convert исключаются: там валидаторы и конвертеры,
-// а не consumer'ы/producer'ы.
+// Scope is determined by the import path segments: consumer — a package with
+// segments event and consumer, producer — with segments event and producer.
+// Subpackages with segments validate and convert are excluded: they hold
+// validators and converters, not consumers/producers.
 //
-// Конструктор — экспортируемая функция ^New[A-Z], возвращающая указатель на
-// struct-тип, объявленный В ТОМ ЖЕ ПАКЕТЕ. Это автоматически исключает
-// schema-функции вида New<X>Schema, возвращающие *registry.Schema чужого
-// пакета.
+// A constructor is an exported function ^New[A-Z] returning a pointer to a
+// struct type declared IN THE SAME PACKAGE. This automatically excludes
+// schema functions like New<X>Schema that return *registry.Schema of a
+// foreign package.
 //
-// Исключения: имена конструкторов в settings.exclude (.golangci.yml) либо
-// точечно //nolint:gideventctor.
+// Exclusions: constructor names in settings.exclude (.golangci.yml) or
+// pointwise //nolint:gideventctor.
 package eventctor
 
 import (
@@ -34,26 +34,26 @@ import (
 
 const ruleID = "GID-216"
 
-// Режимы проверки пакета event-слоя (тип scope объявлен ниже).
+// Check modes for an event-layer package (the scope type is declared below).
 const (
 	scopeNone scope = iota
 	scopeConsumer
 	scopeProducer
 )
 
-// ctorName — конструктор: экспортируемое имя вида New + заглавная буква.
+// ctorName — a constructor: an exported name of the form New + a capital letter.
 var ctorName = regexp.MustCompile(`^New[A-Z]`)
 
-// Analyzer — вариант с настройками по умолчанию (без исключений).
+// Analyzer — variant with default settings (no exclusions).
 var Analyzer = NewAnalyzer(Settings{})
 
-// Settings — настройки линтера из .golangci.yml.
+// Settings — linter settings from .golangci.yml.
 type Settings struct {
-	// Exclude — имена конструкторов-исключений (например "NewOrderConsumer").
+	// Exclude — names of excluded constructors (for example "NewOrderConsumer").
 	Exclude []string `json:"exclude"`
 }
 
-// NewAnalyzer строит анализатор GID-216 из настроек линтера (.golangci.yml).
+// NewAnalyzer builds the GID-216 analyzer from the linter settings (.golangci.yml).
 func NewAnalyzer(cfg Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name: "gideventctor",
@@ -64,14 +64,14 @@ func NewAnalyzer(cfg Settings) *analysis.Analyzer {
 	}
 }
 
-// scope — режим проверки для пакета event-слоя.
+// scope — the check mode for an event-layer package.
 type scope int
 
 func pkgScope(pkgPath string) scope {
 	if !pathseg.Contains(pkgPath, "event") {
 		return scopeNone
 	}
-	// validate/convert — это валидаторы и конвертеры, не consumer'ы/producer'ы.
+	// validate/convert hold validators and converters, not consumers/producers.
 	if pathseg.Contains(pkgPath, "validate") || pathseg.Contains(pkgPath, "convert") {
 		return scopeNone
 	}
@@ -141,8 +141,8 @@ func check(pass *analysis.Pass, sc scope, fn *ast.FuncDecl, sig *types.Signature
 	}
 }
 
-// returnsLocalStructPtr сообщает, возвращает ли сигнатура (первым результатом)
-// указатель на struct-тип, объявленный в текущем пакете.
+// returnsLocalStructPtr reports whether the signature returns (as the first
+// result) a pointer to a struct type declared in the current package.
 func returnsLocalStructPtr(pkg *types.Package, sig *types.Signature) bool {
 	results := sig.Results()
 	if results.Len() == 0 {
@@ -165,8 +165,8 @@ func returnsLocalStructPtr(pkg *types.Package, sig *types.Signature) bool {
 	return ok
 }
 
-// hasLoggerParam сообщает, есть ли среди параметров logrus-тип
-// (*logrus.Logger или *logrus.Entry).
+// hasLoggerParam reports whether any of the parameters has a logrus type
+// (*logrus.Logger or *logrus.Entry).
 func hasLoggerParam(sig *types.Signature) bool {
 	params := sig.Params()
 	for i := 0; i < params.Len(); i++ {

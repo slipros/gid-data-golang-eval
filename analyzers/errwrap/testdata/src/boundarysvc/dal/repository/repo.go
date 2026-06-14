@@ -1,4 +1,4 @@
-// Eval GID-176 (часть 1): граница /dal/repository.
+// Eval of GID-176 (part 1): the /dal/repository boundary.
 package repository
 
 import (
@@ -13,7 +13,7 @@ func (r *Repo) call() error { return nil }
 
 func (r *Repo) callRow() (int, error) { return 0, nil }
 
-// --- Позитив: pass-through нестатичной ошибки из вызова ---
+// --- Positive: pass-through of a non-static error from a call ---
 
 func (r *Repo) badPassThrough() error {
 	err := r.call()
@@ -25,7 +25,7 @@ func (r *Repo) badPassThroughMulti() (int, error) {
 	return n, err // want `GID-176: wrap with errors\.Wrap\. Fix: an error from the app boundary must collect stack and context`
 }
 
-// --- Позитив: WithStack/WithMessage не добавляют контекст ---
+// --- Positive: WithStack/WithMessage add no context ---
 
 func (r *Repo) badWithStack() error {
 	err := r.call()
@@ -37,14 +37,14 @@ func (r *Repo) badWithMessage() error {
 	return errors.WithMessage(err, "ctx") // want `GID-176: an error from the app boundary must be wrapped with errors\.Wrap\. Fix: collect stack and context \(WithMessage adds no context\)`
 }
 
-// --- Негатив: ошибка из вызова обёрнута Wrap ---
+// --- Negative: the error from a call is wrapped with Wrap ---
 
 func (r *Repo) goodWrap() error {
 	err := r.call()
 	return errors.Wrap(err, "select")
 }
 
-// --- Граничный: возврат статичной ошибки (зона GID-177, не GID-176) ---
+// --- Boundary: returning a static error (GID-177 territory, not GID-176) ---
 
 func (r *Repo) goodStatic() error {
 	err := r.call()
@@ -54,7 +54,7 @@ func (r *Repo) goodStatic() error {
 	return nil
 }
 
-// --- Неприменимость: функция не возвращает error ---
+// --- Inapplicable: the function does not return an error ---
 
 func (r *Repo) noError() int {
 	_ = r.call()

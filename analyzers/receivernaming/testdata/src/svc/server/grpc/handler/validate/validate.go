@@ -1,4 +1,4 @@
-// Негатив (граница): в validate-пакетах ресивер v — исключение стайлгайда.
+// Negative (boundary): in validate packages the receiver v is a styleguide exception.
 package validate
 
 type CreateSnapshot struct{}

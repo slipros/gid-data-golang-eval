@@ -1,5 +1,5 @@
-// Eval GID-186, класс «неприменимость»: пакет без fmt/log/pkg-errors —
-// printf-функций нет, диагностики быть не должно.
+// Eval of GID-186, "inapplicability" class: a package without fmt/log/pkg-errors —
+// no printf functions, there must be no diagnostic.
 package nofmt
 
 func describe(s string) string {

@@ -1,86 +1,86 @@
-# language: ru
+# language: en
 
-Функция: GID-186 — format-строка printf-функций — литерал или const (fmtconst)
-  Как разработчик
-  Я хочу, чтобы format-строка printf-style функций была литералом или константой,
-  а не переменной
-  Чтобы go vet (printf-чек) мог статически сверить verb-ы format с аргументами
+Feature: GID-186 — the format string of printf functions is a literal or a const (fmtconst)
+  As a developer
+  I want the format string of printf-style functions to be a literal or a constant,
+  not a variable
+  So that go vet (the printf check) can statically verify the format verbs against the arguments
 
-  # Анализатор gidfmtconst, LoadMode TypesInfo.
-  # Целевые функции и индекс аргумента-format распознаются по типизированному
-  # пути пакета (pass.TypesInfo, typeutil.Callee):
-  #   - fmt.Printf/Sprintf/Errorf → format арг 0; fmt.Fprintf → арг 1;
+  # Analyzer gidfmtconst, LoadMode TypesInfo.
+  # Target functions and the format-argument index are recognized by the typed
+  # package path (pass.TypesInfo, typeutil.Callee):
+  #   - fmt.Printf/Sprintf/Errorf → format arg 0; fmt.Fprintf → arg 1;
   #   - github.com/pkg/errors Errorf → 0, Wrapf → 1, WithMessagef → 1;
-  #   - log.Printf/Fatalf → арг 0.
-  # Константность проверяется через tv.Value != nil (литерал, const-идентификатор,
-  # конкатенация констант). pkg/errors — стаб в testdata.
-  # Сгенерированный код (ast.IsGenerated) пропускается.
+  #   - log.Printf/Fatalf → arg 0.
+  # Constancy is checked via tv.Value != nil (a literal, a const identifier,
+  # a concatenation of constants). pkg/errors — a stub in testdata.
+  # Generated code (ast.IsGenerated) is skipped.
 
-  # --- Класс 1: позитивный (нарушение ловится) ---
+  # --- Class 1: positive (the violation is caught) ---
 
-  Сценарий: позитивный — переменная в fmt.Sprintf
-    Допустим "func f(s string, x int) string { return fmt.Sprintf(s, x) }"
-    Когда анализатор gidfmtconst проверяет файл
-    Тогда выводится диагностика "GID-186: format-строка — переменная; объявите const, иначе vet не проверит аргументы" на "s"
+  Scenario: positive — a variable in fmt.Sprintf
+    Given "func f(s string, x int) string { return fmt.Sprintf(s, x) }"
+    When the gidfmtconst analyzer checks the file
+    Then the diagnostic "GID-186: the format string is a variable. Fix: declare a const, otherwise vet cannot check the arguments" is reported on "s"
 
-  Сценарий: позитивный — переменная в позиции format у fmt.Fprintf (арг 1)
-    Допустим "fmt.Fprintf(w, s, x)" где s — переменная
-    Когда анализатор gidfmtconst проверяет файл
-    Тогда выводится диагностика "GID-186: format-строка — переменная …" на "s"
+  Scenario: positive — a variable in the format position of fmt.Fprintf (arg 1)
+    Given "fmt.Fprintf(w, s, x)" where s is a variable
+    When the gidfmtconst analyzer checks the file
+    Then the diagnostic "GID-186: the format string is a variable …" is reported on "s"
 
-  Сценарий: позитивный — переменная в errors.Wrapf (арг 1)
-    Допустим "errors.Wrapf(err, s, x)" где s — переменная
-    Когда анализатор gidfmtconst проверяет файл
-    Тогда выводится диагностика "GID-186: format-строка — переменная …" на "s"
+  Scenario: positive — a variable in errors.Wrapf (arg 1)
+    Given "errors.Wrapf(err, s, x)" where s is a variable
+    When the gidfmtconst analyzer checks the file
+    Then the diagnostic "GID-186: the format string is a variable …" is reported on "s"
 
-  Сценарий: позитивный — fmt.Printf / fmt.Errorf / errors.Errorf / errors.WithMessagef / log.Printf / log.Fatalf
-    Допустим переменную в позиции format у каждой из перечисленных функций
-    Когда анализатор gidfmtconst проверяет файл
-    Тогда на каждую выводится диагностика "GID-186: format-строка — переменная …"
+  Scenario: positive — fmt.Printf / fmt.Errorf / errors.Errorf / errors.WithMessagef / log.Printf / log.Fatalf
+    Given a variable in the format position of each of the listed functions
+    When the gidfmtconst analyzer checks the file
+    Then the diagnostic "GID-186: the format string is a variable …" is reported on each
 
-  # --- Класс 2: негативный (чистый код проходит) ---
+  # --- Class 2: negative (clean code passes) ---
 
-  Сценарий: негативный — строковый литерал
-    Допустим "fmt.Sprintf(\"значение %d\", x)"
-    Когда анализатор gidfmtconst проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — a string literal
+    Given "fmt.Sprintf(\"value %d\", x)"
+    When the gidfmtconst analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: негативный — const-идентификатор
-    Допустим "const fmtStr = \"значение %d\"" и "fmt.Sprintf(fmtStr, x)"
-    Когда анализатор gidfmtconst проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — a const identifier
+    Given "const fmtStr = \"value %d\"" and "fmt.Sprintf(fmtStr, x)"
+    When the gidfmtconst analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: негативный — конкатенация констант
-    Допустим "fmt.Sprintf(\"a\"+\"b %d\", x)"
-    Когда анализатор gidfmtconst проверяет файл
-    Тогда диагностика не выводится
-    # Значение конкатенации констант — тоже константа (tv.Value != nil).
+  Scenario: negative — a concatenation of constants
+    Given "fmt.Sprintf(\"a\"+\"b %d\", x)"
+    When the gidfmtconst analyzer checks the file
+    Then no diagnostic is reported
+    # The value of a concatenation of constants is also a constant (tv.Value != nil).
 
-  # --- Класс 3: граничный (похоже на нарушение, но допустимо) ---
+  # --- Class 3: boundary (looks like a violation but is allowed) ---
 
-  Сценарий: граничный — fmt.Sprint (не printf, нет позиции format)
-    Допустим "fmt.Sprint(s)" где s — переменная
-    Когда анализатор gidfmtconst проверяет файл
-    Тогда диагностика не выводится
-    # Sprint форматирует операнды по умолчанию, format-строки нет.
+  Scenario: boundary — fmt.Sprint (not printf, no format position)
+    Given "fmt.Sprint(s)" where s is a variable
+    When the gidfmtconst analyzer checks the file
+    Then no diagnostic is reported
+    # Sprint formats operands with default formats, there is no format string.
 
-  Сценарий: граничный — локальная функция printf(format, ...)
-    Допустим "func printf(format string, args ...any) {}" и вызов "printf(s, x)"
-    Когда анализатор gidfmtconst проверяет файл
-    Тогда диагностика не выводится
-    # Функция не из целевых пакетов (typeutil.Callee → другой path) — не матчится.
+  Scenario: boundary — a local function printf(format, ...)
+    Given "func printf(format string, args ...any) {}" and the call "printf(s, x)"
+    When the gidfmtconst analyzer checks the file
+    Then no diagnostic is reported
+    # The function is not from the target packages (typeutil.Callee → a different path) — not matched.
 
-  # --- Класс 4: неприменимость ---
+  # --- Class 4: non-applicability ---
 
-  Сценарий: неприменимость — файл без fmt/log/pkg-errors
-    Допустим пакет без printf-функций (только конкатенация строк)
-    Когда анализатор gidfmtconst проверяет файл
-    Тогда диагностика не выводится
+  Scenario: non-applicability — a file without fmt/log/pkg-errors
+    Given a package without printf functions (only string concatenation)
+    When the gidfmtconst analyzer checks the file
+    Then no diagnostic is reported
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (RULES.md, GID-186)
-#  [x] Выбран слой: go/analysis (пакет fmtconst: gidfmtconst)
-#  [x] Задано сообщение ("GID-186: …")
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [ ] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (RULES.md, GID-186)
+#  [x] Layer chosen: go/analysis (package fmtconst: gidfmtconst)
+#  [x] Message is defined ("GID-186: …")
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [ ] Rule enabled in .golangci.yml

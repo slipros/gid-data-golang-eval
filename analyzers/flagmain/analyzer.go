@@ -1,21 +1,21 @@
-// Package flagmain реализует правило GID-192 (flags):
+// Package flagmain implements rule GID-192 (flags):
 //
-//   - Регистрация флагов через пакет stdlib "flag" (функции flag.String/Int/
-//     Bool/.../flag.Parse/flag.Var и методы flag.FlagSet) разрешена только
-//     в пакете main: Fix: declare flags in the binary, let libraries take parameters.
-//   - В пакете main имя флага (первый строковый константный аргумент
-//     flag.String/Int/Bool/Duration/Float64/Var и т.п.) должно быть в
-//     snake_case: заглавные буквы и дефисы запрещены, цифры и `_` допустимы.
+//   - Registering flags via the stdlib "flag" package (flag.String/Int/
+//     Bool/.../flag.Parse/flag.Var functions and flag.FlagSet methods) is
+//     allowed only in package main: Fix: declare flags in the binary, let libraries take parameters.
+//   - In package main the flag name (the first string constant argument of
+//     flag.String/Int/Bool/Duration/Float64/Var, etc.) must be in
+//     snake_case: capital letters and hyphens are forbidden, digits and `_` are allowed.
 //
-// Camel-case имя ПЕРЕМЕННОЙ, в которую кладётся флаг, здесь не проверяется —
-// это зона revive/ST1003.
+// A camel-case name of the VARIABLE that receives the flag is not checked
+// here — that is revive/ST1003 territory.
 //
-// Детект пакета flag — через TypesInfo (путь пакета "flag"), поэтому свой
-// локальный пакет с именем "flag" под правило не подпадает.
+// The flag package is detected via TypesInfo (package path "flag"), so a
+// local package named "flag" does not fall under the rule.
 //
-// Тестовые файлы (*_test.go) и пакеты с суффиксом _test пропускаются: flag
-// в тестах бывает легитимен. Сгенерированный код (ast.IsGenerated) тоже
-// пропускается. LoadMode — TypesInfo.
+// Test files (*_test.go) and packages with the _test suffix are skipped: flag
+// can be legitimate in tests. Generated code (ast.IsGenerated) is also
+// skipped. LoadMode — TypesInfo.
 package flagmain
 
 import (
@@ -30,10 +30,10 @@ import (
 
 const ruleID = "GID-192"
 
-// flagPkgPath — путь пакета регистрации флагов в stdlib.
+// flagPkgPath — the path of the stdlib flag registration package.
 const flagPkgPath = "flag"
 
-// Analyzer — правило GID-192: flag.* только в пакете main; имена флагов snake_case.
+// Analyzer — rule GID-192: flag.* only in package main; flag names in snake_case.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidflagmain",
 	Doc:  ruleID + ": flags are registered only in package main, flag names in snake_case. Fix: register flags in main and use snake_case names",
@@ -41,7 +41,7 @@ var Analyzer = &analysis.Analyzer{
 }
 
 func run(pass *analysis.Pass) (any, error) {
-	// Пакет с суффиксом _test (внешний тестовый пакет) — пропускаем целиком.
+	// A package with the _test suffix (an external test package) — skipped entirely.
 	if strings.HasSuffix(pass.Pkg.Name(), "_test") {
 		return nil, nil
 	}
@@ -51,7 +51,7 @@ func run(pass *analysis.Pass) (any, error) {
 		if ast.IsGenerated(file) {
 			continue
 		}
-		// Файлы *_test.go пропускаем — flag в тестах легитимен.
+		// *_test.go files are skipped — flag is legitimate in tests.
 		if isTestFile(pass, file) {
 			continue
 		}
@@ -72,7 +72,7 @@ func run(pass *analysis.Pass) (any, error) {
 				return true
 			}
 
-			// В пакете main проверяем имя флага на snake_case.
+			// In package main the flag name is checked for snake_case.
 			pos, name, ok := flagName(pass, fn, call)
 			if !ok {
 				return true
@@ -86,14 +86,14 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-// isTestFile сообщает, что файл — *_test.go.
+// isTestFile reports that the file is *_test.go.
 func isTestFile(pass *analysis.Pass, file *ast.File) bool {
 	name := pass.Fset.Position(file.Pos()).Filename
 	return strings.HasSuffix(name, "_test.go")
 }
 
-// flagFunc возвращает *types.Func, если вызов — это функция пакета flag или
-// метод типа из пакета flag (например *flag.FlagSet). Иначе nil.
+// flagFunc returns *types.Func if the call is a function of the flag package
+// or a method of a type from the flag package (e.g. *flag.FlagSet). Otherwise nil.
 func flagFunc(pass *analysis.Pass, call *ast.CallExpr) *types.Func {
 	sel, ok := call.Fun.(*ast.SelectorExpr)
 	if !ok {
@@ -108,7 +108,7 @@ func flagFunc(pass *analysis.Pass, call *ast.CallExpr) *types.Func {
 		return nil
 	}
 
-	// Метод типа из пакета flag (например *flag.FlagSet).
+	// A method of a type from the flag package (e.g. *flag.FlagSet).
 	if recv := sig.Recv(); recv != nil {
 		if isFlagType(recv.Type()) {
 			return fn
@@ -116,14 +116,14 @@ func flagFunc(pass *analysis.Pass, call *ast.CallExpr) *types.Func {
 		return nil
 	}
 
-	// Пакетная функция flag.*.
+	// A package-level flag.* function.
 	if pkg := fn.Pkg(); pkg != nil && pkg.Path() == flagPkgPath {
 		return fn
 	}
 	return nil
 }
 
-// isFlagType сообщает, относится ли тип к пакету flag (например flag.FlagSet).
+// isFlagType reports whether the type belongs to the flag package (e.g. flag.FlagSet).
 func isFlagType(t types.Type) bool {
 	switch tt := t.(type) {
 	case *types.Pointer:
@@ -138,10 +138,11 @@ func isFlagType(t types.Type) bool {
 	return false
 }
 
-// flagName извлекает имя флага из вызова регистрирующей функции flag.
-// Возвращает позицию аргумента-имени, само имя и ok=true, только если имя
-// задано строковой константой. Для функций без имени флага (Parse, Parsed,
-// Args, NArg, …) и для динамических (не-константных) имён ok=false.
+// flagName extracts the flag name from a call to a flag-registering function.
+// It returns the position of the name argument, the name itself and ok=true,
+// only when the name is given as a string constant. For functions without a
+// flag name (Parse, Parsed, Args, NArg, …) and for dynamic (non-constant)
+// names ok=false.
 func flagName(pass *analysis.Pass, fn *types.Func, call *ast.CallExpr) (token.Pos, string, bool) {
 	idx, ok := nameArgIndex(fn.Name())
 	if !ok || idx >= len(call.Args) {
@@ -155,13 +156,13 @@ func flagName(pass *analysis.Pass, fn *types.Func, call *ast.CallExpr) (token.Po
 	return arg.Pos(), constant.StringVal(tv.Value), true
 }
 
-// nameArgIndex возвращает индекс аргумента с именем флага для функции/метода
-// регистрации флага. Группы:
+// nameArgIndex returns the index of the flag-name argument for a flag
+// registration function/method. Groups:
 //   - String/Int/Int64/Uint/Uint64/Float64/Bool/Duration/Func/BoolFunc
-//     (name первым) — индекс 0;
+//     (name first) — index 0;
 //   - Var/StringVar/IntVar/Int64Var/UintVar/Uint64Var/BoolVar/Float64Var/
-//     DurationVar/TextVar (первым идёт указатель или Value, имя — вторым) —
-//     индекс 1.
+//     DurationVar/TextVar (a pointer or Value comes first, the name second) —
+//     index 1.
 func nameArgIndex(name string) (int, bool) {
 	switch name {
 	case "String", "Int", "Int64", "Uint", "Uint64", "Float64",
@@ -174,9 +175,9 @@ func nameArgIndex(name string) (int, bool) {
 	return 0, false
 }
 
-// isSnakeCase сообщает, что имя флага в snake_case: только строчные буквы,
-// цифры и `_`. Заглавные буквы и дефисы запрещены. Пустое имя считаем
-// корректным (не наша забота).
+// isSnakeCase reports that the flag name is in snake_case: only lowercase
+// letters, digits and `_`. Capital letters and hyphens are forbidden. An empty
+// name is considered valid (not our concern).
 func isSnakeCase(name string) bool {
 	for _, r := range name {
 		switch {

@@ -1,4 +1,4 @@
-// Stub github.com/sirupsen/logrus для eval GID-214.
+// Stub github.com/sirupsen/logrus for the GID-214 eval.
 package logrus
 
 import "context"
@@ -18,8 +18,8 @@ type Logger struct{}
 func (l *Logger) WithField(key string, value any) *Entry { return &Entry{} }
 func (l *Logger) Info(args ...any)                       {}
 
-// New создаёт новый экземпляр логгера — package-level функция.
+// New creates a new logger instance — a package-level function.
 func New() *Logger { return &Logger{} }
 
-// StandardLogger возвращает глобальный экземпляр логгера.
+// StandardLogger returns the global logger instance.
 func StandardLogger() *Logger { return &Logger{} }

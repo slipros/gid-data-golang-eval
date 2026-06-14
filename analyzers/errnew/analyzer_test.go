@@ -8,12 +8,12 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/errnew"
 )
 
-// TestAnalyzer покрывает позитив, негатив и граничные кейсы.
+// TestAnalyzer covers positive, negative and boundary cases.
 func TestAnalyzer(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), errnew.Analyzer, "svc/...")
 }
 
-// TestInapplicable — пакет без github.com/pkg/errors не репортится.
+// TestInapplicable — a package without github.com/pkg/errors is not reported.
 func TestInapplicable(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), errnew.Analyzer, "nopkgerrors/...")
 }

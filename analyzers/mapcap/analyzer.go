@@ -1,26 +1,30 @@
-// Package mapcap реализует правило GID-183 (Uber perf: map capacity hints):
-// если map создаётся через make(map[K]V) БЕЗ аргумента-ёмкости, а затем в той же
-// функции заполняется в range-цикле по коллекции с известной длиной (слайс, мапа,
-// строка), нужно указать хинт ёмкости: make(map[K]V, len(src)). Стандартный
-// prealloc такой случай не покрывает — он умеет только слайсы.
+// Package mapcap implements rule GID-183 (Uber perf: map capacity hints):
+// if a map is created via make(map[K]V) WITHOUT a capacity argument and then,
+// in the same function, is filled in a range loop over a collection of known
+// length (slice, map, string), a capacity hint should be given:
+// make(map[K]V, len(src)). The standard prealloc does not cover this case — it
+// only handles slices.
 //
-// Паттерн в пределах одной функции:
-//  1. m := make(map[K]V)        // или var m = make(map[K]V) — без capacity;
-//  2. for ... := range src {    // src — слайс/мапа/строка
-//     m[...] = ...          // безусловное присваивание по индексу в m
+// Pattern within a single function:
+//  1. m := make(map[K]V)        // or var m = make(map[K]V) — without capacity;
+//  2. for ... := range src {    // src is a slice/map/string
+//     m[...] = ...          // unconditional index assignment to m
 //     }
 //
-// Эвристика консервативная — матчим только заведомо безопасные случаи:
-//   - между make и циклом m НЕ должна использоваться никак (ни заполнение вне
-//     цикла, ни передача в вызов): любое упоминание m отменяет диагностику,
-//     т.к. её длина к моменту цикла уже неизвестна анализатору;
-//   - range по каналу НЕ матчим — у канала нет len, заранее размер неизвестен;
-//   - присваивание m[...] = ... внутри if (условное заполнение) в теле цикла
-//     НЕ матчим — реальное число вставок меньше len(src), хинт может навредить.
+// The heuristic is conservative — we match only clearly safe cases:
+//   - between make and the loop, m MUST NOT be used in any way (neither filled
+//     outside the loop nor passed into a call): any mention of m cancels the
+//     diagnostic, since by the time of the loop its length is already unknown
+//     to the analyzer;
+//   - range over a channel is NOT matched — a channel has no len, its size is
+//     unknown in advance;
+//   - an m[...] = ... assignment inside an if (conditional fill) in the loop body
+//     is NOT matched — the real number of inserts is less than len(src), and the
+//     hint may hurt.
 //
-// make с уже указанной ёмкостью (make(map[K]V, n)) — корректен, не матчим.
-// Сгенерированный код (ast.IsGenerated) пропускается.
-// LoadMode — TypesInfo (нужны типы, чтобы отличить слайс/мапу/строку от канала).
+// make with a capacity already specified (make(map[K]V, n)) is correct, not matched.
+// Generated code (ast.IsGenerated) is skipped.
+// LoadMode is TypesInfo (types are needed to tell a slice/map/string from a channel).
 package mapcap
 
 import (
@@ -32,7 +36,7 @@ import (
 
 const ruleID = "GID-183"
 
-// Analyzer — правило GID-183: make(map) without capacity when filled from range; give the len(src) hint. Fix: make(map[K]V, len(src)).
+// Analyzer — rule GID-183: make(map) without capacity when filled from range; give the len(src) hint. Fix: make(map[K]V, len(src)).
 var Analyzer = &analysis.Analyzer{
 	Name: "gidmapcap",
 	Doc:  ruleID + ": make(map) without capacity when filled from range; give the len(src) hint. Fix: make(map[K]V, len(src))",
@@ -56,13 +60,13 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-// checkBlock анализирует последовательность операторов одного блока: находит
-// make(map) без ёмкости и ищет ниже в том же блоке range-цикл, заполняющий map.
-// Рекурсивно спускается во вложенные блоки (тела if/for/...), чтобы паттерн
-// внутри вложенного блока тоже ловился.
+// checkBlock analyzes the statement sequence of a single block: it finds a
+// make(map) without capacity and looks below, in the same block, for a range
+// loop that fills the map. It recurses into nested blocks (bodies of if/for/...)
+// so the pattern inside a nested block is caught too.
 func checkBlock(pass *analysis.Pass, stmts []ast.Stmt) {
 	for i, stmt := range stmts {
-		// Спуск во вложенные блоки — паттерн локален для своего блока операторов.
+		// Descent into nested blocks — the pattern is local to its statement block.
 		inspectNestedBlocks(pass, stmt)
 
 		name, makeCall := mapMakeWithoutCap(pass, stmt)
@@ -77,35 +81,35 @@ func checkBlock(pass *analysis.Pass, stmts []ast.Stmt) {
 	}
 }
 
-// analyzeAfterMake просматривает операторы после make. Возвращает (через Report)
-// диагностику, если ближайшее использование m — это range-цикл с безусловным
-// заполнением m по слайсу/мапе/строке. Любое иное использование m до такого
-// цикла отменяет диагностику.
+// analyzeAfterMake scans the statements after make. It emits (via Report) a
+// diagnostic if the nearest use of m is a range loop that unconditionally fills
+// m over a slice/map/string. Any other use of m before such a loop cancels the
+// diagnostic.
 func analyzeAfterMake(pass *analysis.Pass, rest []ast.Stmt, obj types.Object, makeCall *ast.CallExpr) {
 	for _, stmt := range rest {
 		rng, isRange := stmt.(*ast.RangeStmt)
 		if isRange && fillsMapInRange(pass, rng, obj) {
 			if !rangeOverKnownLen(pass, rng.X) {
-				return // range по каналу/неизвестному — размер неизвестен.
+				return // range over a channel/unknown — size is unknown.
 			}
 			if usesObjOutsideAssign(pass, rng.Body, obj) {
-				return // условное заполнение или иное использование m в теле — не матчим.
+				return // conditional fill or other use of m in the body — not matched.
 			}
 			pass.Reportf(makeCall.Pos(),
 				"%s: make without capacity while filling from range. Fix: make(map[K]V, len(src))",
 				ruleID)
 			return
 		}
-		// Любое использование m до подходящего цикла отменяет диагностику.
+		// Any use of m before a suitable loop cancels the diagnostic.
 		if usesObj(pass, stmt, obj) {
 			return
 		}
 	}
 }
 
-// mapMakeWithoutCap определяет, что stmt — это объявление map через make без
-// аргумента-ёмкости. Возвращает имя переменной и сам вызов make.
-// Поддерживает  m := make(map[K]V)  и  var m = make(map[K]V).
+// mapMakeWithoutCap determines that stmt is a map declaration via make without
+// a capacity argument. It returns the variable name and the make call itself.
+// Supports  m := make(map[K]V)  and  var m = make(map[K]V).
 func mapMakeWithoutCap(pass *analysis.Pass, stmt ast.Stmt) (string, *ast.CallExpr) {
 	var lhs ast.Expr
 	var rhs ast.Expr
@@ -142,15 +146,15 @@ func mapMakeWithoutCap(pass *analysis.Pass, stmt ast.Stmt) (string, *ast.CallExp
 		return "", nil
 	}
 	if _, ok := call.Args[0].(*ast.MapType); !ok {
-		return "", nil // make([]T, ...) / make(chan T) — не мапа.
+		return "", nil // make([]T, ...) / make(chan T) — not a map.
 	}
 	if len(call.Args) >= 2 {
-		return "", nil // ёмкость уже указана — корректно.
+		return "", nil // capacity already specified — correct.
 	}
 	return ident.Name, call
 }
 
-// declIdent возвращает *ast.Ident объявляемой переменной из stmt по имени.
+// declIdent returns the *ast.Ident of the declared variable from stmt by name.
 func declIdent(stmt ast.Stmt, name string) *ast.Ident {
 	switch s := stmt.(type) {
 	case *ast.AssignStmt:
@@ -167,8 +171,8 @@ func declIdent(stmt ast.Stmt, name string) *ast.Ident {
 	return nil
 }
 
-// fillsMapInRange сообщает, что в теле range-цикла есть присваивание m[...] = ...,
-// где m — наш объект (на верхнем уровне тела цикла, безусловно).
+// fillsMapInRange reports that the range loop body has an m[...] = ... assignment
+// where m is our object (at the top level of the loop body, unconditionally).
 func fillsMapInRange(pass *analysis.Pass, rng *ast.RangeStmt, obj types.Object) bool {
 	for _, stmt := range rng.Body.List {
 		if isIndexAssignTo(pass, stmt, obj) {
@@ -178,7 +182,7 @@ func fillsMapInRange(pass *analysis.Pass, rng *ast.RangeStmt, obj types.Object) 
 	return false
 }
 
-// isIndexAssignTo: stmt — это присваивание вида m[key] = value, где m — obj.
+// isIndexAssignTo: stmt is an assignment of the form m[key] = value, where m is obj.
 func isIndexAssignTo(pass *analysis.Pass, stmt ast.Stmt, obj types.Object) bool {
 	assign, ok := stmt.(*ast.AssignStmt)
 	if !ok {
@@ -196,8 +200,8 @@ func isIndexAssignTo(pass *analysis.Pass, stmt ast.Stmt, obj types.Object) bool 
 	return false
 }
 
-// rangeOverKnownLen: источник range имеет известную длину (слайс, массив, мапа,
-// строка). Канал не имеет len — false.
+// rangeOverKnownLen: the range source has a known length (slice, array, map,
+// string). A channel has no len — false.
 func rangeOverKnownLen(pass *analysis.Pass, x ast.Expr) bool {
 	t := pass.TypesInfo.TypeOf(x)
 	if t == nil {
@@ -209,7 +213,7 @@ func rangeOverKnownLen(pass *analysis.Pass, x ast.Expr) bool {
 	case *types.Basic:
 		return u.Info()&types.IsString != 0
 	case *types.Pointer:
-		// *[N]T — указатель на массив, range допустим и длина известна.
+		// *[N]T — a pointer to an array, range is allowed and the length is known.
 		elem := u.Elem()
 		_, isArr := elem.Underlying().(*types.Array)
 		return isArr
@@ -218,14 +222,14 @@ func rangeOverKnownLen(pass *analysis.Pass, x ast.Expr) bool {
 	}
 }
 
-// usesObjOutsideAssign: в теле цикла obj используется где-либо, кроме безусловных
-// присваиваний m[...] = ... на верхнем уровне тела. Любое такое использование
-// (условное заполнение внутри if, чтение m, передача m в вызов) делает реальный
-// размер неизвестным — диагностику отменяем.
+// usesObjOutsideAssign: in the loop body obj is used anywhere other than
+// unconditional m[...] = ... assignments at the top level of the body. Any such
+// use (conditional fill inside an if, reading m, passing m into a call) makes the
+// real size unknown — we cancel the diagnostic.
 func usesObjOutsideAssign(pass *analysis.Pass, body *ast.BlockStmt, obj types.Object) bool {
 	for _, stmt := range body.List {
 		if isIndexAssignTo(pass, stmt, obj) {
-			continue // безусловное заполнение на верхнем уровне — ожидаемо.
+			continue // unconditional fill at the top level — expected.
 		}
 		if usesObj(pass, stmt, obj) {
 			return true
@@ -234,7 +238,7 @@ func usesObjOutsideAssign(pass *analysis.Pass, body *ast.BlockStmt, obj types.Ob
 	return false
 }
 
-// usesObj: в произвольном узле встречается ссылка на obj.
+// usesObj: a reference to obj occurs in an arbitrary node.
 func usesObj(pass *analysis.Pass, node ast.Node, obj types.Object) bool {
 	found := false
 	ast.Inspect(node, func(n ast.Node) bool {
@@ -250,8 +254,8 @@ func usesObj(pass *analysis.Pass, node ast.Node, obj types.Object) bool {
 	return found
 }
 
-// inspectNestedBlocks рекурсивно запускает checkBlock на телах вложенных
-// составных операторов, чтобы паттерн внутри них тоже анализировался.
+// inspectNestedBlocks recursively runs checkBlock on the bodies of nested
+// compound statements so the pattern inside them is analyzed too.
 func inspectNestedBlocks(pass *analysis.Pass, stmt ast.Stmt) {
 	switch s := stmt.(type) {
 	case *ast.BlockStmt:
@@ -292,7 +296,7 @@ func inspectNestedBlocks(pass *analysis.Pass, stmt ast.Stmt) {
 	}
 }
 
-// isMakeBuiltin: вызов call — это встроенный make, а не локальная функция make.
+// isMakeBuiltin: the call is the built-in make, not a local make function.
 func isMakeBuiltin(pass *analysis.Pass, call *ast.CallExpr) bool {
 	ident, ok := call.Fun.(*ast.Ident)
 	if !ok || ident.Name != "make" {

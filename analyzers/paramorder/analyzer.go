@@ -1,10 +1,10 @@
-// Package paramorder реализует канонический порядок параметров функций
-// и методов: ctx -> opts -> logger -> остальные.
+// Package paramorder implements the canonical order of function and method
+// parameters: ctx -> opts -> logger -> the rest.
 //
-//   - GID-110: context.Context — всегда первый параметр;
-//   - GID-113: opts (тип с постфиксом Options) — первый после ctx
-//     (или первый, если ctx нет);
-//   - GID-153: logger (logrus) идёт после opts, если opts существуют.
+//   - GID-110: context.Context is always the first parameter;
+//   - GID-113: opts (a type with the Options suffix) comes first after ctx
+//     (or first if there is no ctx);
+//   - GID-153: logger (logrus) goes after opts when opts exist.
 package paramorder
 
 import (
@@ -24,7 +24,7 @@ const (
 	kindLogger
 )
 
-// Analyzer — правило GID: см. Doc.
+// Analyzer — the GID rule: see Doc.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidparamorder",
 	Doc:  "GID-110/113/153: parameter order is ctx, opts, logger, then the rest. Fix: reorder parameters",
@@ -68,7 +68,7 @@ func flatten(pass *analysis.Pass, fields *ast.FieldList) []param {
 
 func checkParams(pass *analysis.Pass, params []param) {
 	ctxIdx, optsIdx, loggerIdx := -1, -1, -1
-	//nolint:gidallptr // плагин не зависит от внутренней библиотеки gdhelper
+	//nolint:gidallptr // the plugin does not depend on the internal gdhelper library
 	for i, p := range params {
 		switch {
 		case p.kind == kindCtx && ctxIdx < 0:

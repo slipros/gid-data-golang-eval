@@ -1,5 +1,5 @@
-// Граничный (GID-170/226): domain импортирует пакеты с похожими, но
-// другими сегментами — "events", "event-api", "metrics" — диагностики нет.
+// Boundary (GID-170/226): domain imports packages with similar but
+// different segments — "events", "event-api", "metrics" — there is no diagnostic.
 package boundary
 
 import (

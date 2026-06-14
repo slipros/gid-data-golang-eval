@@ -1,4 +1,4 @@
-// Неприменимость: /domain/service вне scope GID-123 — диагностик нет.
+// Not applicable: /domain/service is outside the GID-123 scope — no diagnostics.
 package service
 
 type ConsentEventType = string

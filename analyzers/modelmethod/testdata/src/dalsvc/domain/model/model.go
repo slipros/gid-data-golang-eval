@@ -1,4 +1,4 @@
-// Model-пакет для eval неприменимости GID-195.
+// Model package for the GID-195 non-applicability eval.
 package model
 
 type Snapshot struct {

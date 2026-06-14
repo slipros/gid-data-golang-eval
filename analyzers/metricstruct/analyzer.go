@@ -1,34 +1,34 @@
-// Package metricstruct реализует правило GID-174 (gidmetricstruct):
-// пакет метрик сервиса стандартизирован.
+// Package metricstruct implements rule GID-174 (gidmetricstruct):
+// the service metrics package is standardized.
 //
-// Конвенция всех backend-go сервисов: путь пакета — /metric, имя пакета —
-// metric, а метрики агрегируются в экспортируемом struct-агрегаторе
-// Prometheus (поля — метрики по протоколам/подсистемам: HTTP, GRPC, Kafka,
-// …) с методом Register.
+// Convention for all backend-go services: the package path is /metric, the
+// package name is metric, and metrics are aggregated in an exported Prometheus
+// struct aggregator (fields are metrics per protocol/subsystem: HTTP, GRPC,
+// Kafka, …) with a Register method.
 //
-// Правило применимо только к пакету, чей import-путь оканчивается сегментом
-// metric или metrics (pathseg.EndsWith). Прочие пакеты не трогаем.
+// The rule applies only to a package whose import path ends with the segment
+// metric or metrics (pathseg.EndsWith). Other packages are left alone.
 //
-// Проверки:
-//  1. путь оканчивается metrics → пакет назван неверно;
-//  2. путь оканчивается metric, но типа Prometheus нет;
-//  3. Prometheus есть, но без метода Register;
-//  4. Prometheus объявлен, но не struct.
+// Checks:
+//  1. the path ends with metrics → the package is named incorrectly;
+//  2. the path ends with metric, but there is no Prometheus type;
+//  3. Prometheus exists but has no Register method;
+//  4. Prometheus is declared but is not a struct.
 //
-// Конвенция группировки (доп. проверки, только для пути .../metric):
-//   - доп. метрики живут в отдельных файлах, группируясь функционально в
-//     структурах (по одной группе на файл);
-//   - prometheus.go занимается wiring'ом: тип Prometheus объявлен именно в
-//     prometheus.go, его метод Register регистрирует группы — вызывает их
-//     метод Register.
+// Grouping convention (extra checks, only for .../metric paths):
+//   - additional metrics live in separate files, grouped functionally into
+//     structs (one group per file);
+//   - prometheus.go does the wiring: the Prometheus type is declared exactly
+//     in prometheus.go, and its Register method registers the groups by
+//     calling their Register method.
 //
-// Доп. проверки:
-//  5. тип Prometheus объявлен не в prometheus.go;
-//  6. в prometheus.go объявлены другие экспортируемые struct-типы;
-//  7. в файле пакета metric (не prometheus.go) объявлено ≥2 экспортируемых
-//     struct-типов — репорт на втором и последующих;
-//  8. поле Prometheus, чей тип имеет метод Register, не зарегистрировано в
-//     теле Prometheus.Register (нет вызова <поле>.Register(...)).
+// Extra checks:
+//  5. the Prometheus type is declared outside prometheus.go;
+//  6. prometheus.go declares other exported struct types;
+//  7. a file of the metric package (other than prometheus.go) declares ≥2
+//     exported struct types — report on the second and subsequent ones;
+//  8. a Prometheus field whose type has a Register method is not registered
+//     in the body of Prometheus.Register (no <field>.Register(...) call).
 package metricstruct
 
 import (
@@ -48,8 +48,8 @@ const (
 	wiringFile = "prometheus.go"
 )
 
-// Analyzer — правило GID-174. Требует информацию о типах: метод Register
-// определяется через types (учитывая value/pointer receiver).
+// Analyzer — rule GID-174. Requires type information: the Register method is
+// detected via types (accounting for value/pointer receivers).
 var Analyzer = &analysis.Analyzer{
 	Name: "gidmetricstruct",
 	Doc:  ruleID + ": the metrics package is standardized: path/name metric, a Prometheus struct with a Register method. Fix: follow that layout",
@@ -59,29 +59,29 @@ var Analyzer = &analysis.Analyzer{
 func run(pass *analysis.Pass) (any, error) {
 	path := pass.Pkg.Path()
 
-	// Неприменимость: пакет не является корнем metric/metrics-слоя.
+	// Not applicable: the package is not the root of a metric/metrics layer.
 	switch {
 	case pathseg.EndsWith(path, "metrics"):
-		// Проверка 1: пакет назван metrics вместо metric.
+		// Check 1: the package is named metrics instead of metric.
 		reportOnPackageClause(pass,
 			"%s: the metrics package must be named metric, not metrics. Fix: rename it to metric", ruleID)
 		return nil, nil
 	case pathseg.EndsWith(path, "metric"):
-		// продолжаем проверки 2-4
+		// continue with checks 2-4
 	default:
 		return nil, nil
 	}
 
 	ts, named := findPrometheus(pass)
 	if named == nil {
-		// Проверка 2: типа Prometheus нет.
+		// Check 2: there is no Prometheus type.
 		reportOnPackageClause(pass,
 			"%s: the metric package must declare a metrics aggregator: struct %s with a %s method. Fix: add it",
 			ruleID, typeName, regMethod)
 		return nil, nil
 	}
 
-	// Проверка 4: Prometheus есть, но не struct.
+	// Check 4: Prometheus exists but is not a struct.
 	st, ok := named.Underlying().(*types.Struct)
 	if !ok {
 		pass.Reportf(ts.Name.Pos(),
@@ -89,33 +89,33 @@ func run(pass *analysis.Pass) (any, error) {
 		return nil, nil
 	}
 
-	// Проверка 5: Prometheus объявлен не в prometheus.go.
+	// Check 5: Prometheus is declared outside prometheus.go.
 	if filepath.Base(pass.Fset.Position(ts.Name.Pos()).Filename) != wiringFile {
 		pass.Reportf(ts.Name.Pos(),
 			"%s: the %s aggregator must live in %s. Fix: move it there", ruleID, typeName, wiringFile)
 	}
 
-	// Проверки 6 и 7: группировка struct-типов по файлам.
+	// Checks 6 and 7: grouping of struct types across files.
 	checkGrouping(pass)
 
-	// Проверка 3: struct Prometheus без метода Register.
+	// Check 3: struct Prometheus without a Register method.
 	if !hasRegisterMethod(named) {
 		pass.Reportf(ts.Name.Pos(),
 			"%s: struct %s must have a %s method. Fix: add it", ruleID, typeName, regMethod)
 		return nil, nil
 	}
 
-	// Проверка 8: каждая группа-поле зарегистрирована в Prometheus.Register.
+	// Check 8: every group field is registered in Prometheus.Register.
 	checkRegisterWiring(pass, named, st)
 
 	return nil, nil
 }
 
-// checkGrouping реализует проверки 6 и 7:
-//   - 6: в prometheus.go не должно быть других экспортируемых struct-типов
-//     (кроме Prometheus);
-//   - 7: в прочих файлах пакета — не более одной экспортируемой struct-группы
-//     на файл (репорт на второй и последующих).
+// checkGrouping implements checks 6 and 7:
+//   - 6: prometheus.go must not contain other exported struct types
+//     (besides Prometheus);
+//   - 7: other files of the package must have at most one exported struct
+//     group per file (report on the second and subsequent ones).
 func checkGrouping(pass *analysis.Pass) {
 	for _, file := range pass.Files {
 		if ast.IsGenerated(file) {
@@ -130,7 +130,7 @@ func checkGrouping(pass *analysis.Pass) {
 		for _, ts := range exportedStructTypes(file) {
 			if isWiring {
 				if ts.Name.Name == typeName {
-					continue // сам агрегатор в prometheus.go — ок
+					continue // the aggregator itself in prometheus.go is fine
 				}
 				pass.Reportf(ts.Name.Pos(),
 					"%s: a metrics group must live in its own file; %s is wiring only. Fix: move the group out",
@@ -146,17 +146,17 @@ func checkGrouping(pass *analysis.Pass) {
 	}
 }
 
-// checkRegisterWiring реализует проверку 8: поле Prometheus, чей тип (или
-// указатель на него) имеет метод Register, обязано быть зарегистрировано
-// внутри тела Prometheus.Register вызовом <поле>.Register(...).
+// checkRegisterWiring implements check 8: a Prometheus field whose type (or a
+// pointer to it) has a Register method must be registered inside the body of
+// Prometheus.Register with a <field>.Register(...) call.
 func checkRegisterWiring(pass *analysis.Pass, named *types.Named, st *types.Struct) {
 	body, recv := registerMethodBody(pass, named)
 	if body == nil {
-		return // метод Register объявлен в другом пакете/без тела — не репортим
+		return // the Register method is declared in another package/has no body — do not report
 	}
 	called := registeredFields(body, recv)
 
-	// Детерминированный порядок: по индексу полей структуры.
+	// Deterministic order: by struct field index.
 	for i := 0; i < st.NumFields(); i++ {
 		f := st.Field(i)
 		if !fieldTypeHasRegister(f.Type()) {
@@ -171,7 +171,7 @@ func checkRegisterWiring(pass *analysis.Pass, named *types.Named, st *types.Stru
 	}
 }
 
-// findPrometheus ищет объявление типа Prometheus в пакете и его *types.Named.
+// findPrometheus looks up the Prometheus type declaration in the package and its *types.Named.
 func findPrometheus(pass *analysis.Pass) (*ast.TypeSpec, *types.Named) {
 	for _, file := range pass.Files {
 		for _, decl := range file.Decls {
@@ -199,13 +199,13 @@ func findPrometheus(pass *analysis.Pass) (*ast.TypeSpec, *types.Named) {
 	return nil, nil
 }
 
-// hasRegisterMethod сообщает, есть ли у типа метод Register (любая сигнатура,
-// value или pointer receiver). Pointer-набор методов покрывает оба случая.
+// hasRegisterMethod reports whether the type has a Register method (any
+// signature, value or pointer receiver). The pointer method set covers both cases.
 func hasRegisterMethod(named *types.Named) bool {
 	return lookupRegister(named) != nil
 }
 
-// lookupRegister возвращает метод Register типа (через pointer-набор) либо nil.
+// lookupRegister returns the type's Register method (via the pointer method set) or nil.
 func lookupRegister(named *types.Named) *types.Func {
 	mset := types.NewMethodSet(types.NewPointer(named))
 	obj := named.Obj()
@@ -220,8 +220,8 @@ func lookupRegister(named *types.Named) *types.Func {
 	return fn
 }
 
-// fieldTypeHasRegister сообщает, имеет ли тип поля (или указатель на него)
-// метод Register. Тип поля приводится к *types.Named.
+// fieldTypeHasRegister reports whether the field type (or a pointer to it)
+// has a Register method. The field type is reduced to *types.Named.
 func fieldTypeHasRegister(t types.Type) bool {
 	if ptr, ok := t.(*types.Pointer); ok {
 		t = ptr.Elem()
@@ -233,8 +233,8 @@ func fieldTypeHasRegister(t types.Type) bool {
 	return hasRegisterMethod(named)
 }
 
-// exportedStructTypes возвращает TypeSpec'и экспортируемых struct-типов файла
-// в порядке объявления (детерминированно).
+// exportedStructTypes returns the TypeSpecs of the file's exported struct
+// types in declaration order (deterministic).
 func exportedStructTypes(file *ast.File) []*ast.TypeSpec {
 	var out []*ast.TypeSpec
 	for _, decl := range file.Decls {
@@ -256,9 +256,9 @@ func exportedStructTypes(file *ast.File) []*ast.TypeSpec {
 	return out
 }
 
-// registerMethodBody находит AST-тело метода Register у Prometheus и имя его
-// ресивера (для распознавания вызовов вида p.Field.Register(...)). Возвращает
-// (nil, "") если метод не найден среди файлов пакета или у него нет тела.
+// registerMethodBody finds the AST body of Prometheus's Register method and
+// the name of its receiver (to recognize calls like p.Field.Register(...)).
+// Returns (nil, "") if the method is not found in the package files or has no body.
 func registerMethodBody(pass *analysis.Pass, named *types.Named) (body *ast.BlockStmt, recv string) {
 	fn := lookupRegister(named)
 	if fn == nil {
@@ -284,9 +284,9 @@ func registerMethodBody(pass *analysis.Pass, named *types.Named) (body *ast.Bloc
 	return nil, ""
 }
 
-// registeredFields собирает имена полей, для которых в теле Register есть вызов
-// <field>.Register(...). Распознаются формы p.Field.Register(...) (через
-// ресивер recv) и Field.Register(...) (напрямую).
+// registeredFields collects the names of fields for which the Register body
+// contains a <field>.Register(...) call. Recognized forms: p.Field.Register(...)
+// (via the recv receiver) and Field.Register(...) (directly).
 func registeredFields(body *ast.BlockStmt, recv string) map[string]struct{} {
 	out := map[string]struct{}{}
 	ast.Inspect(body, func(n ast.Node) bool {
@@ -294,7 +294,7 @@ func registeredFields(body *ast.BlockStmt, recv string) map[string]struct{} {
 		if !ok {
 			return true
 		}
-		// верхний селектор: X.Register
+		// top-level selector: X.Register
 		topSel, ok := call.Fun.(*ast.SelectorExpr)
 		if !ok || topSel.Sel.Name != regMethod {
 			return true
@@ -304,7 +304,7 @@ func registeredFields(body *ast.BlockStmt, recv string) map[string]struct{} {
 			if id, ok := x.X.(*ast.Ident); ok && (recv == "" || id.Name == recv) {
 				out[x.Sel.Name] = struct{}{}
 			}
-		case *ast.Ident: // Field.Register(...) напрямую
+		case *ast.Ident: // Field.Register(...) directly
 			out[x.Name] = struct{}{}
 		}
 		return true
@@ -312,14 +312,14 @@ func registeredFields(body *ast.BlockStmt, recv string) map[string]struct{} {
 	return out
 }
 
-// isTestFile сообщает, является ли файл _test.go.
+// isTestFile reports whether the file is a _test.go file.
 func isTestFile(name string) bool {
 	const suffix = "_test.go"
 	return len(name) > len(suffix) && name[len(name)-len(suffix):] == suffix
 }
 
-// reportOnPackageClause репортит на package clause не-generated файла с
-// наименьшим именем — детерминированно вне зависимости от порядка pass.Files.
+// reportOnPackageClause reports on the package clause of the non-generated
+// file with the smallest name — deterministic regardless of pass.Files order.
 func reportOnPackageClause(pass *analysis.Pass, format string, args ...any) {
 	var target *ast.File
 	var targetName string

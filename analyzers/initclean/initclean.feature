@@ -1,73 +1,73 @@
-# language: ru
+# language: en
 
-Функция: GID-180 — init() детерминированный (avoid init)
-  Как разработчик
-  Я хочу, чтобы func init() не запускал goroutine и не делал I/O
-  Чтобы инициализация пакета была детерминированной, а фоновую работу и
-  обращения к ОС/сети/БД мы запускали явно из main/конструктора/app
+Feature: GID-180 — init() is deterministic (avoid init)
+  As a developer
+  I want func init() not to start goroutines and not to do I/O
+  So that package initialization is deterministic, while background work and
+  calls to the OS/network/DB are started explicitly from main/a constructor/app
 
-  # Линтер: gidinitclean. LoadMode: TypesInfo (нужен путь импортируемого пакета).
-  # Внутри func init() запрещены:
-  #   1) go-statement — прямо в теле init, включая вложенные блоки и тела
-  #      замыканий, объявленных в самом init;
-  #   2) вызовы функций I/O-пакетов (селектор pkg.Func, путь пакета через
-  #      TypesInfo). Дефолтный список: os, net, net/http, database/sql,
-  #      io/ioutil, bufio. Настраивается через settings.packages (заменяет дефолт).
-  # Чтение env (os.Getenv, os.LookupEnv) разрешено — это не I/O.
-  # Сгенерированный код (ast.IsGenerated) пропускается.
+  # Linter: gidinitclean. LoadMode: TypesInfo (the imported package path is needed).
+  # Forbidden inside func init():
+  #   1) a go statement — directly in the init body, including nested blocks and the
+  #      bodies of closures declared in init itself;
+  #   2) calls to functions of I/O packages (pkg.Func selector, the package path via
+  #      TypesInfo). The default list: os, net, net/http, database/sql,
+  #      io/ioutil, bufio. Configurable via settings.packages (replaces the default).
+  # Reading env (os.Getenv, os.LookupEnv) is allowed — it is not I/O.
+  # Generated code (ast.IsGenerated) is skipped.
 
-  Сценарий: запуск goroutine в init — нарушение (позитивный)
-    Допустим в пакете объявлен "func init() { go func(){}() }"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-180" про goroutine в init()
+  Scenario: starting a goroutine in init — violation (positive)
+    Given the package declares "func init() { go func(){}() }"
+    When the analyzer checks the file
+    Then a "GID-180" diagnostic about a goroutine in init() is reported
 
-  Сценарий: I/O-вызов os.Open в init — нарушение (позитивный)
-    Допустим в пакете объявлен "func init() { os.Open(\"/etc/hosts\") }"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-180" про I/O-вызов os.Open
+  Scenario: the I/O call os.Open in init — violation (positive)
+    Given the package declares "func init() { os.Open(\"/etc/hosts\") }"
+    When the analyzer checks the file
+    Then a "GID-180" diagnostic about the I/O call os.Open is reported
 
-  Сценарий: I/O-вызов sql.Open в init — нарушение (позитивный)
-    Допустим в пакете объявлен "func init() { sql.Open(\"postgres\", \"\") }"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-180" про I/O-вызов database/sql.Open
+  Scenario: the I/O call sql.Open in init — violation (positive)
+    Given the package declares "func init() { sql.Open(\"postgres\", \"\") }"
+    When the analyzer checks the file
+    Then a "GID-180" diagnostic about the I/O call database/sql.Open is reported
 
-  Сценарий: конструирование мапы в init — ок (негативный)
-    Допустим в пакете объявлен "func init() { cfg[\"a\"] = \"1\" }"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: constructing a map in init — ok (negative)
+    Given the package declares "func init() { cfg[\"a\"] = \"1\" }"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: чтение env в init — ок (негативный)
-    Допустим в пакете объявлен "func init() { os.Getenv(\"HOST\"); os.LookupEnv(\"PORT\") }"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: reading env in init — ok (negative)
+    Given the package declares "func init() { os.Getenv(\"HOST\"); os.LookupEnv(\"PORT\") }"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: go-statement в обычной функции — правило не применяется (негативный)
-    Допустим в пакете объявлен "func StartWorker() { go func(){}() }"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a go statement in an ordinary function — the rule does not apply (negative)
+    Given the package declares "func StartWorker() { go func(){}() }"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: замыкание объявлено и вызвано в init и делает os.Open — нарушение (граничный)
-    Допустим в пакете объявлен "func init() { fn := func(){ os.Open(\"/tmp/x\") }; fn() }"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-180" про I/O-вызов os.Open
-    # Тело замыкания, объявленного в init, обходится как часть init.
+  Scenario: a closure declared and called in init does os.Open — violation (boundary)
+    Given the package declares "func init() { fn := func(){ os.Open(\"/tmp/x\") }; fn() }"
+    When the analyzer checks the file
+    Then a "GID-180" diagnostic about the I/O call os.Open is reported
+    # The body of a closure declared in init is traversed as part of init.
 
-  Сценарий: хелпер вне init с os.Open, вызванный из init — НЕ матчится (граничный, ограничение)
-    Допустим в пакете объявлены "func loadFile(){ os.Open(...) }" и "func init(){ loadFile() }"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
-    # Ограничение: анализ внутрипроцедурный — тело отдельной функции, вызванной
-    # из init, как init не обходится. Граф вызовов не строится.
+  Scenario: a helper outside init with os.Open, called from init — NOT matched (boundary, limitation)
+    Given the package declares "func loadFile(){ os.Open(...) }" and "func init(){ loadFile() }"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+    # Limitation: the analysis is intra-procedural — the body of a separate function called
+    # from init is not traversed as init. No call graph is built.
 
-  Сценарий: пакет без init() — правило не применяется (неприменимость)
-    Допустим в пакете нет ни одной "func init()", но есть go-statement и os.Open в обычной функции
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: a package without init() — the rule does not apply (non-applicability)
+    Given the package has no "func init()" at all, but has a go statement and os.Open in an ordinary function
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (RULES.md, GID-180)
-#  [x] Выбран слой: go/analysis (нужен путь пакета по TypesInfo + AST)
-#  [x] Заданы severity и сообщение
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [ ] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (RULES.md, GID-180)
+#  [x] Layer chosen: go/analysis (the package path via TypesInfo + AST are needed)
+#  [x] Severity and message are defined
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [ ] Rule enabled in .golangci.yml

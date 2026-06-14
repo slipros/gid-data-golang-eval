@@ -12,12 +12,12 @@ func TestAnalyzer(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), failedto.Analyzer, "svc/...")
 }
 
-// TestInapplicable — пакет без github.com/pkg/errors не репортится.
+// TestInapplicable — a package without github.com/pkg/errors is not reported.
 func TestInapplicable(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), failedto.Analyzer, "nopkgerrors/...")
 }
 
-// TestCustomPrefixes — settings.prefixes замещает дефолтный список.
+// TestCustomPrefixes — settings.prefixes replaces the default list.
 func TestCustomPrefixes(t *testing.T) {
 	a := failedto.NewAnalyzer(failedto.Settings{Prefixes: []string{"oops"}})
 	analysistest.Run(t, analysistest.TestData(), a, "custom/...")

@@ -1,4 +1,4 @@
-// Eval для GID-159: сервис про кэш не знает.
+// Eval for GID-159: the service knows nothing about the cache.
 package service
 
 import (

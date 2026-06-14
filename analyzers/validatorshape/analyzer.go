@@ -1,27 +1,27 @@
-// Package validatorshape реализует правило GID-213 (validator-shape):
-// форма валидатора. Валидатор — структура с методом
-// Validate(ctx context.Context, req *T) error, имя которой совпадает с
-// именем операции.
+// Package validatorshape implements rule GID-213 (validator-shape):
+// the shape of a validator. A validator is a struct with a
+// Validate(ctx context.Context, req *T) error method whose name matches the
+// operation name.
 //
-// Scope: пакеты со слоем validate (segment "validate" в import-пути).
-// Каждый ЭКСПОРТИРУЕМЫЙ struct-тип (кроме имён с суффиксом Options) обязан
-// иметь метод Validate (pointer- или value-receiver), у которого:
-//   - первый параметр имеет тип context.Context;
-//   - единственный результат имеет тип error.
+// Scope: packages of the validate layer (the "validate" segment in the
+// import path). Every EXPORTED struct type (except names with the Options
+// suffix) must have a Validate method (pointer or value receiver) where:
+//   - the first parameter has type context.Context;
+//   - the only result has type error.
 //
-// Достаточно проверить первый параметр (ctx) и единственный результат
-// (error): тип запроса req может быть любым, число параметров после ctx не
-// ограничивается (см. validatorshape.feature, граничный класс).
+// Checking the first parameter (ctx) and the single result (error) is
+// enough: the req request type may be anything, and the number of parameters
+// after ctx is not limited (see validatorshape.feature, the boundary class).
 //
-// Сгенерированный код (ast.IsGenerated) пропускается. LoadMode — TypesInfo:
-// нужны go/types, чтобы распознать context.Context, error и методы типа.
+// Generated code (ast.IsGenerated) is skipped. LoadMode — TypesInfo:
+// go/types is needed to recognize context.Context, error, and the type's methods.
 //
-// Исключения:
-//   - точечно: //nolint:gidvalidatorshape
-//   - централизованно: settings.exclude в .golangci.yml — имена типов,
-//     которые не считаются валидаторами (например "HealthCheck").
+// Exceptions:
+//   - targeted: //nolint:gidvalidatorshape
+//   - centralized: settings.exclude in .golangci.yml — type names that are
+//     not considered validators (e.g. "HealthCheck").
 //
-// Источник: validator.md.
+// Source: validator.md.
 package validatorshape
 
 import (
@@ -37,17 +37,17 @@ import (
 
 const ruleID = "GID-213"
 
-// Analyzer — вариант с настройками по умолчанию (без исключений).
+// Analyzer — the variant with default settings (no exclusions).
 var Analyzer = NewAnalyzer(Settings{})
 
-// Settings — настройки линтера из .golangci.yml.
+// Settings — the linter settings from .golangci.yml.
 type Settings struct {
-	// Exclude — имена struct-типов, которые не считаются валидаторами
-	// и не обязаны иметь метод Validate.
+	// Exclude — names of struct types that are not considered validators
+	// and are not required to have a Validate method.
 	Exclude []string `json:"exclude"`
 }
 
-// NewAnalyzer строит анализатор GID-213 из настроек линтера (.golangci.yml).
+// NewAnalyzer builds the GID-213 analyzer from the linter settings (.golangci.yml).
 func NewAnalyzer(cfg Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name: "gidvalidatorshape",
@@ -59,7 +59,7 @@ func NewAnalyzer(cfg Settings) *analysis.Analyzer {
 }
 
 func run(pass *analysis.Pass, cfg Settings) (any, error) {
-	// Scope: только пакеты слоя validate.
+	// Scope: validate-layer packages only.
 	if !pathseg.Contains(pass.Pkg.Path(), "validate") {
 		return nil, nil
 	}
@@ -77,18 +77,18 @@ func run(pass *analysis.Pass, cfg Settings) (any, error) {
 				if !ok {
 					continue
 				}
-				// Только экспортируемые struct-типы.
+				// Exported struct types only.
 				if !ts.Name.IsExported() {
 					continue
 				}
 				if _, ok := ts.Type.(*ast.StructType); !ok {
 					continue
 				}
-				// Типы-настройки (*Options) не валидаторы.
+				// Settings types (*Options) are not validators.
 				if strings.HasSuffix(ts.Name.Name, "Options") {
 					continue
 				}
-				// Централизованные исключения по имени типа.
+				// Centralized exclusions by type name.
 				if exclude.Match(cfg.Exclude, ts.Name.Name, ts.Name.Name) {
 					continue
 				}
@@ -116,11 +116,11 @@ func checkValidator(pass *analysis.Pass, ts *ast.TypeSpec) {
 		ruleID, ts.Name.Name)
 }
 
-// hasValidate сообщает, есть ли у типа (или у указателя на него) метод
-// Validate с первым параметром context.Context и единственным результатом
-// error.
+// hasValidate reports whether the type (or a pointer to it) has a Validate
+// method with context.Context as the first parameter and error as the only
+// result.
 func hasValidate(named *types.Named) bool {
-	// Метод ищем и на T, и на *T: pointer-receiver не попадает в methodset T.
+	// Look up the method on both T and *T: a pointer receiver is not in T's method set.
 	mset := types.NewMethodSet(types.NewPointer(named))
 	for i := 0; i < mset.Len(); i++ {
 		sel := mset.At(i)
@@ -138,7 +138,7 @@ func hasValidate(named *types.Named) bool {
 }
 
 func validateShape(sig *types.Signature) bool {
-	// Первый параметр — context.Context.
+	// The first parameter is context.Context.
 	params := sig.Params()
 	if params.Len() < 1 {
 		return false
@@ -147,7 +147,7 @@ func validateShape(sig *types.Signature) bool {
 	if !isContext(first.Type()) {
 		return false
 	}
-	// Единственный результат — error.
+	// The only result is error.
 	results := sig.Results()
 	if results.Len() != 1 {
 		return false

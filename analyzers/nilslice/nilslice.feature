@@ -1,92 +1,92 @@
-# language: ru
+# language: en
 
-Функция: GID-185 — nil-слайс валиден, пустой литерал []T{} лишний (nil-slice-style)
-  Как разработчик
-  Я хочу возвращать и объявлять nil-слайс вместо пустого литерала []T{}
-  Чтобы не плодить лишние аллокации — nil-слайс итерируется, к нему делается append, len(nil) == 0
+Feature: GID-185 — a nil slice is valid, an empty literal []T{} is redundant (nil-slice-style)
+  As a developer
+  I want to return and declare a nil slice instead of an empty literal []T{}
+  So that needless allocations are avoided — a nil slice iterates, supports append, len(nil) == 0
 
-  # Правило Uber/Google: "nil is a valid slice".
-  # Анализатор gidnilslice, LoadMode TypesInfo (нужны типы, чтобы отличить
-  #   слайс от массива [N]T и мапы map[K]V).
-  # Матчим пустой композит-литерал []T{} (len(Elts) == 0, тип — *types.Slice):
-  #   - в return-операторе          → «возвращайте nil вместо пустого слайса»;
-  #   - в := и в var = (инициализация переменной) → «объявляйте var s []T».
-  # НЕ матчим: непустые литералы; []T{} как аргумент вызова или значение поля
-  #   структуры (там пустота — возможная семантика, например json [] vs null);
-  #   массивы [N]T{}; map-литералы; make([]T, ...) (зона prealloc).
-  # Сгенерированный код (ast.IsGenerated) пропускается.
-  # Точечное отключение — стандартный //nolint:gidnilslice.
+  # Uber/Google rule: "nil is a valid slice".
+  # Analyzer gidnilslice, LoadMode TypesInfo (types are needed to tell a
+  #   slice apart from an array [N]T and a map map[K]V).
+  # We match an empty composite literal []T{} (len(Elts) == 0, type — *types.Slice):
+  #   - in a return statement          → "return nil instead of an empty slice";
+  #   - in := and in var = (variable initialization) → "declare var s []T".
+  # NOT matched: non-empty literals; []T{} as a call argument or a struct field
+  #   value (emptiness there can be semantics, e.g. json [] vs null);
+  #   arrays [N]T{}; map literals; make([]T, ...) (the domain of prealloc).
+  # Generated code (ast.IsGenerated) is skipped.
+  # Targeted suppression — the standard //nolint:gidnilslice.
 
-  # === Класс 1: позитивные (пустой литерал слайса) ===
+  # === Class 1: positive (an empty slice literal) ===
 
-  Сценарий: позитивный — return пустым литералом слайса
-    Допустим функция с "return []int{}"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-185: возвращайте nil вместо пустого слайса — nil-слайс валиден"
+  Scenario: positive — return of an empty slice literal
+    Given a function with "return []int{}"
+    When the analyzer checks the file
+    Then the diagnostic "GID-185: return nil instead of an empty slice. Fix: a nil slice is valid" is reported
 
-  Сценарий: позитивный — инициализация через := пустым литералом
-    Допустим выражение "s := []string{}"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-185: объявляйте zero-value слайс: var s []T"
+  Scenario: positive — initialization via := with an empty literal
+    Given the expression "s := []string{}"
+    When the analyzer checks the file
+    Then the diagnostic "GID-185: declare a zero-value slice. Fix: var s []T" is reported
 
-  Сценарий: позитивный — инициализация через var = пустым литералом
-    Допустим выражение "var s = []byte{}"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-185: объявляйте zero-value слайс: var s []T"
+  Scenario: positive — initialization via var = with an empty literal
+    Given the expression "var s = []byte{}"
+    When the analyzer checks the file
+    Then the diagnostic "GID-185: declare a zero-value slice. Fix: var s []T" is reported
 
-  # === Класс 2: негативные (корректный код) ===
+  # === Class 2: negative (correct code) ===
 
-  Сценарий: негативный — return nil
-    Допустим функция с "return nil"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — return nil
+    Given a function with "return nil"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: негативный — zero-value объявление слайса
-    Допустим выражение "var s []int"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — a zero-value slice declaration
+    Given the expression "var s []int"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: негативный — непустой литерал слайса
-    Допустим функция с "return []int{1}"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
-    # Непустой литерал — это данные, а не «пустота».
+  Scenario: negative — a non-empty slice literal
+    Given a function with "return []int{1}"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+    # A non-empty literal is data, not "emptiness".
 
-  # === Класс 3: граничные (не матчатся) ===
+  # === Class 3: boundary (not matched) ===
 
-  Сценарий: граничный — []T{} аргументом вызова
-    Допустим выражение "f([]int{})"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
-    # Пустой не-nil слайс может быть семантикой (json [] vs null).
+  Scenario: boundary — []T{} as a call argument
+    Given the expression "f([]int{})"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+    # An empty non-nil slice can be semantics (json [] vs null).
 
-  Сценарий: граничный — []T{} значением поля структуры
-    Допустим выражение "T{X: []int{}}"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: boundary — []T{} as a struct field value
+    Given the expression "T{X: []int{}}"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: граничный — массив [0]int{}
-    Допустим выражение "[0]int{}"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
-    # Массив — не слайс, отсекается по TypesInfo.
+  Scenario: boundary — the array [0]int{}
+    Given the expression "[0]int{}"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+    # An array is not a slice, filtered out via TypesInfo.
 
-  Сценарий: граничный — map-литерал map[string]int{}
-    Допустим выражение "map[string]int{}"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: boundary — the map literal map[string]int{}
+    Given the expression "map[string]int{}"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  # === Класс 4: неприменимость ===
+  # === Class 4: non-applicability ===
 
-  Сценарий: неприменимость — файл без слайсовых литералов
-    Допустим пакет без единого литерала слайса
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: non-applicability — a file without slice literals
+    Given a package without a single slice literal
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (RULES.md, GID-185)
-#  [x] Выбран слой: go/analysis (анализатор gidnilslice в analyzers/nilslice)
-#  [x] Заданы severity и сообщение ("GID-185: …")
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [ ] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (RULES.md, GID-185)
+#  [x] Layer chosen: go/analysis (analyzer gidnilslice in analyzers/nilslice)
+#  [x] Severity and message are defined ("GID-185: …")
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [ ] Rule enabled in .golangci.yml

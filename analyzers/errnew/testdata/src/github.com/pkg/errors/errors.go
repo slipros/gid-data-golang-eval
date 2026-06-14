@@ -1,4 +1,4 @@
-// Stub github.com/pkg/errors для eval.
+// Stub of github.com/pkg/errors for eval.
 package errors
 
 import stderrors "errors"

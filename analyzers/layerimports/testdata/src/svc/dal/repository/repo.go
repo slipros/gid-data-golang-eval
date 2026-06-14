@@ -1,4 +1,4 @@
-// Eval: repository работает только с entity.
+// Eval: repository works only with entity.
 package repository
 
 import (
@@ -10,13 +10,13 @@ import (
 
 type Snapshot struct{}
 
-// Негатив: entity в repo — норма.
+// Negative: entity in repo is fine.
 func (s *Snapshot) Snapshot(id string) (entity.Snapshot, error) {
 	return entity.Snapshot{ID: id}, nil
 }
 
-// Позитив выше: model в dal-слое запрещён.
+// Positive above: model is forbidden in the dal layer.
 func (s *Snapshot) leak(in *model.Snapshot) {}
 
-// Позитив выше (GID-228): внешние API дёргает client, его wiring'ует app.
+// Positive above (GID-228): external APIs are called by the client, which app wires.
 func (s *Snapshot) leakClient(c *billing.Client) {}

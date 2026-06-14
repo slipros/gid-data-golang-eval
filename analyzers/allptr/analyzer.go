@@ -1,9 +1,9 @@
-// Package allptr реализует правило GID-004: итерация for range по слайсу
-// структур выполняется через gdhelper.AllPtr (go-styleguide, «Итерация по
-// слайсам сущностей») — это исключает копирование элементов.
+// Package allptr implements rule GID-004: a for range iteration over a slice
+// of structs must go through gdhelper.AllPtr (go-styleguide, "Iterating over
+// entity slices") — this avoids copying the elements.
 //
-// Корректный код `for _, v := range gdhelper.AllPtr(s)` правило не задевает:
-// AllPtr возвращает итератор (range-over-func), а не слайс.
+// Correct code `for _, v := range gdhelper.AllPtr(s)` is not flagged:
+// AllPtr returns an iterator (range-over-func), not a slice.
 package allptr
 
 import (
@@ -15,7 +15,7 @@ import (
 
 const ruleID = "GID-004"
 
-// Analyzer — правило GID-004: итерация по слайсу структур — через gdhelper.AllPtr.
+// Analyzer — rule GID-004: iterate over a slice of structs via gdhelper.AllPtr.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidallptr",
 	Doc:  ruleID + ": iterate over a slice of structs via gdhelper.AllPtr. Fix: range over gdhelper.AllPtr(items) to get pointers instead of copies.",
@@ -45,8 +45,8 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-// isStructSlice сообщает, является ли тип слайсом структур. Слайсы
-// указателей ([]*T) не задевает — там копирования элементов нет.
+// isStructSlice reports whether the type is a slice of structs. Slices of
+// pointers ([]*T) are not flagged — there is no element copying there.
 func isStructSlice(t types.Type) bool {
 	if t == nil {
 		return false

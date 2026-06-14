@@ -1,5 +1,5 @@
-// Негатив GID-166: helper'ы сущности Job в файле её объявления,
-// ключ — из context.go.
+// Negative GID-166: the Job entity's helpers are in the file of its declaration,
+// the key comes from context.go.
 package model
 
 import "context"
@@ -17,7 +17,7 @@ func JobFromContext(ctx context.Context) (Job, bool) {
 	return j, ok
 }
 
-// Позитив GID-166: helper сущности Token, объявленной в session.go.
+// Positive GID-166: a helper of the Token entity, which is declared in session.go.
 func TokenFromContext(ctx context.Context) (Token, bool) { // want `GID-166: helper "TokenFromContext" must live in the same file as the "Token" entity it stores into / reads from ctx`
 	t, ok := ctx.Value(TraceIDKey).(Token)
 	return t, ok

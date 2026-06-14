@@ -1,4 +1,4 @@
-// Неприменимость: /dal/repository вне scope GID-195.
+// Not applicable: /dal/repository is outside the GID-195 scope.
 package repository
 
 import "dalsvc/domain/model"

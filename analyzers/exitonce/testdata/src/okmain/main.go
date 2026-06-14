@@ -1,4 +1,4 @@
-// Класс «граничный»: defer + один os.Exit в main — это ровно один вызов, ок.
+// "Boundary" class: defer + one os.Exit in main is exactly one call, fine.
 package main
 
 import "os"

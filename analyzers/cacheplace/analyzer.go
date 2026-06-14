@@ -1,12 +1,12 @@
-// Package cacheplace реализует правило GID-159: кэш живёт в repository.
-// Если сущности нужен кэш — он оформляется кэширующим репозиторием в
-// /dal/repository, который оборачивает основной (прямой ссылкой, без
-// интерфейса). Domain-слой (service, usecase, model) про кэш не знает —
-// импорт кэш-библиотек там запрещён. Кэш может быть любым: in-memory LRU,
-// redis и т.п.
+// Package cacheplace implements rule GID-159: the cache lives in a repository.
+// If an entity needs a cache, it is implemented as a caching repository in
+// /dal/repository that wraps the main one (by a direct reference, without an
+// interface). The domain layer (service, usecase, model) knows nothing about
+// the cache — importing cache libraries there is forbidden. The cache can be
+// anything: in-memory LRU, redis, etc.
 //
-// Список кэш-библиотек настраивается через settings.packages
-// (заменяет дефолтный).
+// The list of cache libraries is configured via settings.packages
+// (it replaces the default one).
 package cacheplace
 
 import (
@@ -21,8 +21,8 @@ import (
 
 const ruleID = "GID-159"
 
-// defaultPackages — известные кэш-библиотеки (матчинг по префиксу пути,
-// версионные суффиксы /v2, /v9 покрываются автоматически).
+// defaultPackages — well-known cache libraries (matched by path prefix,
+// versioned suffixes /v2, /v9 are covered automatically).
 var defaultPackages = []string{
 	"github.com/redis/go-redis",
 	"github.com/go-redis/redis",
@@ -34,17 +34,17 @@ var defaultPackages = []string{
 	"github.com/bradfitz/gomemcache",
 }
 
-// Analyzer — вариант с дефолтным списком кэш-библиотек.
+// Analyzer — the variant with the default list of cache libraries.
 var Analyzer = NewAnalyzer(Settings{})
 
-// Settings — настройки линтера из .golangci.yml.
+// Settings — linter settings from .golangci.yml.
 type Settings struct {
-	// Packages — кэш-библиотеки (префиксы import-путей).
-	// Заменяет дефолтный список.
+	// Packages — cache libraries (import path prefixes).
+	// Replaces the default list.
 	Packages []string `json:"packages"`
 }
 
-// NewAnalyzer строит анализатор GID-159 из настроек линтера (.golangci.yml).
+// NewAnalyzer builds the GID-159 analyzer from the linter settings (.golangci.yml).
 func NewAnalyzer(s Settings) *analysis.Analyzer {
 	pkgs := s.Packages
 	if len(pkgs) == 0 {

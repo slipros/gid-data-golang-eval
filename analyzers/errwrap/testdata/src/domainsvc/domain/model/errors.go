@@ -1,4 +1,4 @@
-// domain-ошибки (статичные) — дом в /domain/model.
+// domain errors (static) — their home is /domain/model.
 package model
 
 import "github.com/pkg/errors"

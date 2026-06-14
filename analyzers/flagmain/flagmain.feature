@@ -1,103 +1,103 @@
-# language: ru
+# language: en
 
-Функция: GID-192 — flags (регистрация флагов только в main, имя в snake_case)
-  Как разработчик
-  Я хочу, чтобы флаги объявлял только бинарь (пакет main), а библиотеки принимали параметры
-  И чтобы имена флагов были в snake_case
-  Чтобы конфигурация бинаря была единообразной, а библиотеки — переиспользуемыми
+Feature: GID-192 — flags (flag registration only in main, snake_case names)
+  As a developer
+  I want only the binary (the main package) to declare flags, while libraries take parameters
+  And flag names to be snake_case
+  So that binary configuration is uniform and libraries are reusable
 
-  # Детект пакета flag — через TypesInfo (путь пакета "flag", stdlib).
-  # Под правило подпадают вызовы функций пакета flag (flag.String/Int/Bool/.../
-  # flag.Parse/flag.Var/flag.NewFlagSet) и методы типов пакета flag (*flag.FlagSet).
-  # Анализатор gidflagmain, LoadMode = TypesInfo. Сгенерированный код
-  # (ast.IsGenerated) пропускается. Файлы *_test.go и пакеты с суффиксом _test
-  # пропускаются — flag в тестах бывает легитимен.
+  # Detection of the flag package — via TypesInfo (package path "flag", stdlib).
+  # The rule covers calls to flag package functions (flag.String/Int/Bool/.../
+  # flag.Parse/flag.Var/flag.NewFlagSet) and methods of flag package types (*flag.FlagSet).
+  # Analyzer gidflagmain, LoadMode = TypesInfo. Generated code
+  # (ast.IsGenerated) is skipped. *_test.go files and packages with the _test
+  # suffix are skipped — flag in tests can be legitimate.
   #
-  # Проверки:
-  #   1. Любой вызов пакета flag вне пакета main → запрещено.
-  #   2. В пакете main: первый строковый КОНСТАНТНЫЙ аргумент-имя
-  #      (flag.String/Int/Bool/Duration/Float64/...; для *Var и flag.Var — второй
-  #      аргумент) должен быть snake_case: заглавные буквы и дефисы запрещены,
-  #      цифры и `_` допустимы. Camel-case имя ПЕРЕМЕННОЙ не проверяем
-  #      (это revive/ST1003).
+  # Checks:
+  #   1. Any call to the flag package outside the main package → forbidden.
+  #   2. In the main package: the first CONSTANT string name argument
+  #      (flag.String/Int/Bool/Duration/Float64/...; for *Var and flag.Var — the second
+  #      argument) must be snake_case: uppercase letters and hyphens are forbidden,
+  #      digits and `_` are allowed. A camelCase VARIABLE name is not checked
+  #      (that is revive/ST1003).
 
-  # === Класс 1: позитив (нарушения) ===
+  # === Class 1: positive (violations) ===
 
-  Сценарий: позитивный — flag.String в библиотечном пакете
-    Допустим библиотечный (не main) пакет с вызовом "flag.String"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-192: регистрация флага вне пакета main запрещена — флаги объявляет бинарь, библиотека принимает параметры"
+  Scenario: positive — flag.String in a library package
+    Given a library (non-main) package with a call to "flag.String"
+    When the analyzer checks the file
+    Then the diagnostic "GID-192: registering a flag outside package main is forbidden. Fix: declare flags in the binary, let libraries take parameters" is reported
 
-  Сценарий: позитивный — flag.Parse в библиотеке
-    Допустим библиотечный пакет с вызовом "flag.Parse()"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-192: регистрация флага вне пакета main запрещена — флаги объявляет бинарь, библиотека принимает параметры"
+  Scenario: positive — flag.Parse in a library
+    Given a library package with a call to "flag.Parse()"
+    When the analyzer checks the file
+    Then the diagnostic "GID-192: registering a flag outside package main is forbidden. Fix: declare flags in the binary, let libraries take parameters" is reported
 
-  Сценарий: позитивный — метод *flag.FlagSet в библиотеке
-    Допустим библиотечный пакет с вызовом "fs.String" на "*flag.FlagSet"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-192: регистрация флага вне пакета main запрещена — флаги объявляет бинарь, библиотека принимает параметры"
+  Scenario: positive — a *flag.FlagSet method in a library
+    Given a library package with a call to "fs.String" on a "*flag.FlagSet"
+    When the analyzer checks the file
+    Then the diagnostic "GID-192: registering a flag outside package main is forbidden. Fix: declare flags in the binary, let libraries take parameters" is reported
 
-  Сценарий: позитивный — в main имя флага camelCase
-    Допустим пакет "main" с вызовом "flag.String(\"maxRetries\", ...)"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-192: имя флага \"maxRetries\" — используйте snake_case"
+  Scenario: positive — a camelCase flag name in main
+    Given the package "main" with a call to "flag.String(\"maxRetries\", ...)"
+    When the analyzer checks the file
+    Then the diagnostic "GID-192: flag name \"maxRetries\". Fix: use snake_case" is reported
 
-  Сценарий: позитивный — в main имя флага с дефисом
-    Допустим пакет "main" с вызовом "flag.Int(\"max-retries\", ...)"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-192: имя флага \"max-retries\" — используйте snake_case"
+  Scenario: positive — a hyphenated flag name in main
+    Given the package "main" with a call to "flag.Int(\"max-retries\", ...)"
+    When the analyzer checks the file
+    Then the diagnostic "GID-192: flag name \"max-retries\". Fix: use snake_case" is reported
 
-  # === Класс 2: негатив (чистый код) ===
+  # === Class 2: negative (clean code) ===
 
-  Сценарий: негативный — в main имя флага snake_case
-    Допустим пакет "main" с вызовом "flag.String(\"max_retries\", ...)"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — a snake_case flag name in main
+    Given the package "main" with a call to "flag.String(\"max_retries\", ...)"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: негативный — flag.Parse в main
-    Допустим пакет "main" с вызовом "flag.Parse()"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — flag.Parse in main
+    Given the package "main" with a call to "flag.Parse()"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  # === Класс 3: граничные кейсы ===
+  # === Class 3: boundary cases ===
 
-  Сценарий: граничный — свой пакет с именем flag (не stdlib)
-    Допустим локальный пакет "flag" с другим путём импорта
-    И вызов "flag.String(\"maxRetries\")" к этому пакету
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
-    # Путь импорта не "flag" (stdlib) → TypesInfo не относит вызов к flag-пакету.
+  Scenario: boundary — an own package named flag (not stdlib)
+    Given a local package "flag" with a different import path
+    And a call "flag.String(\"maxRetries\")" to that package
+    When the analyzer checks the file
+    Then no diagnostic is reported
+    # The import path is not "flag" (stdlib) → TypesInfo does not attribute the call to the flag package.
 
-  Сценарий: граничный — имя флага задано не константой (в main)
-    Допустим пакет "main" с вызовом "flag.String(dyn, ...)" где dyn — переменная
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
-    # Имя неизвестно статически → часть 2 (snake_case) не проверяется.
+  Scenario: boundary — the flag name is not a constant (in main)
+    Given the package "main" with a call to "flag.String(dyn, ...)" where dyn is a variable
+    When the analyzer checks the file
+    Then no diagnostic is reported
+    # The name is unknown statically → part 2 (snake_case) is not checked.
 
-  Сценарий: граничный — имя флага не константа, но в библиотеке
-    Допустим библиотечный пакет с вызовом "flag.String(name, ...)" где name — параметр
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-192: регистрация флага вне пакета main запрещена — флаги объявляет бинарь, библиотека принимает параметры"
-    # Часть 1 (регистрация вне main) не зависит от константности имени.
+  Scenario: boundary — the flag name is not a constant but in a library
+    Given a library package with a call to "flag.String(name, ...)" where name is a parameter
+    When the analyzer checks the file
+    Then the diagnostic "GID-192: registering a flag outside package main is forbidden. Fix: declare flags in the binary, let libraries take parameters" is reported
+    # Part 1 (registration outside main) does not depend on the name being constant.
 
-  Сценарий: граничный — flag в файле *_test.go
-    Допустим файл "*_test.go" в не-main пакете с "flag.Bool(\"updateGolden\", ...)"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
-    # Тестовые файлы пропускаются — flag в тестах легитимен.
+  Scenario: boundary — flag in a *_test.go file
+    Given a "*_test.go" file in a non-main package with "flag.Bool(\"updateGolden\", ...)"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+    # Test files are skipped — flag in tests is legitimate.
 
-  # === Класс 4: неприменимость ===
+  # === Class 4: non-applicability ===
 
-  Сценарий: неприменимость — библиотечный пакет без flag
-    Допустим библиотечный пакет, не импортирующий flag
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: non-applicability — a library package without flag
+    Given a library package that does not import flag
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (RULES.md, GID-192)
-#  [x] Выбран слой: go/analysis (анализатор gidflagmain в analyzers/flagmain)
-#  [x] Заданы сообщения ("GID-192: …")
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [ ] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (RULES.md, GID-192)
+#  [x] Layer chosen: go/analysis (analyzer gidflagmain in analyzers/flagmain)
+#  [x] Messages are defined ("GID-192: …")
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [ ] Rule enabled in .golangci.yml

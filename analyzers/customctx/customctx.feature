@@ -1,84 +1,84 @@
-# language: ru
+# language: en
 
-Функция: GID-188 — запрет кастомных context-типов (no-custom-context)
-  Как разработчик
-  Я хочу, чтобы в позиции ctx и в embedding интерфейсов использовался только context.Context
-  Чтобы не плодить кастомные контексты и передавать данные через context.WithValue
+Feature: GID-188 — ban on custom context types (no-custom-context)
+  As a developer
+  I want only context.Context to be used in the ctx position and in interface embedding
+  So that custom contexts do not proliferate and data is passed via context.WithValue
 
-  # Правило Google: "custom contexts — no exceptions".
-  # Анализатор gidcustomctx, LoadMode TypesInfo. Детект (pass.TypesInfo):
-  #   1. объявление именованного типа (struct/interface) в проверяемом пакете,
-  #      method set которого покрывает context.Context (Deadline/Done/Err/Value)
-  #      — через types.Implements относительно интерфейса stdlib context.Context;
-  #   2. interface-тип, ВСТРАИВАЮЩИЙ context.Context (embedded в декларации);
-  #   3. параметр функции/функционального литерала с именем ctx, чей тип —
-  #      именованный не-stdlib тип (не context.Context).
-  # Интерфейс context.Context берётся из импортов пакета (прямых/транзитивных);
-  # если context нигде не импортируется, кейсы 1 и 2 неприменимы.
-  # Сгенерированный код (ast.IsGenerated) пропускается.
-  # Точечное отключение — стандартный //nolint:gidcustomctx.
+  # Google rule: "custom contexts — no exceptions".
+  # Analyzer gidcustomctx, LoadMode TypesInfo. Detection (pass.TypesInfo):
+  #   1. a declaration of a named type (struct/interface) in the checked package
+  #      whose method set covers context.Context (Deadline/Done/Err/Value)
+  #      — via types.Implements against the stdlib context.Context interface;
+  #   2. an interface type EMBEDDING context.Context (embedded in the declaration);
+  #   3. a parameter of a function/function literal named ctx whose type is a
+  #      named non-stdlib type (not context.Context).
+  # The context.Context interface is taken from the package imports (direct/transitive);
+  # if context is not imported anywhere, cases 1 and 2 do not apply.
+  # Generated code (ast.IsGenerated) is skipped.
+  # Targeted suppression — the standard //nolint:gidcustomctx.
 
-  # === Класс 1: позитивные (нарушения) ===
+  # === Class 1: positive (violations) ===
 
-  Сценарий: позитивный — interface встраивает context.Context
-    Допустим объявление "type MyContext interface { context.Context; Extra() string }"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-188: кастомный context-тип MyContext запрещён — передавайте context.Context и кладите данные через context.WithValue (хелперы в /domain/model — GID-165/166)"
+  Scenario: positive — an interface embeds context.Context
+    Given the declaration "type MyContext interface { context.Context; Extra() string }"
+    When the analyzer checks the file
+    Then the diagnostic "GID-188: custom context type MyContext is forbidden. Fix: pass context.Context and store data via context.WithValue (helpers live in /domain/model, GID-165/166)." is reported
 
-  Сценарий: позитивный — struct с полным набором методов context.Context
-    Допустим тип "CtxStruct" с методами "Deadline/Done/Err/Value" с сигнатурами context.Context
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-188: кастомный context-тип CtxStruct запрещён ..."
+  Scenario: positive — a struct with the full set of context.Context methods
+    Given the type "CtxStruct" with the methods "Deadline/Done/Err/Value" matching the context.Context signatures
+    When the analyzer checks the file
+    Then the diagnostic "GID-188: custom context type CtxStruct is forbidden ..." is reported
 
-  Сценарий: позитивный — параметр ctx кастомного типа
-    Допустим функцию "func f(ctx MyCtx)" где MyCtx — именованный не-stdlib тип
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-188: параметр ctx имеет тип <MyCtx> — используйте context.Context"
+  Scenario: positive — a ctx parameter of a custom type
+    Given the function "func f(ctx MyCtx)" where MyCtx is a named non-stdlib type
+    When the analyzer checks the file
+    Then the diagnostic "GID-188: parameter ctx has type <MyCtx>. Fix: use context.Context." is reported
 
-  # === Класс 2: негативные (чистый код) ===
+  # === Class 2: negative (clean code) ===
 
-  Сценарий: негативный — параметр ctx это context.Context
-    Допустим функцию "func f(ctx context.Context)"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — the ctx parameter is context.Context
+    Given the function "func f(ctx context.Context)"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: негативный — struct с методом Done, но не полным набором
-    Допустим тип "PartialCtx" с единственным методом "Done() <-chan struct{}"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
-    # Method set не покрывает context.Context — types.Implements false.
+  Scenario: negative — a struct with a Done method but not the full set
+    Given the type "PartialCtx" with the single method "Done() <-chan struct{}"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+    # The method set does not cover context.Context — types.Implements is false.
 
-  # === Класс 3: граничные ===
+  # === Class 3: boundary ===
 
-  Сценарий: граничный — interface { context.Context } матчится один раз
-    Допустим объявление "type OnlyEmbed interface { context.Context }"
-    Когда анализатор проверяет файл
-    Тогда выводится ровно одна диагностика "GID-188: кастомный context-тип OnlyEmbed запрещён ..."
-    # Кейс embedding (2) срабатывает и предотвращает повторный матч по types.Implements (1).
+  Scenario: boundary — interface { context.Context } is matched once
+    Given the declaration "type OnlyEmbed interface { context.Context }"
+    When the analyzer checks the file
+    Then exactly one diagnostic "GID-188: custom context type OnlyEmbed is forbidden ..." is reported
+    # The embedding case (2) fires and prevents a duplicate match via types.Implements (1).
 
-  Сценарий: граничный — методы Deadline/Done/Err/Value с другими сигнатурами
-    Допустим тип "FakeCtx" с методами "Deadline() string, Done() bool, Err() string, Value(int) int"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
-    # Имена совпадают, но сигнатуры не равны context.Context — не матчится.
+  Scenario: boundary — methods Deadline/Done/Err/Value with different signatures
+    Given the type "FakeCtx" with the methods "Deadline() string, Done() bool, Err() string, Value(int) int"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+    # The names match, but the signatures are not equal to context.Context — not matched.
 
-  Сценарий: граничный — параметр ctx stdlib-типа рядом с не-ctx параметром
-    Допустим функцию "func f(ctx context.Context, other FakeCtx)"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
-    # Имя ctx закреплено за context.Context; параметр other не проверяется по имени.
+  Scenario: boundary — a ctx parameter of the stdlib type next to a non-ctx parameter
+    Given the function "func f(ctx context.Context, other FakeCtx)"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+    # The name ctx is reserved for context.Context; the parameter other is not checked by name.
 
-  # === Класс 4: неприменимость ===
+  # === Class 4: non-applicability ===
 
-  Сценарий: неприменимость — пакет без context
-    Допустим пакет, который не импортирует context и не имеет context-подобных типов
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: non-applicability — a package without context
+    Given a package that does not import context and has no context-like types
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (RULES.md, GID-188)
-#  [x] Выбран слой: go/analysis (анализатор gidcustomctx в analyzers/customctx)
-#  [x] Заданы severity и сообщение ("GID-188: …")
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [ ] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (RULES.md, GID-188)
+#  [x] Layer chosen: go/analysis (analyzer gidcustomctx in analyzers/customctx)
+#  [x] Severity and message are defined ("GID-188: …")
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [ ] Rule enabled in .golangci.yml

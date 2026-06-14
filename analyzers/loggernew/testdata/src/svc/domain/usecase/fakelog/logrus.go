@@ -1,7 +1,7 @@
-// Чужой пакет с именем logrus, но другим import-путём (не sirupsen).
+// A foreign package named logrus but with a different import path (not sirupsen).
 package logrus
 
 type Logger struct{}
 
-// New одноимённой функции из другого пакета — НЕ logrus.New(), не флагуем.
+// New is a same-named function from a different package — NOT logrus.New(), not flagged.
 func New() *Logger { return &Logger{} }

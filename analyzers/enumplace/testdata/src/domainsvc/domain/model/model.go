@@ -1,7 +1,7 @@
-// Eval GID-211: domain-слой не задевается — в model enum живёт в model (GID-132).
+// Eval GID-211: the domain layer is not touched — in model an enum lives in model (GID-132).
 package model
 
-// --- Класс неприменимости: string-enum в /domain/model — норма, диагностики нет ---
+// --- Not-applicable class: a string enum in /domain/model — normal, no diagnostic ---
 
 type Status string
 

@@ -1,6 +1,6 @@
-// Package constvarorder реализует правило GID-130: порядок объявлений
-// в файле — import, затем const-блоки, затем var-блоки, затем типы и функции.
-// Все const всегда сверху файла под import; var — под const (если const есть).
+// Package constvarorder implements rule GID-130: the declaration order
+// in a file is import, then const blocks, then var blocks, then types and functions.
+// All consts are always at the top of the file below import; vars go below const (if const exists).
 package constvarorder
 
 import (
@@ -12,7 +12,7 @@ import (
 
 const ruleID = "GID-130"
 
-// Ранг класса декларации: порядок в файле не должен убывать.
+// Rank of a declaration class: the order in a file must not decrease.
 const (
 	rankImport = iota
 	rankConst
@@ -20,7 +20,7 @@ const (
 	rankOther
 )
 
-// Analyzer — правило GID-130: declaration order in a file must be import, const, var, then types and functions. Fix: move const/var blocks to the top.
+// Analyzer — rule GID-130: declaration order in a file must be import, const, var, then types and functions. Fix: move const/var blocks to the top.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidconstvarorder",
 	Doc:  ruleID + ": declaration order in a file must be import, const, var, then types and functions. Fix: move const/var blocks to the top",

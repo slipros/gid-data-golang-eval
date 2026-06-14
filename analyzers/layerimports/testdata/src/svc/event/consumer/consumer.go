@@ -1,5 +1,5 @@
-// Позитив (GID-224): consumer лезет в dal и domain/service — запрещено;
-// негатив: model и event/dto разрешены.
+// Positive (GID-224): consumer reaches into dal and domain/service — forbidden;
+// negative: model and event/dto are allowed.
 package consumer
 
 import (
@@ -13,10 +13,10 @@ type Snapshot struct {
 	svc *service.Snapshot
 }
 
-// Негатив: model и DTO в event-слое — норма (конвертация model <-> DTO).
+// Negative: model and DTO in the event layer are fine (model <-> DTO conversion).
 func (c *Snapshot) Handle(in dto.SnapshotDTO) model.Snapshot {
 	return model.Snapshot{ID: in.ID}
 }
 
-// Позитив выше: entity консьюмеру недоступен.
+// Positive above: entity is not available to the consumer.
 func (c *Snapshot) leak(in entity.Snapshot) {}

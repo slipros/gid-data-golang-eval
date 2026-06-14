@@ -1,5 +1,5 @@
-// Транспорт-лист для фикстур: ни от чего не зависит.
+// A transport leaf for fixtures: depends on nothing.
 package middleware
 
-// Noop — заглушка middleware.
+// Noop — a middleware stub.
 func Noop() {}

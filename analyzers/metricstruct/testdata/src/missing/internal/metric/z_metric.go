@@ -1,6 +1,6 @@
-// Файл с большим именем — репорт сюда НЕ ставится (детерминированный
-// выбор файла с наименьшим именем).
+// A file with a larger name — the report is NOT placed here (deterministic
+// choice of the file with the smallest name).
 package metric
 
-// GRPCRequests — ещё одна метрика.
+// GRPCRequests — another metric.
 var GRPCRequests int

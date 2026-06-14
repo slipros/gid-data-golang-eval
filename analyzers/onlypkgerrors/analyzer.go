@@ -1,9 +1,9 @@
-// Package onlypkgerrors реализует правило GID-146: для работы с ошибками
-// используется только github.com/pkg/errors. Создание ошибок через
-// стандартные errors.New и fmt.Errorf запрещено везде.
+// Package onlypkgerrors implements rule GID-146: only github.com/pkg/errors
+// is used for error handling. Creating errors via the standard errors.New
+// and fmt.Errorf is forbidden everywhere.
 //
-// Проверка цепочки ошибок — std errors.Is/As/Unwrap — не создание,
-// она разрешена (у pkg/errors этих функций нет).
+// Inspecting the error chain — std errors.Is/As/Unwrap — is not creation,
+// it is allowed (pkg/errors does not have these functions).
 package onlypkgerrors
 
 import (
@@ -19,13 +19,13 @@ const (
 	allowedPkg = "github.com/pkg/errors"
 )
 
-// forbidden — std-конструкторы ошибок: пакет -> функции.
+// forbidden — std error constructors: package -> functions.
 var forbidden = map[string]map[string]struct{}{
 	"errors": {"New": {}, "Join": {}},
 	"fmt":    {"Errorf": {}},
 }
 
-// Analyzer — правило GID: errors are created only via .
+// Analyzer — rule GID-146: errors are created only via github.com/pkg/errors.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidonlypkgerrors",
 	Doc:  ruleID + ": errors are created only via " + allowedPkg,

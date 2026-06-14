@@ -1,11 +1,11 @@
-// Package enumstring реализует правила оформления enum:
+// Package enumstring implements the enum styling rules:
 //
-//   - GID-124 (gidenumstring): каждый enum (именованный тип на основе string
-//     с const-значениями) обязан реализовать метод String() string.
-//   - GID-123 (gidenumbased): enum — именованный тип на основе string, не
-//     голый string/int. Действует в /domain/model/** и /dal/entity/**.
-//     Ловит alias на basic-тип (type X = string), int-enum (именованный
-//     int-тип с ≥2 const-значений) и группу нетипизированных string-констант.
+//   - GID-124 (gidenumstring): every enum (a named string-based type
+//     with const values) must implement the String() string method.
+//   - GID-123 (gidenumbased): an enum is a named string-based type, not a
+//     bare string/int. Applies in /domain/model/** and /dal/entity/**.
+//     Catches an alias to a basic type (type X = string), an int-enum (a named
+//     int type with ≥2 const values) and a group of untyped string constants.
 package enumstring
 
 import (
@@ -17,7 +17,7 @@ import (
 
 const ruleID = "GID-124"
 
-// Analyzer — правило GID-124: an enum (string type with const values) must implement String() string. Fix: add a String() string method.
+// Analyzer is rule GID-124: an enum (string type with const values) must implement String() string. Fix: add a String() string method.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidenumstring",
 	Doc:  ruleID + ": an enum (string type with const values) must implement String() string. Fix: add a String() string method",
@@ -66,7 +66,7 @@ func checkEnum(pass *analysis.Pass, ts *ast.TypeSpec, withConsts map[*types.Name
 		"%s: enum %s must implement the String() string method. Fix: add a String() string method", ruleID, ts.Name.Name)
 }
 
-// enumTypesWithConsts — string-типы пакета, имеющие const-значения.
+// enumTypesWithConsts — the package's string types that have const values.
 func enumTypesWithConsts(pass *analysis.Pass) map[*types.Named]struct{} {
 	out := map[*types.Named]struct{}{}
 	for _, obj := range pass.TypesInfo.Defs {

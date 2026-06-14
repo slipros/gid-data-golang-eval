@@ -1,4 +1,4 @@
-// Eval: usecase работает только с model.
+// Eval: usecase works only with model.
 package usecase
 
 import (
@@ -17,13 +17,13 @@ func (u *Upload) bad(id string) (entity.Snapshot, error) {
 	return u.repo.Snapshot(id)
 }
 
-// Негатив: model в usecase — норма.
+// Negative: model in usecase is fine.
 func (u *Upload) good() model.Snapshot {
 	return model.Snapshot{}
 }
 
-// Негатив (граница): вложенные пакеты /domain/model/* — полноправный
-// model-слой, usecase принимает и возвращает их типы.
+// Negative (boundary): the nested packages /domain/model/* are a full-fledged
+// model layer, usecase accepts and returns their types.
 func (u *Upload) goodFilter(f *filter.Snapshots) []string {
 	return f.IDs
 }

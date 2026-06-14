@@ -1,11 +1,11 @@
-// Package inout реализует правило GID-111: входные данные (model/entity
-// структуры) передаются по указателю, выходные возвращаются по значению.
-// Действует на слоях repo, service, usecase и handler.
+// Package inout implements rule GID-111: input data (model/entity
+// structs) is passed by pointer, output is returned by value.
+// Applies on the repo, service, usecase and handler layers.
 //
-// Исключения:
-//   - точечно: //nolint:gidinout
-//   - централизованно: settings.exclude в .golangci.yml —
-//     записи вида "Метод" или "Тип.Метод".
+// Exceptions:
+//   - pointwise: //nolint:gidinout
+//   - centrally: settings.exclude in .golangci.yml —
+//     entries of the form "Method" or "Type.Method".
 package inout
 
 import (
@@ -27,22 +27,22 @@ var scopes = [][]string{
 	{"handler"},
 }
 
-// layerTypeTrees — деревья пакетов, чьи структуры считаются данными слоёв.
+// layerTypeTrees — package trees whose structs are treated as layer data.
 var layerTypeTrees = [][]string{
 	{"domain", "model"},
 	{"dal", "entity"},
 }
 
-// Analyzer — вариант с настройками по умолчанию (без исключений).
+// Analyzer is the variant with default settings (no exceptions).
 var Analyzer = NewAnalyzer(Settings{})
 
-// Settings — настройки линтера из .golangci.yml.
+// Settings holds the linter settings from .golangci.yml.
 type Settings struct {
-	// Exclude — методы-исключения: "Метод" или "Тип.Метод".
+	// Exclude — methods to exempt: "Method" or "Type.Method".
 	Exclude []string `json:"exclude"`
 }
 
-// NewAnalyzer строит анализатор GID-111 из настроек линтера (.golangci.yml).
+// NewAnalyzer builds the GID-111 analyzer from the linter settings (.golangci.yml).
 func NewAnalyzer(s Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name: "gidinout",
@@ -99,8 +99,8 @@ func checkSignature(pass *analysis.Pass, fn *ast.FuncDecl) {
 	}
 }
 
-// layerStructName возвращает имя типа, если это структура из
-// /domain/model или /dal/entity (по значению, без указателя).
+// layerStructName returns the type name if it is a struct from
+// /domain/model or /dal/entity (by value, without a pointer).
 func layerStructName(t types.Type) (string, bool) {
 	named, ok := t.(*types.Named)
 	if !ok {

@@ -1,5 +1,5 @@
-// Пакет legacy для eval settings.rules.
+// The legacy package for the settings.rules eval.
 package store
 
-// Store — выпиливаемое legacy-хранилище.
+// Store — the legacy store being removed.
 type Store struct{}

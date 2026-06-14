@@ -1,18 +1,18 @@
-// Stub gitlab.gid.team/gid-data/tech/golang/libs/postgres.git для eval.
-// Импортируется как gdpostgres.
+// Stub of gitlab.gid.team/gid-data/tech/golang/libs/postgres.git for eval.
+// Imported as gdpostgres.
 package postgres
 
-// Conn — заглушка соединения.
+// Conn — a connection stub.
 type Conn struct{}
 
-// TQuery — запрещённый дженерик-символ (GID-217 / repo.md).
+// TQuery — the banned generic symbol (GID-217 / repo.md).
 func TQuery[T any](conn *Conn, query string) (T, error) {
 	var zero T
 	return zero, nil
 }
 
-// Select — разрешённый прямой метод conn.
+// Select — an allowed direct conn method.
 func Select(conn *Conn, dest any, query string) error { return nil }
 
-// NamedStruct — разрешённый прямой метод conn.
+// NamedStruct — an allowed direct conn method.
 func NamedStruct(conn *Conn, arg any) (string, error) { return "", nil }

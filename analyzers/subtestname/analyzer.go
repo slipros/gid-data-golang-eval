@@ -1,17 +1,17 @@
-// Package subtestname реализует правило GID-191: имена subtest в t.Run/b.Run
-// не содержат пробелов и слешей.
+// Package subtestname implements rule GID-191: subtest names in t.Run/b.Run
+// contain no spaces or slashes.
 //
-// go test -run 'Test/имя' матчит подтесты по имени, заменяя пробелы на
-// подчёркивания и используя '/' как разделитель уровней. Если имя subtest
-// содержит пробел или '/', точный -run по нему не сработает — поэтому имена
-// подтестов пишутся в snake_case.
+// go test -run 'Test/name' matches subtests by name, replacing spaces with
+// underscores and using '/' as the level separator. If a subtest name
+// contains a space or '/', an exact -run on it will not work — therefore
+// subtest names are written in snake_case.
 //
-// Матчим только вызовы методов Run на *testing.T / *testing.B, где первый
-// аргумент — строковый ЛИТЕРАЛ или КОНСТАНТА (значение известно через
-// pass.TypesInfo). Неконстантные имена (tt.name из table-driven) не матчатся:
-// значения таблицы — отдельная зона ответственности.
+// Only Run method calls on *testing.T / *testing.B are matched, where the
+// first argument is a string LITERAL or CONSTANT (the value is known via
+// pass.TypesInfo). Non-constant names (tt.name from table-driven tests) are
+// not matched: table values are a separate area of responsibility.
 //
-// Сгенерированный код (ast.IsGenerated) пропускается. LoadMode — TypesInfo.
+// Generated code (ast.IsGenerated) is skipped. LoadMode — TypesInfo.
 package subtestname
 
 import (
@@ -26,7 +26,7 @@ import (
 
 const ruleID = "GID-191"
 
-// Analyzer — правило GID-191: имена subtest в t.Run без пробелов и слешей.
+// Analyzer — rule GID-191: subtest names in t.Run without spaces or slashes.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidsubtestname",
 	Doc:  ruleID + ": subtest names in t.Run/b.Run have no spaces or slashes (snake_case). Fix: rename to snake_case",
@@ -57,8 +57,8 @@ func checkCall(pass *analysis.Pass, call *ast.CallExpr) {
 		return
 	}
 
-	// Имя subtest — первый аргумент. Берём значение константы/литерала
-	// из TypesInfo; неконстантные выражения (tt.name) не матчим.
+	// The subtest name is the first argument. Take the constant/literal
+	// value from TypesInfo; non-constant expressions (tt.name) are not matched.
 	tv, ok := pass.TypesInfo.Types[call.Args[0]]
 	if !ok || tv.Value == nil || tv.Value.Kind() != constant.String {
 		return
@@ -81,8 +81,8 @@ func report(pass *analysis.Pass, pos token.Pos, name, what string) {
 			"go test -run 'Test/name' will not match it", ruleID, name, what)
 }
 
-// isTestingRunReceiver сообщает, что выражение x имеет тип *testing.T или
-// *testing.B (ресивер метода Run из пакета testing).
+// isTestingRunReceiver reports whether expression x has type *testing.T or
+// *testing.B (the receiver of the Run method from the testing package).
 func isTestingRunReceiver(pass *analysis.Pass, x ast.Expr) bool {
 	t := pass.TypesInfo.TypeOf(x)
 	if t == nil {

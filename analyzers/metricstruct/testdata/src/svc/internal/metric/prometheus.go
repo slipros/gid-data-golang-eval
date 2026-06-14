@@ -1,14 +1,14 @@
-// Канонический wiring-файл: тип Prometheus + Register, регистрирующий группы.
+// The canonical wiring file: the Prometheus type + Register that registers the groups.
 package metric
 
-// Prometheus агрегирует функциональные группы метрик.
+// Prometheus aggregates the functional metrics groups.
 type Prometheus struct {
 	HTTP  HTTPMetrics
 	Kafka *KafkaMetrics
-	Total int // поле без метода Register — регистрировать не требуется
+	Total int // a field without a Register method — no registration required
 }
 
-// Register регистрирует все группы.
+// Register registers all groups.
 func (p Prometheus) Register() error {
 	if err := p.HTTP.Register(); err != nil {
 		return err

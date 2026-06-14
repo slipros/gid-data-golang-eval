@@ -1,12 +1,12 @@
-// Package servicemodel реализует правило GID-151: API domain-сервиса
-// работает только с model. Сервис принимает model, внутри конвертирует
-// её в entity для репозитория, полученную entity конвертирует обратно
-// и всегда возвращает model.
+// Package servicemodel implements rule GID-151: the domain-service API works
+// only with model. The service takes a model, internally converts it to an
+// entity for the repository, converts the received entity back, and always
+// returns a model.
 //
-// Проверка: у экспортируемых методов в корне /domain/service параметры
-// и возвращаемые значения не ссылаются на типы из /dal/entity (рекурсивно —
-// через указатели, слайсы, мапы и поля). Внутри тела метода entity
-// допустима — этим занимается конвертация.
+// The check: parameters and results of exported methods in the root of
+// /domain/service do not reference types from /dal/entity (recursively —
+// through pointers, slices, maps, and fields). Inside the method body an
+// entity is allowed — that is what conversion is for.
 package servicemodel
 
 import (
@@ -20,7 +20,7 @@ import (
 
 const ruleID = "GID-151"
 
-// Analyzer — правило GID-151: exported service methods take and return model, not entity. Fix: convert to entity internally.
+// Analyzer — rule GID-151: exported service methods take and return model, not entity. Fix: convert to entity internally.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidservicemodel",
 	Doc:  ruleID + ": exported service methods take and return model, not entity. Fix: convert to entity internally",
@@ -69,8 +69,8 @@ func checkSignature(pass *analysis.Pass, fn *ast.FuncDecl) {
 	check(sig.Results(), "result")
 }
 
-// findEntityType рекурсивно ищет в типе ссылку на тип из /dal/entity
-// и возвращает её имя, либо пустую строку.
+// findEntityType recursively searches the type for a reference to a type from
+// /dal/entity and returns its name, or an empty string.
 func findEntityType(t types.Type, seen map[types.Type]bool) string {
 	if t == nil || seen[t] {
 		return ""

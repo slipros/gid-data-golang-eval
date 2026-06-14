@@ -1,4 +1,4 @@
-// Eval для GID-004 (allptr).
+// Eval for GID-004 (allptr).
 package allptr
 
 import gdhelper "gitlab.gid.team/gid-data/tech/golang/libs/helper.git"
@@ -10,7 +10,7 @@ type File struct {
 
 type Files []File
 
-// --- Позитивные кейсы: нарушение ловится ---
+// --- Positive cases: the violation is caught ---
 
 func bad(files []File) []string {
 	var out []string
@@ -20,7 +20,7 @@ func bad(files []File) []string {
 	return out
 }
 
-// Граничный кейс: именованный слайс-тип.
+// Edge case: a named slice type.
 func badNamed(files Files) []string {
 	var out []string
 	for _, f := range files { // want `GID-004: ranging over a slice of structs copies each element\. Fix: range over gdhelper\.AllPtr\(items\)`
@@ -29,8 +29,8 @@ func badNamed(files Files) []string {
 	return out
 }
 
-// Граничный кейс: итерация только по индексу — тоже нарушение,
-// стайлгайд требует AllPtr вместо любых range-форм по слайсу структур.
+// Edge case: index-only iteration is a violation too —
+// the styleguide requires AllPtr instead of any range form over a slice of structs.
 func badIndexOnly(files []File) int {
 	n := 0
 	for i := range files { // want `GID-004: ranging over a slice of structs copies each element\. Fix: range over gdhelper\.AllPtr\(items\)`
@@ -39,7 +39,7 @@ func badIndexOnly(files []File) int {
 	return n
 }
 
-// --- Негативные кейсы: чистый код проходит ---
+// --- Negative cases: clean code passes ---
 
 func good(files []File) []string {
 	var out []string
@@ -49,7 +49,7 @@ func good(files []File) []string {
 	return out
 }
 
-// Слайс указателей — копирования нет, AllPtr не нужен.
+// A slice of pointers — no copying, AllPtr is not needed.
 func goodPtrSlice(files []*File) []string {
 	var out []string
 	for _, f := range files {
@@ -58,7 +58,7 @@ func goodPtrSlice(files []*File) []string {
 	return out
 }
 
-// --- Неприменимость: не слайсы структур ---
+// --- Not applicable: not slices of structs ---
 
 func notApplicableStrings(names []string) int {
 	n := 0

@@ -1,4 +1,4 @@
-// Eval GID-214: позитив — logrus.New() в /domain/service.
+// Eval GID-214: positive — logrus.New() in /domain/service.
 package service
 
 import (
@@ -9,14 +9,14 @@ type Svc struct {
 	logger *logrus.Entry
 }
 
-// Позитивный кейс: создание логгера в сервисе запрещено.
+// Positive case: creating a logger in the service is forbidden.
 func New() *Svc {
 	l := logrus.New() // want `GID-214: logrus.New\(\) may be called only in the composition root \(main, internal/app\)\. Fix: pass a ready \*logrus\.Entry through the constructor`
 	_ = l
 	return &Svc{}
 }
 
-// Негатив: WithField на готовом логгере — это не создание экземпляра.
+// Negative: WithField on a ready logger is not instance creation.
 func (s *Svc) do() {
 	s.logger.WithField("step", "start").Info("ok")
 }

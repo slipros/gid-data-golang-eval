@@ -1,4 +1,4 @@
-// Класс «позитив»: в main имя флага не в snake_case.
+// "Positive" class: in main the flag name is not in snake_case.
 package main
 
 import (

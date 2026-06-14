@@ -1,4 +1,4 @@
-// Stub gderror для eval: конструктор обработки отсутствующего значения enum.
+// Stub of gderror for eval: the constructor for handling an unhandled enum value.
 package errors
 
 type UnhandledValueError struct {

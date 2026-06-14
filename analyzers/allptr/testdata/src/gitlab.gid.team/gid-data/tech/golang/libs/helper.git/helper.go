@@ -1,5 +1,5 @@
-// Минимальный stub gdhelper для eval: AllPtr возвращает итератор
-// указателей (range-over-func), как и реальная библиотека.
+// Minimal gdhelper stub for eval: AllPtr returns an iterator of
+// pointers (range-over-func), just like the real library.
 package gdhelper
 
 func AllPtr[S ~[]E, E any](s S) func(yield func(int, *E) bool) {

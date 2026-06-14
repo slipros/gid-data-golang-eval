@@ -1,5 +1,5 @@
-// Файл *_test.go: flag в тестах легитимен — анализатор такие файлы
-// пропускает, диагностики нет даже в не-main пакете и при не-snake_case имени.
+// A *_test.go file: flag is legitimate in tests — the analyzer skips such
+// files, no diagnostic even in a non-main package and with a non-snake_case name.
 package testskip
 
 import (

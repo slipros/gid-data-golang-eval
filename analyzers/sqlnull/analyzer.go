@@ -1,6 +1,6 @@
-// Package sqlnull реализует правило GID-122: nullable-поля entity (DAL)
-// описываются типами database/sql — sql.NullString, sql.NullTime,
-// sql.NullInt32/64 или обобщённым sql.Null[T] — а не указателями.
+// Package sqlnull implements rule GID-122: nullable entity (DAL) fields are
+// described with database/sql types — sql.NullString, sql.NullTime,
+// sql.NullInt32/64, or the generic sql.Null[T] — not with pointers.
 package sqlnull
 
 import (
@@ -14,7 +14,7 @@ import (
 
 const ruleID = "GID-122"
 
-// Analyzer — правило GID-122: nullable entity fields use sql.Null*, not pointers. Fix: use sql.Null*.
+// Analyzer — rule GID-122: nullable entity fields use sql.Null*, not pointers. Fix: use sql.Null*.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidsqlnull",
 	Doc:  ruleID + ": nullable entity fields use sql.Null*, not pointers. Fix: use sql.Null*",
@@ -63,7 +63,7 @@ func checkField(pass *analysis.Pass, field *ast.Field) {
 	}
 }
 
-// nullableHint — подходящий sql-тип для элемента указателя.
+// nullableHint — the suitable sql type for the pointer's element.
 func nullableHint(t types.Type) (string, bool) {
 	if named, ok := t.(*types.Named); ok {
 		obj := named.Obj()
@@ -74,7 +74,7 @@ func nullableHint(t types.Type) (string, bool) {
 	}
 	basic, ok := t.Underlying().(*types.Basic)
 	if !ok {
-		// Нестандартный тип (структура и т.п.) — обобщённый sql.Null[T].
+		// A non-standard type (a struct, etc.) — the generic sql.Null[T].
 		if _, isStruct := t.Underlying().(*types.Struct); isStruct {
 			return "sql.Null[T]", true
 		}

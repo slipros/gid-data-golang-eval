@@ -1,5 +1,5 @@
-// Использование из *_test.go делает константу непереносимой,
-// сами константы тестовых файлов не проверяются.
+// A use from *_test.go makes the constant immovable;
+// constants of test files themselves are not checked.
 package plain
 
 const fixtureLabel = "fixture"

@@ -1,4 +1,4 @@
-// dal-ошибки (статичные) — дом в /dal/entity.
+// dal errors (static) — their home is /dal/entity.
 package entity
 
 import "github.com/pkg/errors"

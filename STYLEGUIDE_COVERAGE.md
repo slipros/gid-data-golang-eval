@@ -1,137 +1,137 @@
-# Покрытие best-practices стайлгайдов линтерами golangci-lint v2
+# Coverage of styleguide best practices by golangci-lint v2 linters
 
-Источники: [Uber Go Style Guide](https://github.com/uber-go/guide/blob/master/style.md),
+Sources: [Uber Go Style Guide](https://github.com/uber-go/guide/blob/master/style.md),
 [Google Go Style Guide](https://google.github.io/styleguide/go/guide),
 [Google Go Best Practices](https://google.github.io/styleguide/go/best-practices).
 
-Бакеты:
-- **DEFAULT** — ловится дефолтным набором golangci-lint v2 (`errcheck`, `govet`, `ineffassign`, `staticcheck`, `unused`);
-- **OPT-IN** — есть готовый линтер/форматтер, нужно включить и настроить;
-- **CUSTOM** — готового линтера нет, нужен наш go/analysis или ruleguard;
-- **REVIEW** — не автоматизируется, остаётся на code review.
+Buckets:
+- **DEFAULT** — caught by the default golangci-lint v2 set (`errcheck`, `govet`, `ineffassign`, `staticcheck`, `unused`);
+- **OPT-IN** — a ready-made linter/formatter exists; it needs to be enabled and configured;
+- **CUSTOM** — no ready-made linter; requires our go/analysis or ruleguard;
+- **REVIEW** — cannot be automated, stays on code review.
 
-> ⚠️ **Нюанс staticcheck в v2:** при включённом линтере `staticcheck` по умолчанию
-> работают `all` **минус** `ST1000` (package comment), `ST1003` (mixed caps /
-> initialisms), `ST1016` (консистентный ресивер), `ST1020-22` (doc-comments).
-> То есть SA (баги), S (simple), QF и большинство ST-проверок (включая ST1005
-> error strings, ST1012 error naming, ST1006 запрет this/self) — активны.
-> Исключённые ST включаются через `settings.staticcheck.checks`.
+> ⚠️ **staticcheck nuance in v2:** with the `staticcheck` linter enabled, the default
+> is `all` **minus** `ST1000` (package comment), `ST1003` (mixed caps /
+> initialisms), `ST1016` (consistent receiver), `ST1020-22` (doc comments).
+> That is, SA (bugs), S (simple), QF, and most ST checks (including ST1005
+> error strings, ST1012 error naming, ST1006 ban on this/self) — are active.
+> The excluded ST checks are enabled via `settings.staticcheck.checks`.
 
-> ⚠️ **Наш эталонный `.golangci.yml` сейчас `default: none`** — из стандартной
-> пятёрки включён только `errcheck`. `govet`, `staticcheck`, `ineffassign`,
-> `unused` не работают. Это первый кандидат на исправление.
+> ⚠️ **Our reference `.golangci.yml` is currently `default: none`** — of the standard
+> five, only `errcheck` is enabled. `govet`, `staticcheck`, `ineffassign`,
+> `unused` are not running. This is the first candidate for fixing.
 
 ---
 
-## 1. Что закрывает дефолтная пятёрка golangci-lint v2
+## 1. What the default golangci-lint v2 five covers
 
-| Правило из гайдов | Линтер/чек |
+| Rule from the guides | Linter/check |
 |---|---|
-| Не игнорировать ошибки, `_ = err` (Google: handle errors) | `errcheck` (+ `check-blank: true` — уже GID-202) |
-| Не копировать мьютексы/locks по значению (Uber: zero-value mutex; Google: copying) | `govet/copylocks` |
-| Имена полей в composite literals чужих пакетов (Uber/Google) | `govet/composites` |
-| Printf: соответствие формата аргументам, имя `...f` (Uber) | `govet/printf` |
-| Утечка cancel у контекста (Google: goroutine lifetimes, частично) | `govet/lostcancel` |
-| Захват loop-переменной (Uber: parallel tests; до Go 1.22) | `govet/loopclosure` |
-| Ключ контекста — не базовый тип (Google: context keys) | `staticcheck SA1029` |
-| Typed-nil в interface-сравнении (Google: return error interface, частично) | `staticcheck SA4023` |
-| `fmt.Errorf` без форматирования → `errors.New` (Uber) | `staticcheck S1028` |
-| Error strings: lowercase, без точки (Uber/Google) | `staticcheck ST1005` |
-| Нейминг ошибок `ErrX`/`errX` (Uber) | `staticcheck ST1012` |
-| Ресивер не `this`/`self`/`me` (Google) | `staticcheck ST1006` |
-| Redundant `break`, избыточные nil-чеки и пр. simple-кейсы | `staticcheck S1023`, `S1009`, `S1021`, … |
-| Неиспользуемый код / бесполезные присваивания | `unused`, `ineffassign` |
+| Do not ignore errors, `_ = err` (Google: handle errors) | `errcheck` (+ `check-blank: true` — already GID-202) |
+| Do not copy mutexes/locks by value (Uber: zero-value mutex; Google: copying) | `govet/copylocks` |
+| Field names in composite literals of foreign packages (Uber/Google) | `govet/composites` |
+| Printf: format matches arguments, `...f` naming (Uber) | `govet/printf` |
+| Leaked context cancel (Google: goroutine lifetimes, partially) | `govet/lostcancel` |
+| Loop variable capture (Uber: parallel tests; before Go 1.22) | `govet/loopclosure` |
+| Context key is not a basic type (Google: context keys) | `staticcheck SA1029` |
+| Typed nil in interface comparison (Google: return error interface, partially) | `staticcheck SA4023` |
+| `fmt.Errorf` without formatting → `errors.New` (Uber) | `staticcheck S1028` |
+| Error strings: lowercase, no trailing period (Uber/Google) | `staticcheck ST1005` |
+| Error naming `ErrX`/`errX` (Uber) | `staticcheck ST1012` |
+| Receiver is not `this`/`self`/`me` (Google) | `staticcheck ST1006` |
+| Redundant `break`, redundant nil checks, and other simple cases | `staticcheck S1023`, `S1009`, `S1021`, … |
+| Unused code / useless assignments | `unused`, `ineffassign` |
 
-**Вывод:** дефолт закрывает пласт «корректность + базовая гигиена ошибок», но
-почти ничего из структурно-стилевого слоя гайдов.
+**Conclusion:** the default covers the "correctness + basic error hygiene" layer, but
+almost nothing from the structural/stylistic layer of the guides.
 
-## 2. OPT-IN: готовые линтеры, которые стоит обсудить к включению
+## 2. OPT-IN: ready-made linters worth discussing for enablement
 
-### Высокая ценность, конфликтов с нашим стайлгайдом нет
+### High value, no conflicts with our styleguide
 
-| Линтер | Что закрывает из гайдов | Примечание |
+| Linter | What it covers from the guides | Note |
 |---|---|---|
-| `govet` + `staticcheck` + `unused` + `ineffassign` | весь раздел 1 | сейчас выключены из-за `default: none` |
-| `revive` (точечные правила) | `indent-error-flow`, `early-return`, `superfluous-else` (Uber: nesting/else), `deep-exit` (Uber: exit in main; Google: log.Fatal), `dot-imports`, `blank-imports` (Google), `use-any`, `exported` (doc-comments, Google) | включать только нужные rules |
-| `staticcheck ST1003, ST1016, ST1000` | mixed caps, initialisms (URL не Url), консистентный ресивер, package comment (Google) | добавить в `settings.staticcheck.checks` |
-| `gocritic` (шире, чем ruleguard) | десятки мелких правил Uber: `ifElseChain`, `exitAfterDefer`, `ptrToRefParam` (указатель на интерфейс) и др. | каркас уже подключён ради ruleguard |
-| `predeclared` | Uber: не затенять builtin-имена | — |
-| `gochecknoinits` | Uber: avoid `init()` | bootstrap в `internal/app` — исключения |
-| `nakedret` | Google: naked return только в коротких функциях | — |
-| `forcetypeassert` *или* `errcheck.check-type-assertions: true` | Uber: comma-ok при type assertion | у errcheck опция выключена по умолчанию |
-| `prealloc` | Uber: slice capacity hints | map-хинты не покрывает |
-| `perfsprint` | Uber: strconv vs fmt, Sprintf→конкатенация (Google: string concatenation) | — |
-| `musttag` | Uber: field tags в marshaled structs | дополняет наши GID-125/168 |
-| `nestif`, `gocognit`/`gocyclo` | Uber: сложность table-subtests, nesting | пороги обсудить |
-| `importas` | Google: алиасы proto/`pb`-импортов | — |
-| `thelper`, `testpackage`, `paralleltest`, `tparallel` | Google tests: `t.Helper()`, `_test`-пакеты, параллельность | согласовать со skill go-testing |
-| `containedctx` | Google: не хранить Context в структуре | — |
-| `interfacebloat` | Google: маленькие интерфейсы | порог методов |
-| `ireturn` | Google: accept interfaces, return concrete types | настроить allow-list (error, generics) |
-| `grouper` | Uber: группировка const/var/import в блоки | дополняет GID-130 |
-| `wrapcheck` | **наше правило «ошибки извне всегда Wrap»** (≈GID-140/141) | проверяет, что err из чужого пакета обёрнут; настраивается под pkg/errors — кандидат вместо/в основу custom-правила |
+| `govet` + `staticcheck` + `unused` + `ineffassign` | all of section 1 | currently disabled because of `default: none` |
+| `revive` (selected rules) | `indent-error-flow`, `early-return`, `superfluous-else` (Uber: nesting/else), `deep-exit` (Uber: exit in main; Google: log.Fatal), `dot-imports`, `blank-imports` (Google), `use-any`, `exported` (doc comments, Google) | enable only the needed rules |
+| `staticcheck ST1003, ST1016, ST1000` | mixed caps, initialisms (URL not Url), consistent receiver, package comment (Google) | add to `settings.staticcheck.checks` |
+| `gocritic` (broader than ruleguard) | dozens of small Uber rules: `ifElseChain`, `exitAfterDefer`, `ptrToRefParam` (pointer to interface), etc. | the scaffolding is already wired up for ruleguard |
+| `predeclared` | Uber: do not shadow builtin names | — |
+| `gochecknoinits` | Uber: avoid `init()` | bootstrap in `internal/app` — exceptions |
+| `nakedret` | Google: naked return only in short functions | — |
+| `forcetypeassert` *or* `errcheck.check-type-assertions: true` | Uber: comma-ok on type assertion | the errcheck option is off by default |
+| `prealloc` | Uber: slice capacity hints | does not cover map hints |
+| `perfsprint` | Uber: strconv vs fmt, Sprintf→concatenation (Google: string concatenation) | — |
+| `musttag` | Uber: field tags in marshaled structs | complements our GID-125/168 |
+| `nestif`, `gocognit`/`gocyclo` | Uber: complexity of table subtests, nesting | thresholds to discuss |
+| `importas` | Google: aliases of proto/`pb` imports | — |
+| `thelper`, `testpackage`, `paralleltest`, `tparallel` | Google tests: `t.Helper()`, `_test` packages, parallelism | align with the go-testing skill |
+| `containedctx` | Google: do not store Context in a struct | — |
+| `interfacebloat` | Google: small interfaces | method threshold |
+| `ireturn` | Google: accept interfaces, return concrete types | configure an allow-list (error, generics) |
+| `grouper` | Uber: grouping const/var/import into blocks | complements GID-130 |
+| `wrapcheck` | **our rule "errors from outside are always Wrapped"** (≈GID-140/141) | checks that an err from a foreign package is wrapped; configurable for pkg/errors — a candidate to replace / serve as the basis of a custom rule |
 
-### Конфликтуют с нашим стайлгайдом — включать нельзя или с оговорками
+### Conflict with our styleguide — must not be enabled, or only with caveats
 
-| Линтер | Конфликт |
+| Linter | Conflict |
 |---|---|
-| `errorlint` (`%w`, `errors.Is`) | гайды строятся на std-wrapping `%w`; у нас GID-146 — только `pkg/errors`, `fmt.Errorf` запрещён. Полезна только часть `comparison`/`asserts` (`errors.Is`/`As` вместо `==`) — std `errors.Is/As` у нас разрешены |
-| `gochecknoglobals` | у нас package-level `var Default*Options` (GID-126) и `var ErrX` — легитимны. Нужны исключения или не включать |
-| `err113` | то же: толкает к std errors; пересечение с GID-136 решить в пользу нашего правила |
-| `depguard` | мог бы заменить GID-137/146 (бан uuid-форков, testify по Google) — но наши custom-линтеры дают лучшие сообщения; Google запрещает assert-библиотеки, у нас testify (require/assert) — осознанное отклонение |
-| `lll` | Google прямо называет line-length «invalid local style»; наш GID-201 (120) — осознанное отклонение, оставляем |
+| `errorlint` (`%w`, `errors.Is`) | the guides are built on std wrapping with `%w`; we have GID-146 — `pkg/errors` only, `fmt.Errorf` is forbidden. Only the `comparison`/`asserts` part is useful (`errors.Is`/`As` instead of `==`) — std `errors.Is/As` are allowed for us |
+| `gochecknoglobals` | our package-level `var Default*Options` (GID-126) and `var ErrX` are legitimate. Needs exceptions, or do not enable |
+| `err113` | same: pushes toward std errors; resolve the overlap with GID-136 in favor of our rule |
+| `depguard` | could replace GID-137/146 (banning uuid forks, testify per Google) — but our custom linters give better messages; Google forbids assert libraries, we use testify (require/assert) — a deliberate deviation |
+| `lll` | Google explicitly calls line-length an "invalid local style"; our GID-201 (120) is a deliberate deviation, we keep it |
 
-## 3. CUSTOM: кандидаты на новые GID-правила
+## 3. CUSTOM: candidates for new GID rules
 
-Детерминируемые (AST/types), готового линтера нет, с нашими правилами не пересекаются:
+Deterministic (AST/types), no ready-made linter, no overlap with our rules:
 
-| Кандидат | Источник | Комментарий |
+| Candidate | Source | Comment |
 |---|---|---|
-| Запрет embed `sync.Mutex`/`RWMutex` в структуру | Uber | тривиальный AST-чек |
-| Буфер канала только 0 или 1 (`make(chan T, N)`, N>1 — диагностика) | Uber | литералы; настройка исключений |
-| Запрет goroutine в `init()` / I/O в `init()` | Uber | дополняет gochecknoinits, если init разрешим в app |
-| `os.Exit`/`log.Fatal` не более одного раза в `main` | Uber | счётчик вызовов |
-| `[]byte("literal")` внутри цикла → вынести | Uber perf | — |
-| Map capacity hint (`make(map, n)` при известном size) | Uber perf | prealloc не умеет |
-| Бан `"failed to ..."` в сообщениях ошибок | Uber | строковый литерал в Wrap/WithMessage |
+| Ban embedding `sync.Mutex`/`RWMutex` in a struct | Uber | trivial AST check |
+| Channel buffer only 0 or 1 (`make(chan T, N)`, N>1 — diagnostic) | Uber | literals; exception settings |
+| Ban goroutines in `init()` / I/O in `init()` | Uber | complements gochecknoinits if we allow init in app |
+| `os.Exit`/`log.Fatal` at most once in `main` | Uber | call counter |
+| `[]byte("literal")` inside a loop → hoist it out | Uber perf | — |
+| Map capacity hint (`make(map, n)` when size is known) | Uber perf | prealloc cannot do this |
+| Ban `"failed to ..."` in error messages | Uber | string literal in Wrap/WithMessage |
 | `return []T{}` → `return nil`; `var s []T` vs `s := []T{}` | Uber/Google | — |
-| `new(T)` → `&T{}`; `T{}` → `var x T` для zero-value | Uber | ruleguard-уровень |
-| Format string — `const`/литерал, не переменная | Uber | дополняет govet/printf |
-| Бан имён пакетов `util`/`common`/`helper`/`shared` | Google | расширение GID-158 (dirtree) или отдельное |
-| Запрет кастомных context-типов (не `context.Context` в позиции ctx) | Google | «no exceptions» у Google |
-| Направление каналов в сигнатурах (`<-chan`/`chan<-`) | Google | types-чек параметров |
-| `error` — последний возвращаемый параметр; не возвращать конкретный error-тип | Google | typed-nil ловушка |
+| `new(T)` → `&T{}`; `T{}` → `var x T` for zero values | Uber | ruleguard level |
+| Format string — `const`/literal, not a variable | Uber | complements govet/printf |
+| Ban package names `util`/`common`/`helper`/`shared` | Google | extension of GID-158 (dirtree) or standalone |
+| Ban custom context types (not `context.Context` in the ctx position) | Google | "no exceptions" per Google |
+| Channel direction in signatures (`<-chan`/`chan<-`) | Google | types check of parameters |
+| `error` — the last return parameter; do not return a concrete error type | Google | typed-nil trap |
 | Yoda conditions (`"foo" == x`) | Google | ruleguard |
-| `%q` вместо ручных `\"%s\"` | Google | ruleguard |
-| `reflect.DeepEqual` в тестах → cmp/require | Google | ruleguard |
-| Имена subtest в `t.Run` без пробелов/слешей | Google | литералы |
-| `flag.*` только в `package main`; имя флага snake_case | Google | если появятся CLI |
-| Символ не дублирует имя пакета (`widget.NewWidget`) | Google | дополняет GID-104 |
+| `%q` instead of manual `\"%s\"` | Google | ruleguard |
+| `reflect.DeepEqual` in tests → cmp/require | Google | ruleguard |
+| Subtest names in `t.Run` without spaces/slashes | Google | literals |
+| `flag.*` only in `package main`; flag name in snake_case | Google | if CLIs appear |
+| Symbol does not repeat the package name (`widget.NewWidget`) | Google | complements GID-104 |
 
-Отброшено как противоречащее нашему стайлгайду: `_`-префикс приватных глобалов
-(Uber-специфика), enum start at one (у нас string-enum, GID-123), верификация
-interface compliance через `var _` (judgment), go.uber.org/atomic (своя экосистема).
+Discarded as contradicting our styleguide: the `_` prefix for private globals
+(Uber-specific), enum start at one (we use string enums, GID-123), interface
+compliance verification via `var _` (judgment), go.uber.org/atomic (its own ecosystem).
 
-## 4. REVIEW: не автоматизируется
+## 4. REVIEW: not automatable
 
-Clarity/Simplicity/Consistency, выбор типа ошибки по матрице, in-band errors,
-дизайн интерфейсов («потребитель определяет» — у нас частично закрыто GID-134/173),
-goroutine lifecycle, time-семантика, functional options vs option struct,
-got-before-want в тестах, полнота документации, global state litmus tests.
+Clarity/Simplicity/Consistency, choosing the error type by the matrix, in-band errors,
+interface design ("the consumer defines it" — partially closed for us by GID-134/173),
+goroutine lifecycle, time semantics, functional options vs option struct,
+got-before-want in tests, documentation completeness, global state litmus tests.
 
 ---
 
-## Сводка
+## Summary
 
-| | Uber | Google guide+BP | Итого уникальных |
+| | Uber | Google guide+BP | Unique total |
 |---|---|---|---|
-| DEFAULT (после включения пятёрки) | ~7 | ~9 | ~14 |
-| OPT-IN | ~18 | ~25 | ~25 линтеров/правил |
-| CUSTOM детерминируемый | ~25 | ~15 | ~20 кандидатов |
+| DEFAULT (once the five are enabled) | ~7 | ~9 | ~14 |
+| OPT-IN | ~18 | ~25 | ~25 linters/rules |
+| CUSTOM deterministic | ~25 | ~15 | ~20 candidates |
 | REVIEW | ~12 | ~30 | — |
 
-Приоритет обсуждения:
-1. Включить стандартную пятёрку в эталонный конфиг (`govet`, `staticcheck`, `unused`, `ineffassign`).
-2. Добрать дешёвые OPT-IN: `revive` (точечно), ST1003/ST1016/ST1000, `predeclared`, `nakedret`, `forcetypeassert`, `prealloc`, `perfsprint`, `musttag`.
-3. `wrapcheck` — как основа/замена будущих GID-140/141 (ошибки извне → Wrap).
-4. Из CUSTOM-кандидатов выбрать первую волну (предлагаю: embed mutex, channel size, exit-once, util-пакеты, custom context, error last param, DeepEqual в тестах).
+Discussion priority:
+1. Enable the standard five in the reference config (`govet`, `staticcheck`, `unused`, `ineffassign`).
+2. Pick up the cheap OPT-INs: `revive` (selectively), ST1003/ST1016/ST1000, `predeclared`, `nakedret`, `forcetypeassert`, `prealloc`, `perfsprint`, `musttag`.
+3. `wrapcheck` — as the basis/replacement for the future GID-140/141 (errors from outside → Wrap).
+4. Pick the first wave from the CUSTOM candidates (I suggest: embed mutex, channel size, exit-once, util packages, custom context, error last param, DeepEqual in tests).

@@ -1,29 +1,30 @@
-// Package intransaction реализует правило GID-175 (in-transaction):
-// конвенция работы с транзакциями.
+// Package intransaction implements rule GID-175 (in-transaction):
+// the transaction-handling convention.
 //
-// Конвенция (требование 2026-06-07): типы транзакций живут в /domain/model;
-// service/usecase их используют; connection, реализующий сигнатуру транзакции,
-// передаётся напрямую в конструктор. Каноническая форма в /domain/model:
+// Convention (requirement 2026-06-07): transaction types live in /domain/model;
+// service/usecase use them; the connection that implements the transaction
+// signature is passed directly into the constructor. The canonical form in
+// /domain/model:
 //
 //	type InTransactionFunc func(ctx context.Context, fn func(ctx context.Context) error) error
 //
 //	type InTransactionWithReturnFunc[T any] func(ctx context.Context, fn func(ctx context.Context) (T, error)) (T, error)
 //
-// Проверки:
+// Checks:
 //
-//  1. Объявление tx-типа вне model: именованный func-тип с tx-сигнатурой,
-//     объявленный в пакете НЕ /domain/model → тип транзакции живёт в /domain/model.
-//  2. Нейминг в model: в /domain/model func-тип с tx-сигнатурой обязан называться
-//     InTransactionFunc (без generic) / InTransactionWithReturnFunc (generic).
-//  3. Анонимная сигнатура в service/usecase: в /domain/service и /domain/usecase
-//     поле структуры или параметр функции/конструктора с анонимным func-типом
-//     tx-сигнатуры → используйте именованный тип model.InTransactionFunc.
-//  4. Tx-метод на repo/service: в /dal/repository и /domain/service метод
-//     структуры с tx-сигнатурой → InTransactionFunc передаётся в конструктор
-//     напрямую от connection, репозиторий/сервис не оборачивает транзакцию методом.
+//  1. Tx-type declaration outside model: a named func type with a tx signature
+//     declared in a package OTHER than /domain/model → the transaction type lives in /domain/model.
+//  2. Naming in model: in /domain/model a func type with a tx signature must be named
+//     InTransactionFunc (non-generic) / InTransactionWithReturnFunc (generic).
+//  3. Anonymous signature in service/usecase: in /domain/service and /domain/usecase
+//     a struct field or a function/constructor parameter with an anonymous func type
+//     of the tx signature → use the named type model.InTransactionFunc.
+//  4. Tx-method on repo/service: in /dal/repository and /domain/service a struct
+//     method with a tx signature → InTransactionFunc is passed into the constructor
+//     directly from the connection; the repository/service does not wrap the transaction in a method.
 //
-// Распознавание context.Context — структурно через go/types (пакет context,
-// имя Context). Сигнатура матчится структурно. Сгенерированный код пропускается.
+// context.Context is recognized structurally via go/types (package context,
+// name Context). The signature is matched structurally. Generated code is skipped.
 package intransaction
 
 import (
@@ -43,7 +44,7 @@ const (
 	txWithReturn
 )
 
-// Analyzer — правило GID-175: типы транзакций (InTransactionFunc) живут в /domain/model.
+// Analyzer is rule GID-175: transaction types (InTransactionFunc) live in /domain/model.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidintransaction",
 	Doc:  ruleID + ": transaction convention; InTransactionFunc lives in /domain/model. Fix: declare it there",
@@ -82,7 +83,7 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-// --- Проверки 1 и 2: объявления именованных func-типов ---
+// --- Checks 1 and 2: declarations of named func types ---
 
 func checkTypeDecls(pass *analysis.Pass, gd *ast.GenDecl, inModel bool) {
 	const (
@@ -108,12 +109,12 @@ func checkTypeDecls(pass *analysis.Pass, gd *ast.GenDecl, inModel bool) {
 			continue
 		}
 		if !inModel {
-			// Проверка 1: tx-тип объявлен вне /domain/model.
+			// Check 1: tx-type declared outside /domain/model.
 			pass.Reportf(ts.Name.Pos(),
 				"%s: the transaction type must live in /domain/model (InTransactionFunc). Fix: move it there", ruleID)
 			continue
 		}
-		// Проверка 2: в model имя обязано быть каноническим.
+		// Check 2: in model the name must be canonical.
 		want := nameInTransaction
 		if kind == txWithReturn {
 			want = nameInTransactionWithReturn
@@ -125,7 +126,7 @@ func checkTypeDecls(pass *analysis.Pass, gd *ast.GenDecl, inModel bool) {
 	}
 }
 
-// --- Проверка 4: tx-метод на repo/service ---
+// --- Check 4: tx-method on repo/service ---
 
 func checkTxMethod(pass *analysis.Pass, fn *ast.FuncDecl) {
 	obj, ok := pass.TypesInfo.Defs[fn.Name].(*types.Func)
@@ -144,7 +145,7 @@ func checkTxMethod(pass *analysis.Pass, fn *ast.FuncDecl) {
 			"Fix: pass InTransactionFunc into the constructor directly from the connection", ruleID)
 }
 
-// --- Проверка 3: анонимная tx-сигнатура в параметрах функций/конструкторов ---
+// --- Check 3: anonymous tx-signature in function/constructor parameters ---
 
 func checkAnonInParams(pass *analysis.Pass, ft *ast.FuncType) {
 	if ft.Params == nil {
@@ -155,7 +156,7 @@ func checkAnonInParams(pass *analysis.Pass, ft *ast.FuncType) {
 	}
 }
 
-// --- Проверка 3: анонимная tx-сигнатура в полях структур ---
+// --- Check 3: anonymous tx-signature in struct fields ---
 
 func checkAnonInStructFields(pass *analysis.Pass, file *ast.File) {
 	ast.Inspect(file, func(n ast.Node) bool {
@@ -170,9 +171,9 @@ func checkAnonInStructFields(pass *analysis.Pass, file *ast.File) {
 	})
 }
 
-// reportIfAnonTxField флагует поле/параметр с анонимным func-типом tx-сигнатуры.
-// Именованный тип (в т.ч. model.InTransactionFunc) — это *ast.Ident /
-// *ast.SelectorExpr, а не *ast.FuncType, поэтому он не флагуется.
+// reportIfAnonTxField flags a field/parameter with an anonymous func type of the tx signature.
+// A named type (including model.InTransactionFunc) is an *ast.Ident /
+// *ast.SelectorExpr, not an *ast.FuncType, so it is not flagged.
 func reportIfAnonTxField(pass *analysis.Pass, expr ast.Expr) {
 	ftLit, ok := expr.(*ast.FuncType)
 	if !ok {
@@ -193,11 +194,11 @@ func reportIfAnonTxField(pass *analysis.Pass, expr ast.Expr) {
 		"%s: use the named type model.InTransactionFunc. Fix: replace the anonymous signature", ruleID)
 }
 
-// --- Структурное распознавание tx-сигнатуры ---
+// --- Structural recognition of the tx-signature ---
 
 type txKind int
 
-// classifyTxSignature структурно сопоставляет сигнатуру func-типа с tx-формами:
+// classifyTxSignature structurally matches a func type's signature against the tx forms:
 //
 //	plain:      func(context.Context, func(context.Context) error) error
 //	withReturn: func(context.Context, func(context.Context) (T, error)) (T, error)
@@ -217,7 +218,7 @@ func classifyTxSignature(sig *types.Signature) txKind {
 	if !ok {
 		return txNone
 	}
-	// callback: первый параметр — context.Context, ровно один параметр.
+	// callback: first parameter is context.Context, exactly one parameter.
 	cbParams := cb.Params()
 	if cbParams.Len() != 1 {
 		return txNone
@@ -245,7 +246,7 @@ func classifyTxSignature(sig *types.Signature) txKind {
 	}
 
 	// withReturn: results = (T, error); callback results = (T, error),
-	// где T совпадает.
+	// where T matches.
 	if results.Len() == 2 {
 		result1 := results.At(1)
 		if !isError(result1.Type()) {
@@ -267,7 +268,7 @@ func classifyTxSignature(sig *types.Signature) txKind {
 	return txNone
 }
 
-// isContextContext: тип — context.Context (пакет context, имя Context).
+// isContextContext: the type is context.Context (package context, name Context).
 func isContextContext(t types.Type) bool {
 	named, ok := t.(*types.Named)
 	if !ok {

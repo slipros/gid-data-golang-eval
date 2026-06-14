@@ -1,4 +1,4 @@
-// Eval для GID-197 (ifacemin): сервисный пакет — scope правила.
+// Eval for GID-197 (ifacemin): a service package is the rule's scope.
 package service
 
 import (
@@ -6,7 +6,7 @@ import (
 	"io"
 )
 
-// --- Позитив: неиспользуемый метод интерфейса-зависимости ---
+// --- Positive: an unused method of a dependency interface ---
 
 type SnapshotRepository interface {
 	Snapshot(ctx context.Context, id string) (string, error)
@@ -30,7 +30,7 @@ func (s *SnapshotService) Create(ctx context.Context, name string) error {
 	return s.repo.CreateSnapshot(ctx, name)
 }
 
-// --- Негатив: метод-значение — тоже использование ---
+// --- Negative: a method value is a use too ---
 
 type SnapshotCache interface {
 	Get(id string) (string, bool)
@@ -48,11 +48,11 @@ func (c *cacheRunner) run() string {
 	return v
 }
 
-// --- Граница: значение уходит в any — интерфейс пропускается целиком ---
+// --- Boundary: the value escapes into any — the interface is skipped entirely ---
 
 type AuditSink interface {
 	Write(msg string)
-	Flush() error // не вызывается, но sink уезжает под другим типом — пропуск
+	Flush() error // not called, but the sink leaves under a different type — skipped
 }
 
 func (s *SnapshotService) Audit(sink AuditSink) {
@@ -61,8 +61,8 @@ func (s *SnapshotService) Audit(sink AuditSink) {
 	_ = bucket
 }
 
-// --- Граница: embedded-интерфейс того же пакета — использование через
-// внешний интерфейс засчитывается ---
+// --- Boundary: an embedded interface of the same package — use through
+// the outer interface counts ---
 
 type snapshotReader interface {
 	ReadSnapshot() string
@@ -78,7 +78,7 @@ func consumeRW(rw snapshotReadWriter) string {
 	return rw.ReadSnapshot()
 }
 
-// --- Граница: embedded-интерфейс стандартной библиотеки не проверяется ---
+// --- Boundary: an embedded standard library interface is not checked ---
 
 type SnapshotSource interface {
 	io.Closer
@@ -92,7 +92,7 @@ func useSource(src SnapshotSource) error {
 	return src.Close()
 }
 
-// --- Граница: использование только из *_test.go — нарушение ---
+// --- Boundary: use only from *_test.go — a violation ---
 
 type SnapshotProbe interface {
 	Ping() error // want `GID-197: method "Ping" of interface "SnapshotProbe" is not used in the consumer package\. Fix: keep the interface minimal, remove the method`

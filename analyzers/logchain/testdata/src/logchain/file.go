@@ -1,4 +1,4 @@
-// Eval для GID-156 (цепочка logrus по вызову на строку).
+// Eval for GID-156 (a logrus chain, one call per line).
 package logchain
 
 import (
@@ -11,27 +11,27 @@ type Svc struct {
 	logger *logrus.Entry
 }
 
-// --- Позитивные кейсы ---
+// --- Positive cases ---
 
 func (s *Svc) badInline(ctx context.Context, err error) {
 	s.logger.WithContext(ctx).WithError(err).Error("failed") // want `GID-156: a logrus chain must put one call per line, including the first\. Fix: break each call onto a new line`
 }
 
-// Граничный кейс: первый вызов прилип к ресиверу.
+// Boundary case: the first call is stuck to the receiver.
 func (s *Svc) badFirstInline(ctx context.Context, err error) {
 	s.logger.WithContext(ctx). // want `GID-156: a logrus chain must put one call per line, including the first\. Fix: break each call onto a new line`
 					WithError(err).
 					Error("failed")
 }
 
-// Граничный кейс: два вызова на одной строке в середине цепочки.
+// Boundary case: two calls on one line in the middle of the chain.
 func (s *Svc) badMiddle(ctx context.Context, err error) {
 	s.logger.
 		WithContext(ctx).WithError(err). // want `GID-156: a logrus chain must put one call per line, including the first\. Fix: break each call onto a new line`
 		Error("failed")
 }
 
-// --- Негативные кейсы ---
+// --- Negative cases ---
 
 func (s *Svc) good(ctx context.Context, err error) {
 	s.logger.
@@ -41,7 +41,7 @@ func (s *Svc) good(ctx context.Context, err error) {
 		Error("some text")
 }
 
-// Неприменимость: одиночный вызов — inline допустим.
+// Non-applicability: a single call — inline is allowed.
 func (s *Svc) single() {
 	s.logger.Info("tick")
 }

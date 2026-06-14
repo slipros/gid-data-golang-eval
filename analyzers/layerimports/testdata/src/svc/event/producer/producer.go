@@ -1,5 +1,5 @@
-// Негатив (GID-170): event зависит от domain/model и конвертирует
-// model <-> DTO — импорт model в event-слое разрешён.
+// Negative (GID-170): event depends on domain/model and converts
+// model <-> DTO — importing model in the event layer is allowed.
 package producer
 
 import (

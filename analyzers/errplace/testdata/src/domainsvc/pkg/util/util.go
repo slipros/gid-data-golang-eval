@@ -1,4 +1,4 @@
-// Неприменимость: пакет вне domain-дерева — правило не действует.
+// Inapplicable: a package outside the domain tree — the rule does not apply.
 package util
 
 import "errors"

@@ -1,18 +1,18 @@
-// Package upwardimport реализует правило GID-131 (no-upward-import):
-// дочерний пакет не импортирует родительский.
+// Package upwardimport implements rule GID-131 (no-upward-import):
+// a child package does not import its parent.
 //
-// Направление зависимостей: общее выносится вниз, родитель импортирует
-// детей, а не наоборот. Если путь импорта является строгим префиксом пути
-// текущего пакета по сегментам (pkgPath начинается с impPath + "/"), значит
-// дочерний пакет тянет родителя — инверсия зависимости.
+// The dependency direction: shared code is moved down, the parent imports
+// the children, not the other way around. If the import path is a strict
+// segment-wise prefix of the current package's path (pkgPath starts with
+// impPath + "/"), the child package pulls in the parent — a dependency inversion.
 //
-// Самоимпорт в Go невозможен, соседние пакеты и внешние модули не матчатся
-// по определению (их путь не является префиксом пути текущего пакета).
-// Префикс считается по сегментам пути, а не по строке: "a/parentx" не
-// является дочерним для "a/parent".
+// Self-import is impossible in Go; sibling packages and external modules do
+// not match by definition (their path is not a prefix of the current
+// package's path). The prefix is computed by path segments, not by string:
+// "a/parentx" is not a child of "a/parent".
 //
-// Сгенерированный код (ast.IsGenerated) пропускается. LoadMode — TypesInfo
-// (нужен pass.Pkg.Path()).
+// Generated code (ast.IsGenerated) is skipped. LoadMode — TypesInfo
+// (pass.Pkg.Path() is needed).
 package upwardimport
 
 import (
@@ -25,7 +25,7 @@ import (
 
 const ruleID = "GID-131"
 
-// Analyzer — правило GID-131: дочерний пакет не импортирует родительский.
+// Analyzer — rule GID-131: a child package does not import its parent.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidupwardimport",
 	Doc: ruleID + ": a child package must not import its parent. " +
@@ -44,8 +44,8 @@ func run(pass *analysis.Pass) (any, error) {
 			if err != nil {
 				continue
 			}
-			// Строгий префикс по сегментам: pkgPath начинается с impPath + "/".
-			// Это означает, что impPath — родитель текущего пакета.
+			// A strict segment-wise prefix: pkgPath starts with impPath + "/".
+			// This means impPath is the parent of the current package.
 			if strings.HasPrefix(pkgPath, impPath+"/") {
 				pass.Reportf(imp.Pos(),
 					"%s: a child package imports its parent %s. "+

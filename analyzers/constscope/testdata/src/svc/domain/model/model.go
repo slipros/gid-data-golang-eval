@@ -1,4 +1,4 @@
-// Eval для GID-194: model-слой — package-level константы легальны.
+// Eval for GID-194: the model layer — package-level constants are legal.
 package model
 
 const (

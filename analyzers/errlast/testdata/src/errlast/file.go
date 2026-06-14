@@ -1,82 +1,82 @@
-// Eval для GID-190 (error — последний результат; конкретные error-типы запрещены).
+// Eval for GID-190 (error is the last result; concrete error types are forbidden).
 package errlast
 
-// MyError — конкретный именованный тип, реализующий error (через указатель).
+// MyError — a concrete named type implementing error (via a pointer).
 type MyError struct{ msg string }
 
 func (e *MyError) Error() string { return e.msg }
 
-// ValError — конкретный именованный тип, реализующий error по значению.
+// ValError — a concrete named type implementing error by value.
 type ValError struct{ code int }
 
 func (e ValError) Error() string { return "val error" }
 
-// T — обычная структура, не реализует error.
+// T — an ordinary struct, does not implement error.
 type T struct{ Name string }
 
-// ErrIface — кастомный error-интерфейс (расширяет error). Осознанное решение.
+// ErrIface — a custom error interface (extends error). A deliberate decision.
 type ErrIface interface {
 	error
 	Code() int
 }
 
-// --- Класс 1: позитивные (нарушения) ---
+// --- Class 1: positive (violations) ---
 
-// error не последний — после него идёт int.
+// error is not last — an int follows it.
 func f() (error, int) { // want `GID-190: error must be the last return value\. Fix: move it to the end`
 	return nil, 0
 }
 
-// результат — конкретный error-тип (*MyError), а не интерфейс error.
+// the result is a concrete error type (*MyError), not the error interface.
 func g() *MyError { // want `GID-190: return the error interface, not \*errlast.MyError\. Fix: a concrete type in the error position causes a typed-nil trap`
 	return nil
 }
 
-// метод: error не последний (есть ok после него).
+// method: error is not last (there is ok after it).
 func (t T) Do() (err error, ok bool) { // want `GID-190: error must be the last return value\. Fix: move it to the end`
 	return nil, false
 }
 
-// результат — конкретный error-тип по значению (ValError).
+// the result is a concrete error type by value (ValError).
 func valErr() ValError { // want `GID-190: return the error interface, not errlast.ValError\. Fix: a concrete type in the error position causes a typed-nil trap`
 	return ValError{}
 }
 
-// --- Класс 2: негативные (чистый код) ---
+// --- Class 2: negative (clean code) ---
 
-// error последний — норма.
+// error is last — normal.
 func ok1() (int, error) {
 	return 0, nil
 }
 
-// (T, error) где T — обычная struct, error последний — норма.
+// (T, error) where T is an ordinary struct, error is last — normal.
 func ok2() (T, error) {
 	return T{}, nil
 }
 
-// единственный результат error — норма.
+// a single error result — normal.
 func e() error {
 	return nil
 }
 
-// без error в результатах — неприменимость.
+// no error among the results — non-applicability.
 func plain() (int, string) {
 	return 0, ""
 }
 
-// --- Класс 3: граничные ---
+// --- Class 3: boundary ---
 
-// результат — кастомный error-интерфейс ErrIface (расширяет error) — НЕ матчится.
+// the result is a custom error interface ErrIface (extends error) — NOT matched.
 func h() ErrIface {
 	return nil
 }
 
-// единственный результат (error) — ок.
+// a single result (error) — ok.
 func single() error {
 	return nil
 }
 
-// несколько результатов, error последний, среди прочих — конкретный тип не-error.
+// several results, error is last, among the others — a concrete non-error type.
 func ok3() (T, ValError, error) { // want `GID-190: return the error interface, not errlast.ValError\. Fix: a concrete type in the error position causes a typed-nil trap`
 	return T{}, ValError{}, nil
 }

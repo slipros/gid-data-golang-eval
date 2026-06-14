@@ -1,21 +1,22 @@
-// Package pkgstutter реализует правило GID-193 (no-pkg-stutter): экспортируемый
-// символ верхнего уровня (тип, функция, var, const) не должен начинаться с имени
-// пакета. Снаружи такой символ читается с заиканием: widget.WidgetOptions,
-// widget.WidgetService — имя пакета уже даёт контекст, префикс лишний.
-// Достаточно widget.Options, widget.Service.
+// Package pkgstutter implements rule GID-193 (no-pkg-stutter): an exported
+// top-level symbol (type, function, var, const) must not start with the
+// package name. From outside such a symbol reads with a stutter:
+// widget.WidgetOptions, widget.WidgetService — the package name already gives
+// context, the prefix is redundant. widget.Options, widget.Service suffice.
 //
-// Сравнение по границе CamelCase-слова: имя пакета должно совпасть с первым
-// словом символа целиком. Пакет widget матчит WidgetOptions/WidgetCount, но
-// пакет log НЕ матчит Logger (Logger начинается со слова "Logger", а не "Log"),
-// а пакет conv НЕ матчит Convert (слово "Convert", а не "Conv").
+// Comparison is done at the CamelCase word boundary: the package name must
+// match the symbol's first word entirely. Package widget matches
+// WidgetOptions/WidgetCount, but package log does NOT match Logger (Logger
+// starts with the word "Logger", not "Log"), and package conv does NOT match
+// Convert (the word is "Convert", not "Conv").
 //
-// Исключения (не матчим):
-//   - конструкторы New* — наш GID-104 требует New<Entity>, конфликт решён в его пользу;
-//   - методы (есть ресивер) и неэкспортируемые символы;
-//   - пакет main.
+// Exceptions (not matched):
+//   - New* constructors — our GID-104 requires New<Entity>, the conflict is resolved in its favor;
+//   - methods (with a receiver) and unexported symbols;
+//   - package main.
 //
-// Сгенерированные файлы (ast.IsGenerated) пропускаются.
-// LoadMode — Syntax: типы не нужны, хватает имени пакета и AST.
+// Generated files (ast.IsGenerated) are skipped.
+// LoadMode — Syntax: no types needed, the package name and the AST suffice.
 package pkgstutter
 
 import (
@@ -29,7 +30,7 @@ import (
 
 const ruleID = "GID-193"
 
-// Analyzer — правило GID-193: экспортируемый символ не повторяет имя пакета (widget.WidgetOptions).
+// Analyzer — rule GID-193: an exported symbol does not repeat the package name (widget.WidgetOptions).
 var Analyzer = &analysis.Analyzer{
 	Name: "gidpkgstutter",
 	Doc:  ruleID + ": an exported symbol must not repeat the package name; from outside it stutters (widget.WidgetOptions). Fix: drop the prefix",
@@ -60,11 +61,11 @@ func run(pass *analysis.Pass) (any, error) {
 
 func checkFunc(pass *analysis.Pass, pkgName string, fn *ast.FuncDecl) {
 	if fn.Recv != nil {
-		return // метод — у него есть ресивер, имя читается как value.Method
+		return // a method — it has a receiver, the name reads as value.Method
 	}
 	name := fn.Name.Name
 	if strings.HasPrefix(name, "New") {
-		return // конструктор New* — GID-104 главнее
+		return // a New* constructor — GID-104 takes precedence
 	}
 	report(pass, pkgName, name, fn.Name.Pos())
 }
@@ -82,8 +83,8 @@ func checkGenDecl(pass *analysis.Pass, pkgName string, gd *ast.GenDecl) {
 	}
 }
 
-// report выводит диагностику, если name экспортируемый и его первое
-// CamelCase-слово совпадает с именем пакета (регистронезависимо).
+// report emits a diagnostic if name is exported and its first CamelCase word
+// matches the package name (case-insensitively).
 func report(pass *analysis.Pass, pkgName, name string, pos token.Pos) {
 	if !ast.IsExported(name) {
 		return
@@ -97,19 +98,20 @@ func report(pass *analysis.Pass, pkgName, name string, pos token.Pos) {
 		ruleID, name, pkgName, pkgName, suffix)
 }
 
-// stutters сообщает, начинается ли символ с имени пакета как с отдельного
-// CamelCase-слова. Сравнение регистронезависимо, но граница слова учитывается:
-// после префикса длиной len(pkgName) должна начинаться новая заглавная буква
-// (следующее слово), иначе имя пакета — лишь часть другого слова (log → Logger).
+// stutters reports whether the symbol starts with the package name as a
+// separate CamelCase word. The comparison is case-insensitive, but the word
+// boundary is respected: after the prefix of length len(pkgName) a new capital
+// letter (the next word) must begin, otherwise the package name is just part
+// of another word (log → Logger).
 func stutters(pkgName, name string) bool {
 	if len(name) <= len(pkgName) {
-		return false // точное совпадение или короче — нет следующего слова
+		return false // an exact match or shorter — there is no next word
 	}
 	if !strings.EqualFold(name[:len(pkgName)], pkgName) {
 		return false
 	}
-	// Следующий рунный символ должен быть началом нового CamelCase-слова —
-	// заглавной буквой. Если строчная — имя пакета лишь префикс слова.
+	// The next rune must be the start of a new CamelCase word — a capital
+	// letter. If lowercase, the package name is only a prefix of a word.
 	next := rune(name[len(pkgName)])
 	return unicode.IsUpper(next)
 }

@@ -12,7 +12,7 @@ func TestAnalyzer(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), grpcinservice.Analyzer, "svc/...")
 }
 
-// TestExclude — import-пути из settings.exclude разрешены.
+// TestExclude — import paths from settings.exclude are allowed.
 func TestExclude(t *testing.T) {
 	a := grpcinservice.NewAnalyzer(grpcinservice.Settings{
 		Exclude: []string{"excluded/pkg/api/orderpb"},

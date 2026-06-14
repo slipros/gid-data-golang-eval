@@ -1,99 +1,99 @@
-# language: ru
+# language: en
 
-Функция: GID-126 — Options-паттерн: имя типа и дефолты (optsnaming)
-  Как разработчик
-  Я хочу, чтобы тип настроек именовался с префиксом сущности (JobOptions),
-  а дефолты жили в переменной Default<X>Options
-  Чтобы Options-паттерн был единообразен; в app-слое голый Options — норма (композиция)
+Feature: GID-126 — the Options pattern: type name and defaults (optsnaming)
+  As a developer
+  I want the options type to be named with an entity prefix (JobOptions),
+  and the defaults to live in a Default<X>Options variable
+  So that the Options pattern is uniform; in the app layer bare Options is the norm (composition)
 
-  # Анализатор gidoptsnaming, LoadMode по умолчанию (TypesInfo).
-  # Слой app определяется по сегменту пути "app" через internal/pathseg.
-  # Сгенерированный код (ast.IsGenerated) пропускается.
+  # Analyzer gidoptsnaming, default LoadMode (TypesInfo).
+  # The app layer is detected by the path segment "app" via internal/pathseg.
+  # Generated code (ast.IsGenerated) is skipped.
   #
-  # Проверки:
-  #   1. struct-тип с именем РОВНО Options вне app-слоя.
-  #      В app-слое голый Options — норма (агрегирует GRPCOptions/KafkaOptions), FINDINGS.md §2.3.
-  #      Не-struct типы (alias на Options, interface) не задеваются.
-  #   2. package-level var типа <X>Options (включая указатель), имя не начинается с Default.
-  #      Локальные переменные не задеваются. Var в app-слое тоже проверяется.
+  # Checks:
+  #   1. A struct type named EXACTLY Options outside the app layer.
+  #      In the app layer bare Options is the norm (it aggregates GRPCOptions/KafkaOptions), FINDINGS.md §2.3.
+  #      Non-struct types (an alias to Options, an interface) are not affected.
+  #   2. A package-level var of type <X>Options (including a pointer) whose name does not start with Default.
+  #      Local variables are not affected. A var in the app layer is also checked.
   #
-  # Соседнее правило GID-152 (gidoptsstyle) проверяет указатель/embedding opts —
-  # здесь не дублируется.
+  # The neighboring rule GID-152 (gidoptsstyle) checks pointer/embedding of opts —
+  # not duplicated here.
 
-  # === Класс 1: позитив (нарушение ловится) ===
+  # === Class 1: positive (the violation is caught) ===
 
-  Сценарий: позитивный — struct Options вне app-слоя
-    Допустим пакет в "/domain/service" с типом "type Options struct { Retries int }"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-126: тип настроек — с префиксом сущности: JobOptions, не голый Options" на типе "Options"
+  Scenario: positive — a struct Options outside the app layer
+    Given a package in "/domain/service" with the type "type Options struct { Retries int }"
+    When the analyzer checks the file
+    Then the diagnostic "GID-126: an options type must have an entity prefix. Fix: use JobOptions, not bare Options" is reported on the type "Options"
 
-  Сценарий: позитивный — package-level var типа JobOptions без префикса Default
-    Допустим пакет в "/domain/service" с "var Opts = JobOptions{}"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-126: дефолты Options — переменная Default<X>Options" на переменной "Opts"
+  Scenario: positive — a package-level var of type JobOptions without the Default prefix
+    Given a package in "/domain/service" with "var Opts = JobOptions{}"
+    When the analyzer checks the file
+    Then the diagnostic "GID-126: option defaults must be a Default<X>Options variable. Fix: rename it" is reported on the variable "Opts"
 
-  Сценарий: позитивный — package-level var с явным типом JobOptions без Default
-    Допустим пакет в "/domain/service" с "var defaults JobOptions"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-126: дефолты Options — переменная Default<X>Options" на переменной "defaults"
+  Scenario: positive — a package-level var with the explicit type JobOptions without Default
+    Given a package in "/domain/service" with "var defaults JobOptions"
+    When the analyzer checks the file
+    Then the diagnostic "GID-126: option defaults must be a Default<X>Options variable. Fix: rename it" is reported on the variable "defaults"
 
-  Сценарий: позитивный — дефолт без префикса Default проверяется и в app-слое
-    Допустим пакет в "/internal/app/config" с "var kafkaOpts = KafkaOptions{}"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "GID-126: дефолты Options — переменная Default<X>Options" на переменной "kafkaOpts"
+  Scenario: positive — a default without the Default prefix is checked in the app layer too
+    Given a package in "/internal/app/config" with "var kafkaOpts = KafkaOptions{}"
+    When the analyzer checks the file
+    Then the diagnostic "GID-126: option defaults must be a Default<X>Options variable. Fix: rename it" is reported on the variable "kafkaOpts"
 
-  # === Класс 2: негатив (чистый код проходит) ===
+  # === Class 2: negative (clean code passes) ===
 
-  Сценарий: негативный — тип с префиксом сущности JobOptions
-    Допустим пакет в "/domain/service" с типом "type JobOptions struct { Retries int }"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — a type with the entity prefix JobOptions
+    Given a package in "/domain/service" with the type "type JobOptions struct { Retries int }"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: негативный — дефолты в переменной Default<X>Options
-    Допустим пакет в "/domain/service" с "var DefaultJobOptions = JobOptions{}"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — defaults in a Default<X>Options variable
+    Given a package in "/domain/service" with "var DefaultJobOptions = JobOptions{}"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: негативный — голый Options в app-слое (композиция GRPCOptions/KafkaOptions)
-    Допустим пакет в "/internal/app/config" с типом "type Options struct { GRPC GRPCOptions; Kafka KafkaOptions }"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: negative — bare Options in the app layer (composition of GRPCOptions/KafkaOptions)
+    Given a package in "/internal/app/config" with the type "type Options struct { GRPC GRPCOptions; Kafka KafkaOptions }"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  # === Класс 3: граничный (похожее, но не флагуем) ===
+  # === Class 3: boundary (similar but not flagged) ===
 
-  Сценарий: граничный — локальная переменная opts не матчится
-    Допустим функцию с локальной "opts := JobOptions{}"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: boundary — a local variable opts is not matched
+    Given a function with the local "opts := JobOptions{}"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: граничный — var-указатель с префиксом Default — ок
-    Допустим пакет в "/domain/service" с "var DefaultGRPCOptions *GRPCOptions"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: boundary — a pointer var with the Default prefix — ok
+    Given a package in "/domain/service" with "var DefaultGRPCOptions *GRPCOptions"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: граничный — функция с параметром opts — не зона этого правила
-    Допустим функцию "func New(ctx context.Context, opts *JobOptions) int"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
-    # (Параметры/поля opts проверяет GID-152, не GID-126.)
+  Scenario: boundary — a function with an opts parameter — not this rule's domain
+    Given the function "func New(ctx context.Context, opts *JobOptions) int"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+    # (opts parameters/fields are checked by GID-152, not GID-126.)
 
-  Сценарий: граничный — alias на Options и interface не задеваются
-    Допустим пакет в "/domain/model" с "type Options = entOptions" и "type OptionsProvider interface { ... }"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
-    # (Проверка 1 действует только на struct-типы с именем ровно Options.)
+  Scenario: boundary — an alias to Options and an interface are not affected
+    Given a package in "/domain/model" with "type Options = entOptions" and "type OptionsProvider interface { ... }"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+    # (Check 1 applies only to struct types named exactly Options.)
 
-  # === Класс 4: неприменимость ===
+  # === Class 4: non-applicability ===
 
-  Сценарий: неприменимость — пакет без Options-типов
-    Допустим пакет в "/domain/model" с типом "type Job struct { ID int }" и "var DefaultJob = Job{}"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: non-applicability — a package without Options types
+    Given a package in "/domain/model" with the type "type Job struct { ID int }" and "var DefaultJob = Job{}"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-# --- Чек-лист при добавлении нового правила ---
-#  [x] ID и описание занесены в реестр (RULES.md, GID-126)
-#  [x] Выбран слой: go/analysis (анализатор gidoptsnaming в analyzers/optsnaming)
-#  [x] Заданы severity и сообщение ("GID-126: …")
-#  [x] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [x] testdata с // want для analysistest
-#  [ ] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [x] ID and description are recorded in the registry (RULES.md, GID-126)
+#  [x] Layer chosen: go/analysis (analyzer gidoptsnaming in analyzers/optsnaming)
+#  [x] Severity and message are defined ("GID-126: …")
+#  [x] Case classes covered: positive, negative, boundary, non-applicability
+#  [x] testdata with // want for analysistest
+#  [ ] Rule enabled in .golangci.yml

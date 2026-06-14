@@ -1,36 +1,36 @@
-# language: ru
-# ШАБЛОН для одного правила. Скопировать и заполнить под реальное правило.
-# Пример ниже — placeholder RULE-002 (context.Context первым аргументом).
+# language: en
+# TEMPLATE for a single rule. Copy and fill in for the actual rule.
+# The example below is a placeholder RULE-002 (context.Context as the first argument).
 
-Функция: RULE-002 — context.Context всегда первый аргумент
-  Как разработчик
-  Я хочу, чтобы context.Context был первым параметром функции
-  Чтобы соблюдать единый стиль и конвенцию Go
+Feature: RULE-002 — context.Context is always the first argument
+  As a developer
+  I want context.Context to be the first parameter of a function
+  So that a unified style and the Go convention are followed
 
-  Сценарий: ctx первым аргументом — ок
-    Допустим функция с сигнатурой "func Do(ctx context.Context, id int)"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: ctx as the first argument — ok
+    Given a function with the signature "func Do(ctx context.Context, id int)"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: ctx не первым аргументом — нарушение
-    Допустим функция с сигнатурой "func Do(id int, ctx context.Context)"
-    Когда анализатор проверяет файл
-    Тогда выводится диагностика "RULE-002" на параметре "ctx"
+  Scenario: ctx is not the first argument — violation
+    Given a function with the signature "func Do(id int, ctx context.Context)"
+    When the analyzer checks the file
+    Then a "RULE-002" diagnostic is reported on the "ctx" parameter
 
-  Сценарий: ctx отсутствует — правило не применяется
-    Допустим функция с сигнатурой "func Do(id int)"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: ctx is absent — the rule does not apply
+    Given a function with the signature "func Do(id int)"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-  Сценарий: метод с получателем — ctx после получателя считается первым
-    Допустим метод с сигнатурой "func (s *Svc) Do(ctx context.Context, id int)"
-    Когда анализатор проверяет файл
-    Тогда диагностика не выводится
+  Scenario: method with a receiver — ctx after the receiver counts as first
+    Given a method with the signature "func (s *Svc) Do(ctx context.Context, id int)"
+    When the analyzer checks the file
+    Then no diagnostic is reported
 
-# --- Чек-лист при добавлении нового правила ---
-#  [ ] ID и описание занесены в реестр PRD (раздел 5)
-#  [ ] Выбран слой: ruleguard (простое) или go/analysis (сложное)
-#  [ ] Заданы severity и сообщение
-#  [ ] Покрыты кейсы: позитивный, негативный, граничный, неприменимость
-#  [ ] testdata с // want для analysistest (если go/analysis)
-#  [ ] Правило включено в .golangci.yml
+# --- Checklist when adding a new rule ---
+#  [ ] ID and description are recorded in the PRD registry (section 5)
+#  [ ] Layer chosen: ruleguard (simple) or go/analysis (complex)
+#  [ ] Severity and message are defined
+#  [ ] Case classes covered: positive, negative, boundary, non-applicability
+#  [ ] testdata with // want for analysistest (if go/analysis)
+#  [ ] Rule enabled in .golangci.yml

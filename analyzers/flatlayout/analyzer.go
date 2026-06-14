@@ -1,9 +1,9 @@
-// Package flatlayout реализует правило GID-138: репозитории и сервисы
-// живут в корне своего слоя, без группирующих подпакетов. Репозиторий,
-// работающий с redis, лежит в /dal/repository, а не в /dal/repository/redis.
+// Package flatlayout implements rule GID-138: repositories and services
+// live at the root of their layer, without grouping subpackages. A repository
+// working with redis lives in /dal/repository, not in /dal/repository/redis.
 //
-// Легитимные подпакеты из стайлгайда: convert/ и build/ у репозитория,
-// convert/ у сервиса.
+// Legitimate subpackages from the styleguide: convert/ and build/ for a
+// repository, convert/ for a service.
 package flatlayout
 
 import (
@@ -21,14 +21,14 @@ var layerRoots = []layerRoot{
 	{seq: []string{"domain", "service"}, allowed: map[string]struct{}{"convert": {}}},
 }
 
-// Analyzer — правило GID-138: repositories and services live at the root of /dal/repository and /domain/service, without subfolders. Fix: move the entity to the layer root.
+// Analyzer — rule GID-138: repositories and services live at the root of /dal/repository and /domain/service, without subfolders. Fix: move the entity to the layer root.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidflatlayout",
 	Doc:  ruleID + ": repositories and services live at the root of /dal/repository and /domain/service, without subfolders. Fix: move the entity to the layer root",
 	Run:  run,
 }
 
-// layerRoot — корень слоя и разрешённые в нём подпакеты.
+// layerRoot — a layer root and the subpackages allowed in it.
 type layerRoot struct {
 	seq     []string
 	allowed map[string]struct{}
@@ -36,7 +36,7 @@ type layerRoot struct {
 
 func run(pass *analysis.Pass) (any, error) {
 	pkgPath := pass.Pkg.Path()
-	//nolint:gidallptr // плагин не зависит от внутренней библиотеки gdhelper
+	//nolint:gidallptr // the plugin does not depend on the internal gdhelper library
 	for _, root := range layerRoots {
 		idx := pathseg.Index(pkgPath, root.seq...)
 		if idx < 0 {
@@ -45,7 +45,7 @@ func run(pass *analysis.Pass) (any, error) {
 		segs := pathseg.Segments(pkgPath)
 		next := idx + len(root.seq)
 		if next >= len(segs) {
-			continue // сам корень слоя — ок
+			continue // the layer root itself — fine
 		}
 		if _, ok := root.allowed[segs[next]]; ok {
 			continue

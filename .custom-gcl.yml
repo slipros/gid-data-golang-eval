@@ -1,13 +1,13 @@
-# Сборка кастомного бинаря custom-gcl с нашими правилами:
+# Build of the custom-gcl binary with our rules:
 #   golangci-lint custom
-# Версия golangci-lint зафиксирована — версии общих библиотек в go.mod
-# (особенно golang.org/x/tools) должны ей соответствовать.
+# The golangci-lint version is pinned — versions of shared libraries in go.mod
+# (especially golang.org/x/tools) must match it.
 version: v2.9.0
 name: custom-gcl
 destination: ./bin
 
 plugins:
-  # Локальный путь — для разработки. После публикации тега заменить на:
+  # Local path — for development. After publishing a tag replace with:
   #   version: vX.Y.Z
   - module: 'github.com/slipros/gid-data-golang-eval'
     path: .

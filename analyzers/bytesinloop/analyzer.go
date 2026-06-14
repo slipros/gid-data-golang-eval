@@ -1,22 +1,22 @@
-// Package bytesinloop реализует правило GID-182 (Uber: avoid repeated
-// string-to-byte conversions): конверсия строкового литерала или константы
-// в []byte/[]rune внутри тела цикла вычисляется один раз перед циклом.
+// Package bytesinloop implements rule GID-182 (Uber: avoid repeated
+// string-to-byte conversions): converting a string literal or constant
+// to []byte/[]rune inside a loop body must be computed once before the loop.
 //
-// Что матчится:
-//   - []byte("literal") внутри тела for/range (включая вложенные блоки);
-//   - []rune("literal") там же;
-//   - []byte(constStr), где constStr — string-константа (значение
-//     вычисляется через pass.TypesInfo, constant value, types.String);
-//   - конверсия внутри тела замыкания, объявленного в цикле (замыкание
-//     выполняется на каждой итерации).
+// What is matched:
+//   - []byte("literal") inside a for/range body (including nested blocks);
+//   - []rune("literal") in the same places;
+//   - []byte(constStr), where constStr is a string constant (the value is
+//     computed via pass.TypesInfo, constant value, types.String);
+//   - a conversion inside the body of a closure declared in the loop (the
+//     closure runs on every iteration).
 //
-// Что НЕ матчится:
-//   - []byte(variable) — конверсия переменной (не константы): значение
-//     может меняться, выносить нельзя;
-//   - []byte("literal") вне цикла — вычисляется один раз и так;
-//   - []byte(param), где param — параметр функции/замыкания.
+// What is NOT matched:
+//   - []byte(variable) — a conversion of a variable (not a constant): the value
+//     may change, it cannot be hoisted;
+//   - []byte("literal") outside a loop — it is computed once anyway;
+//   - []byte(param), where param is a function/closure parameter.
 //
-// Сгенерированный код (ast.IsGenerated) пропускается. LoadMode — TypesInfo.
+// Generated code (ast.IsGenerated) is skipped. LoadMode — TypesInfo.
 package bytesinloop
 
 import (
@@ -29,7 +29,7 @@ import (
 
 const ruleID = "GID-182"
 
-// Analyzer — правило GID-182: конверсия строкового литерала/константы в []byte/[]rune внутри цикла.
+// Analyzer — rule GID-182: conversion of a string literal/constant to []byte/[]rune inside a loop.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidbytesinloop",
 	Doc:  ruleID + ": converting a string literal/constant to []byte/[]rune inside a loop. Fix: compute the conversion once before the loop.",
@@ -42,9 +42,9 @@ func run(pass *analysis.Pass) (any, error) {
 			continue
 		}
 
-		// Собираем позиционные диапазоны тел всех циклов (for/range).
-		// Вложенные блоки, тела замыканий, объявленных в цикле, лексически
-		// находятся внутри этого диапазона — и потому считаются «в цикле».
+		// Collect the positional ranges of all loop bodies (for/range).
+		// Nested blocks and the bodies of closures declared in the loop are
+		// lexically inside this range — and therefore count as "in the loop".
 		var loopBodies []*ast.BlockStmt
 		ast.Inspect(file, func(n ast.Node) bool {
 			switch node := n.(type) {
@@ -71,10 +71,10 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-// insideAnyLoop сообщает, лежит ли позиция pos внутри тела хотя бы одного цикла.
+// insideAnyLoop reports whether the position pos lies inside the body of at least one loop.
 func insideAnyLoop(pos token.Pos, bodies []*ast.BlockStmt) bool {
 	for _, b := range bodies {
-		// Lbrace < pos < Rbrace — позиция строго внутри фигурных скобок тела.
+		// Lbrace < pos < Rbrace — the position is strictly inside the body's braces.
 		if pos > b.Lbrace && pos < b.Rbrace {
 			return true
 		}
@@ -82,8 +82,8 @@ func insideAnyLoop(pos token.Pos, bodies []*ast.BlockStmt) bool {
 	return false
 }
 
-// checkConversion: если call — это конверсия []byte(X)/[]rune(X), где X —
-// строковая константа, выдаёт диагностику.
+// checkConversion: if call is a []byte(X)/[]rune(X) conversion where X is
+// a string constant, emits a diagnostic.
 func checkConversion(pass *analysis.Pass, call *ast.CallExpr) {
 	kind, ok := sliceConversionKind(call.Fun)
 	if !ok {
@@ -95,9 +95,9 @@ func checkConversion(pass *analysis.Pass, call *ast.CallExpr) {
 	arg := call.Args[0]
 	tv, ok := pass.TypesInfo.Types[arg]
 	if !ok || tv.Value == nil {
-		return // не константа (переменная, параметр, вызов) — пропускаем.
+		return // not a constant (a variable, parameter, call) — skip.
 	}
-	// Значение — константа; убеждаемся, что её тип — строковый.
+	// The value is a constant; make sure its type is a string type.
 	basic, ok := tv.Type.Underlying().(*types.Basic)
 	if !ok || basic.Info()&types.IsString == 0 {
 		return
@@ -107,13 +107,13 @@ func checkConversion(pass *analysis.Pass, call *ast.CallExpr) {
 			"Fix: compute it once before the loop.", ruleID, kind)
 }
 
-// sliceConversionKind: если fun — это тип []byte или []rune (в форме
-// ArrayType без длины с элементом byte/rune), возвращает строку "[]byte"
-// либо "[]rune".
+// sliceConversionKind: if fun is the type []byte or []rune (an ArrayType
+// without a length whose element is byte/rune), returns the string "[]byte"
+// or "[]rune".
 func sliceConversionKind(fun ast.Expr) (string, bool) {
 	arr, ok := fun.(*ast.ArrayType)
 	if !ok || arr.Len != nil {
-		return "", false // не слайс ([N]T — массив, не конверсия здесь).
+		return "", false // not a slice ([N]T is an array, not a conversion here).
 	}
 	elt, ok := arr.Elt.(*ast.Ident)
 	if !ok {

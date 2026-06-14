@@ -1,4 +1,4 @@
-// Позитив: model не зависит от dal.
+// Positive: model does not depend on dal.
 package model
 
 import "svc/dal/entity" // want `GID-132: package "svc/domain/model" must not import "svc/dal/entity"\. Fix: model does not depend on the dal layer`

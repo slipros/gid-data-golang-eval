@@ -1,13 +1,13 @@
-// Package exitonce реализует правило GID-181 (exit once / exit in main):
-// процесс завершается ровно в одном месте — в функции main() пакета main.
+// Package exitonce implements rule GID-181 (exit once / exit in main):
+// the process terminates in exactly one place — in func main() of package main.
 //
 //   - os.Exit, log.Fatal* (std log), logrus.Fatal*/logrus.Exit
-//     (github.com/sirupsen/logrus, включая методы Entry/Logger)
-//     разрешены ТОЛЬКО в пакете main и только в функции main();
-//   - в самой func main допускается не более ОДНОГО такого вызова.
+//     (github.com/sirupsen/logrus, including Entry/Logger methods)
+//     are allowed ONLY in package main and only inside func main();
+//   - within func main itself at most ONE such call is allowed.
 //
-// Любой exit-вызов вне func main означает, что ошибка не возвращается
-// наверх; повторный вызов в main размывает единственную точку выхода.
+// Any exit call outside func main means the error is not returned
+// upward; a repeated call in main blurs the single exit point.
 package exitonce
 
 import (
@@ -19,10 +19,10 @@ import (
 
 const ruleID = "GID-181"
 
-// logrusPkgPath — путь пакета logrus.
+// logrusPkgPath — the logrus package path.
 const logrusPkgPath = "github.com/sirupsen/logrus"
 
-// Analyzer — правило GID-181: os.Exit/log.Fatal*/logrus.Fatal* only once and only in func main. Fix: return an error up the call stack instead.
+// Analyzer — rule GID-181: os.Exit/log.Fatal*/logrus.Fatal* only once and only in func main. Fix: return an error up the call stack instead.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidexitonce",
 	Doc:  ruleID + ": os.Exit/log.Fatal*/logrus.Fatal* only once and only in func main. Fix: return an error up the call stack instead",
@@ -35,7 +35,7 @@ func run(pass *analysis.Pass) (any, error) {
 		if ast.IsGenerated(file) {
 			continue
 		}
-		// mainBody — тело верхнеуровневой функции main() в пакете main.
+		// mainBody — the body of the top-level func main() in package main.
 		var mainBody *ast.BlockStmt
 		if isMainPkg {
 			for _, decl := range file.Decls {
@@ -46,8 +46,8 @@ func run(pass *analysis.Pass) (any, error) {
 			}
 		}
 
-		// Сначала отмечаем все exit-вызовы, лежащие внутри тела main(),
-		// чтобы при общем обходе файла отличать их от вызовов вне main.
+		// First mark all exit calls located inside the body of main(),
+		// so that the full file walk can tell them apart from calls outside main.
 		inMain := map[*ast.CallExpr]struct{}{}
 		if mainBody != nil {
 			ast.Inspect(mainBody, func(n ast.Node) bool {
@@ -61,7 +61,7 @@ func run(pass *analysis.Pass) (any, error) {
 			})
 		}
 
-		// mainCount — порядковый счётчик exit-вызовов внутри main().
+		// mainCount — an ordinal counter of exit calls inside main().
 		mainCount := 0
 		ast.Inspect(file, func(n ast.Node) bool {
 			call, ok := n.(*ast.CallExpr)
@@ -89,9 +89,9 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-// exitName распознаёт exit-вызов (os.Exit / log.Fatal* / logrus.Fatal* / logrus.Exit,
-// в т.ч. методы *logrus.Entry и *logrus.Logger) и возвращает читаемое имя для
-// диагностики (например "os.Exit", "log.Fatal", "logrus.Fatalf").
+// exitName recognizes an exit call (os.Exit / log.Fatal* / logrus.Fatal* / logrus.Exit,
+// including methods of *logrus.Entry and *logrus.Logger) and returns a readable
+// name for the diagnostic (e.g. "os.Exit", "log.Fatal", "logrus.Fatalf").
 func exitName(pass *analysis.Pass, call *ast.CallExpr) (string, bool) {
 	sel, ok := call.Fun.(*ast.SelectorExpr)
 	if !ok {
@@ -106,7 +106,7 @@ func exitName(pass *analysis.Pass, call *ast.CallExpr) (string, bool) {
 		return "", false
 	}
 
-	// Метод logrus-типа (*logrus.Entry / *logrus.Logger): Fatal*.
+	// A method of a logrus type (*logrus.Entry / *logrus.Logger): Fatal*.
 	if recv := sig.Recv(); recv != nil {
 		if isLogrusType(recv.Type()) && isFatalName(fn.Name()) {
 			return "logrus." + fn.Name(), true
@@ -114,7 +114,7 @@ func exitName(pass *analysis.Pass, call *ast.CallExpr) (string, bool) {
 		return "", false
 	}
 
-	// Пакетная функция.
+	// A package-level function.
 	if fn.Pkg() == nil {
 		return "", false
 	}
@@ -136,8 +136,8 @@ func exitName(pass *analysis.Pass, call *ast.CallExpr) (string, bool) {
 	return "", false
 }
 
-// isFatalName сообщает, что имя метода/функции — Fatal-семейство
-// (Fatal, Fatalf, Fatalln).
+// isFatalName reports that the method/function name belongs to the Fatal
+// family (Fatal, Fatalf, Fatalln).
 func isFatalName(name string) bool {
 	switch name {
 	case "Fatal", "Fatalf", "Fatalln":
@@ -146,7 +146,7 @@ func isFatalName(name string) bool {
 	return false
 }
 
-// isLogrusType сообщает, относится ли тип к пакету logrus.
+// isLogrusType reports whether the type belongs to the logrus package.
 func isLogrusType(t types.Type) bool {
 	switch tt := t.(type) {
 	case *types.Pointer:

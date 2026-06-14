@@ -1,10 +1,10 @@
-// Функциональная группа Kafka-метрик — отдельный файл.
+// The functional group of Kafka metrics — a separate file.
 package metric
 
-// KafkaMetrics — группа метрик Kafka-подсистемы (Register на указателе).
+// KafkaMetrics — the metrics group of the Kafka subsystem (Register on a pointer).
 type KafkaMetrics struct {
 	Lag int
 }
 
-// Register регистрирует Kafka-метрики (pointer receiver).
+// Register registers the Kafka metrics (pointer receiver).
 func (m *KafkaMetrics) Register() error { return nil }

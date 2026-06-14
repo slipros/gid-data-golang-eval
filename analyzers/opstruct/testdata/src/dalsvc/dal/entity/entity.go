@@ -1,11 +1,11 @@
-// Eval GID-210: entity-Create содержит только поля INSERT (без UpdatedAt).
+// Eval GID-210: an entity Create contains only INSERT fields (no UpdatedAt).
 package entity
 
 import "time"
 
-// --- Позитивный класс: нарушение ---
+// --- Positive class: violation ---
 
-// entity-Create с UpdatedAt — UpdatedAt флагается, ID и CreatedAt легитимны.
+// An entity Create with UpdatedAt — UpdatedAt is flagged, ID and CreatedAt are legitimate.
 type CreateJob struct {
 	ID        int
 	CreatedAt time.Time
@@ -13,23 +13,23 @@ type CreateJob struct {
 	UpdatedAt time.Time // want `GID-210: operational struct "CreateJob" must not contain field "UpdatedAt" .* Fix: remove it from Create`
 }
 
-// --- Негативный класс: чистый код проходит ---
+// --- Negative class: clean code passes ---
 
-// entity-Create с ID и CreatedAt, но без UpdatedAt — ок (это INSERT-поля).
+// An entity Create with ID and CreatedAt but without UpdatedAt — ok (those are INSERT fields).
 type CreateUser struct {
 	ID        int
 	CreatedAt time.Time
 	Name      string
 }
 
-// --- Граничный класс ---
+// --- Boundary class ---
 
-// Update-структуры правилом не задеваются.
+// Update structs are not affected by the rule.
 type UpdateJob struct {
 	UpdatedAt time.Time
 }
 
-// CreatedSnapshot не матчится под ^Create[A-Z].
+// CreatedSnapshot does not match ^Create[A-Z].
 type CreatedSnapshot struct {
 	UpdatedAt time.Time
 }

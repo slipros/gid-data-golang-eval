@@ -1,10 +1,10 @@
-// Группа Kafka — отдельный файл.
+// The Kafka group — a separate file.
 package metric
 
-// KafkaMetrics — группа Kafka.
+// KafkaMetrics — the Kafka group.
 type KafkaMetrics struct {
 	Lag int
 }
 
-// Register группы Kafka.
+// Register of the Kafka group.
 func (m KafkaMetrics) Register() error { return nil }

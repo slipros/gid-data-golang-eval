@@ -1,24 +1,25 @@
-// Package loggernew реализует правило GID-214 (logger-singleton):
+// Package loggernew implements rule GID-214 (logger-singleton):
 //
-//   - GID-214 (gidloggernew): логгер создаётся один раз в composition root.
-//     Вызовы logrus.New() и logrus.StandardLogger() (package
-//     github.com/sirupsen/logrus) запрещены везде, кроме пакета main и
-//     пакетов composition root (путь содержит сегменты internal/app).
+//   - GID-214 (gidloggernew): the logger is created once in the composition root.
+//     Calls to logrus.New() and logrus.StandardLogger() (package
+//     github.com/sirupsen/logrus) are forbidden everywhere except the main
+//     package and composition-root packages (path contains the internal/app
+//     segments).
 //
-// Готовый *logrus.Entry пробрасывается через конструктор, а не создаётся
-// заново в service/repository — иначе теряется единая конфигурация логгера
-// (формат, хуки, уровень) и сквозные поля.
+// A ready *logrus.Entry is passed through the constructor rather than created
+// anew in service/repository — otherwise the unified logger configuration
+// (format, hooks, level) and cross-cutting fields are lost.
 //
-// _test.go-файлы и сгенерированные файлы пропускаются: логгер в тестах —
-// норма, генерируемый код не правится вручную.
+// _test.go files and generated files are skipped: a logger in tests is fine,
+// and generated code is not edited by hand.
 //
-// Резолв logrus идёт через types (import path), поэтому вызов New() из
-// другого пакета с тем же именем не флагается.
+// logrus is resolved via types (import path), so a call to New() from another
+// package with the same name is not flagged.
 //
-// LoadMode: TypesInfo — нужен резолв пакета вызываемой функции по import-пути.
+// LoadMode: TypesInfo — resolving the called function's package by import path
+// is required.
 //
-// Источник: libs.md (logrus: не создавать новые экземпляры, пробрасывать
-// существующий).
+// Source: libs.md (logrus: do not create new instances, pass the existing one).
 package loggernew
 
 import (
@@ -32,14 +33,14 @@ import (
 
 const ruleID = "GID-214"
 
-// bannedFuncs — package-level функции logrus, создающие/возвращающие
-// глобальный экземпляр логгера.
+// bannedFuncs — package-level logrus functions that create/return the global
+// logger instance.
 var bannedFuncs = map[string]struct{}{
 	"New":            {},
 	"StandardLogger": {},
 }
 
-// Analyzer — правило GID-214: logrus.New()/StandardLogger() — только в composition root (main, internal/app).
+// Analyzer — rule GID-214: logrus.New()/StandardLogger() — only in the composition root (main, internal/app).
 var Analyzer = &analysis.Analyzer{
 	Name: "gidloggernew",
 	Doc:  ruleID + ": logrus.New()/StandardLogger() are called only in the composition root (main, internal/app). Fix: pass a ready *logrus.Entry through the constructor",
@@ -47,8 +48,8 @@ var Analyzer = &analysis.Analyzer{
 }
 
 func run(pass *analysis.Pass) (any, error) {
-	// composition root: пакет main или путь с сегментами internal/app —
-	// создавать логгер здесь разрешено.
+	// composition root: package main or a path with the internal/app segments —
+	// creating a logger here is allowed.
 	if pass.Pkg.Name() == "main" || pathseg.Contains(pass.Pkg.Path(), "internal", "app") {
 		return nil, nil
 	}
@@ -74,9 +75,9 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-// bannedLogrusCall сообщает, является ли call вызовом package-level функции
-// logrus.New()/logrus.StandardLogger(). Резолв — по типам: имя пакета берётся
-// из import-пути объекта, а не из текста селектора.
+// bannedLogrusCall reports whether call is a call to the package-level function
+// logrus.New()/logrus.StandardLogger(). Resolution is by types: the package name
+// is taken from the object's import path, not from the selector text.
 func bannedLogrusCall(pass *analysis.Pass, call *ast.CallExpr) (string, bool) {
 	sel, ok := call.Fun.(*ast.SelectorExpr)
 	if !ok {
@@ -89,12 +90,12 @@ func bannedLogrusCall(pass *analysis.Pass, call *ast.CallExpr) (string, bool) {
 	if !ok {
 		return "", false
 	}
-	// package-level функция: получателя нет (метод WithField не флагается).
+	// package-level function: no receiver (the WithField method is not flagged).
 	sig, ok := fn.Type().(*types.Signature)
 	if !ok || sig.Recv() != nil {
 		return "", false
 	}
-	// logrusPkgPath — import-путь пакета logrus.
+	// logrusPkgPath — the import path of the logrus package.
 	const logrusPkgPath = "github.com/sirupsen/logrus"
 	pkg := fn.Pkg()
 	if pkg == nil || pkg.Path() != logrusPkgPath {

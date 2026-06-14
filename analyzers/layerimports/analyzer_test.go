@@ -8,22 +8,22 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/layerimports"
 )
 
-// TestAnalyzer прогоняет встроенную матрицу на testdata/src/svc/...:
+// TestAnalyzer runs the built-in matrix on testdata/src/svc/...:
 //   - GID-132: dal -> domain, domain/model|usecase -> dal, service -> dal/repository;
 //   - GID-170: domain|dal -> event;
 //   - GID-172: client -> dal;
-//   - GID-224: транспорт (server/schedule/validate/event) видит только domain/model;
-//   - GID-225: app и транспорт-листья никем не импортируются;
-//   - GID-226: metric самостоятелен, domain/dal не импортируют metric;
-//   - GID-227: domain/model — чистый словарь;
-//   - GID-228: domain/dal не импортируют client;
-//   - GID-229: client изолирован от слоёв сервиса.
+//   - GID-224: transport (server/schedule/validate/event) sees only domain/model;
+//   - GID-225: app and transport leaves are imported by nobody;
+//   - GID-226: metric is standalone, domain/dal do not import metric;
+//   - GID-227: domain/model is the pure vocabulary;
+//   - GID-228: domain/dal do not import client;
+//   - GID-229: client is isolated from the service layers.
 func TestAnalyzer(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), layerimports.Analyzer, "svc/...")
 }
 
-// TestAnalyzerSettings — settings.disable выключает встроенное правило,
-// settings.rules добавляет своё (testdata/src/custom/...).
+// TestAnalyzerSettings — settings.disable turns off a built-in rule,
+// settings.rules adds a custom one (testdata/src/custom/...).
 func TestAnalyzerSettings(t *testing.T) {
 	a := layerimports.NewAnalyzer(layerimports.Settings{
 		Disable: []string{"GID-224"},

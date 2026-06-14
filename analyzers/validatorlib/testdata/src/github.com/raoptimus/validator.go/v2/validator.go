@@ -1,4 +1,4 @@
-// Stub validator.go/v2 для eval.
+// A stub of validator.go/v2 for the eval.
 package validator
 
 import "context"

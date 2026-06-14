@@ -1,11 +1,11 @@
-// Package convnaming реализует правила конвертеров:
+// Package convnaming implements the converter rules:
 //
-//   - GID-105: имена конвертеров в convert-пакетах — <Dst><Type>From<Src>
+//   - GID-105: converter names in convert packages are <Dst><Type>From<Src>
 //     (EntityCreateSnapshotFromModel, ModelHelloOutFromEntity);
-//   - GID-135: функции-конвертеры (паттерн ...From...) живут в
-//     convert/-подпакете своего слоя, не в самих service/repo/handler.
+//   - GID-135: converter functions (the ...From... pattern) live in the
+//     convert/ subpackage of their layer, not in service/repo/handler themselves.
 //
-// Исключение: ctx-helper'ы <Name>FromContext (GID-166) — не конвертеры.
+// Exception: ctx helpers <Name>FromContext (GID-166) are not converters.
 package convnaming
 
 import (
@@ -23,10 +23,10 @@ const (
 	rulePlace  = "GID-135"
 )
 
-// converterName: <Dst><Type>From<Src> — слова до и после From.
+// converterName: <Dst><Type>From<Src> — words before and after From.
 var converterName = regexp.MustCompile(`^[A-Z][A-Za-z0-9]*From[A-Z][A-Za-z0-9]*$`)
 
-// scopes — слои, в которых конвертеры обязаны жить в convert/.
+// scopes — the layers in which converters must live in convert/.
 var scopes = [][]string{
 	{"dal"},
 	{"domain"},
@@ -34,7 +34,7 @@ var scopes = [][]string{
 	{"event"},
 }
 
-// Analyzer — правило GID: см. Doc.
+// Analyzer — GID rule: see Doc.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidconvnaming",
 	Doc:  ruleNaming + "/" + rulePlace + ": converters are named <Dst><Type>From<Src> and live in convert/ packages. Fix: rename to <Dst><Type>From<Src> and move into a convert/ subpackage",
@@ -62,8 +62,8 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-// checkConverterName — GID-105: экспортируемые функции convert-пакета
-// именуются <Dst><Type>From<Src>.
+// checkConverterName — GID-105: exported functions of a convert package
+// are named <Dst><Type>From<Src>.
 func checkConverterName(pass *analysis.Pass, fn *ast.FuncDecl) {
 	if converterName.MatchString(fn.Name.Name) {
 		return
@@ -73,7 +73,7 @@ func checkConverterName(pass *analysis.Pass, fn *ast.FuncDecl) {
 		ruleNaming, fn.Name.Name)
 }
 
-// checkConverterPlace — GID-135: функция-конвертер вне convert-пакета.
+// checkConverterPlace — GID-135: a converter function outside a convert package.
 func checkConverterPlace(pass *analysis.Pass, fn *ast.FuncDecl) {
 	name := fn.Name.Name
 	if !converterName.MatchString(name) || strings.HasSuffix(name, "FromContext") {
