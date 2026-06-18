@@ -4,7 +4,11 @@
 //     At the application boundary (/client/** and /dal/repository) an error
 //     from an external call is neither passed through as is (return err) nor
 //     enriched without context (WithStack/WithMessage) — Wrap is required:
-//     it collects the stack AND adds the mandatory context. Inside the
+//     it collects the stack AND adds the mandatory context. The boundary is an
+//     interface-method call (an injected external dependency, e.g.
+//     c.conn.Select(...)); a call to a local package function (a pure SQL
+//     builder build.Select(...), a concrete-type method) is not the boundary
+//     and may be enriched with WithMessage. Inside the
 //     application (/domain/**), Wrap is forbidden for an already received
 //     non-static error (the stack was collected at the boundary) — context is
 //     added with WithMessage. Returning a static error (package-level var, a
@@ -125,8 +129,9 @@ func checkBoundaryPassThrough(pass *analysis.Pass, fn *ast.FuncDecl) {
 				if name == "WithStack" || name == "WithMessage" {
 					if len(call.Args) > 0 && isLocalCallErr(pass, call.Args[0], callErrs) {
 						pass.Reportf(call.Pos(),
-							"%s: an error from the app boundary must be wrapped with errors.Wrap. "+
-								"Fix: collect stack and context (%s adds no context)",
+							"%s: an error from the app boundary must be wrapped with errors.Wrap (%s adds no context). "+
+								"Fix: collect stack and context; to map a sentinel, reassign then wrap once: "+
+								"if IsNoResult(err) { err = ErrNoResult }; return errors.Wrap(err, ...)",
 							ruleIDWrap, name)
 					}
 					continue
@@ -136,7 +141,9 @@ func checkBoundaryPassThrough(pass *analysis.Pass, fn *ast.FuncDecl) {
 			}
 			if isLocalCallErr(pass, expr, callErrs) {
 				pass.Reportf(expr.Pos(),
-					"%s: wrap with errors.Wrap. Fix: an error from the app boundary must collect stack and context",
+					"%s: an error from the app boundary must be wrapped with errors.Wrap. "+
+						"Fix: collect stack and context; to map a sentinel, reassign then wrap once: "+
+						"if IsNoResult(err) { err = ErrNoResult }; return errors.Wrap(err, ...)",
 					ruleIDWrap)
 			}
 		}
@@ -276,8 +283,11 @@ func funcReturnsError(pass *analysis.Pass, fn *ast.FuncDecl) bool {
 	return false
 }
 
-// localCallErrors collects the function's local variables whose value
-// comes from a call and implements error (err := f(); a, err := f()).
+// localCallErrors collects the function's local variables whose value comes
+// from an interface-method call and implements error (err := c.conn.f();
+// a, err := c.conn.f()). The application boundary is an interface-method call
+// on an injected external dependency; an error from a local package function
+// (a pure SQL builder, etc.) or a concrete-type method is not a boundary error.
 func localCallErrors(pass *analysis.Pass, fn *ast.FuncDecl) map[types.Object]struct{} {
 	out := map[types.Object]struct{}{}
 	ast.Inspect(fn.Body, func(n ast.Node) bool {
@@ -289,7 +299,12 @@ func localCallErrors(pass *analysis.Pass, fn *ast.FuncDecl) map[types.Object]str
 		if len(assign.Rhs) != 1 {
 			return true
 		}
-		if _, ok := assign.Rhs[0].(*ast.CallExpr); !ok {
+		call, ok := assign.Rhs[0].(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		// Only an interface-method call is the boundary.
+		if !isInterfaceMethodCall(pass, call) {
 			return true
 		}
 		for _, lhs := range assign.Lhs {
@@ -306,6 +321,32 @@ func localCallErrors(pass *analysis.Pass, fn *ast.FuncDecl) map[types.Object]str
 		return true
 	})
 	return out
+}
+
+// isInterfaceMethodCall reports whether call invokes a method on a value of
+// interface type — the injected external dependency at the boundary, e.g.
+// c.conn.Select(...). A qualified package function (build.Select(...)) is not a
+// selection, and a method on a concrete type has a non-interface receiver;
+// neither is an interface-method call.
+func isInterfaceMethodCall(pass *analysis.Pass, call *ast.CallExpr) bool {
+	sel, ok := call.Fun.(*ast.SelectorExpr)
+	if !ok {
+		return false
+	}
+	selection, ok := pass.TypesInfo.Selections[sel]
+	if !ok {
+		// pkg.Func — a qualified identifier, not a method selection.
+		return false
+	}
+	if selection.Kind() != types.MethodVal {
+		return false
+	}
+	recv := selection.Recv()
+	if recv == nil {
+		return false
+	}
+	_, isIface := recv.Underlying().(*types.Interface)
+	return isIface
 }
 
 func isLocalCallErr(pass *analysis.Pass, expr ast.Expr, callErrs map[types.Object]struct{}) bool {

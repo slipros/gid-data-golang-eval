@@ -19,34 +19,55 @@ Feature: GID-176 / GID-177 — error handling by layer (errwrap)
   # ============================================================
 
   # === Part 1: the application boundary (/client/** and /dal/repository) ===
-  # A function returning error must not pass through a non-static error from a call.
+  # The boundary is an interface-method call (an injected external dependency,
+  # e.g. r.conn.call()). A function returning error must not pass through such a
+  # non-static error without errors.Wrap. A call to a local package function
+  # (a pure SQL builder build.Select(...)) or a concrete-type method is NOT the
+  # boundary and may be enriched with WithMessage.
 
   # --- Class 1: positive (the violation is caught) ---
 
-  Scenario: positive — pass-through of an error from a call at the boundary
-    Given a package in "/dal/repository" with a function returning error where "err := r.call(); return err"
+  Scenario: positive — pass-through of an error from an interface-method call at the boundary
+    Given a package in "/dal/repository" with a function returning error where "err := r.conn.call(); return err"
     When the giderrwrap analyzer checks the file
-    Then the diagnostic "GID-176: wrap with errors.Wrap. Fix: an error from the app boundary must collect stack and context" is reported on "err"
+    Then the diagnostic "GID-176: an error from the app boundary must be wrapped with errors.Wrap. Fix: collect stack and context; to map a sentinel, reassign then wrap once: if IsNoResult(err) { err = ErrNoResult }; return errors.Wrap(err, ...)" is reported on "err"
 
   Scenario: positive — pass-through in a multi-value return (return n, err)
-    Given a package in "/dal/repository" with the function "n, err := r.callRow(); return n, err"
+    Given a package in "/dal/repository" with the function "n, err := r.conn.callRow(); return n, err"
     When the giderrwrap analyzer checks the file
-    Then the diagnostic "GID-176: wrap with errors.Wrap …" is reported on "err"
+    Then the diagnostic "GID-176: an error from the app boundary must be wrapped with errors.Wrap …" is reported on "err"
 
   Scenario: positive — WithStack/WithMessage add no context
-    Given a package in "/dal/repository" with "err := r.call(); return errors.WithStack(err)" (and likewise WithMessage)
+    Given a package in "/dal/repository" with "err := r.conn.call(); return errors.WithStack(err)" (and likewise WithMessage)
     When the giderrwrap analyzer checks the file
-    Then the diagnostic "GID-176: an error from the app boundary must be wrapped with errors.Wrap. Fix: collect stack and context (WithStack adds no context)" is reported
+    Then the diagnostic "GID-176: an error from the app boundary must be wrapped with errors.Wrap (WithStack adds no context). Fix: …" is reported
 
-  Scenario: positive — the /client boundary
-    Given a package in "/client" with the function "err := c.do(); return err"
+  Scenario: positive — the /client boundary (interface-method call)
+    Given a package in "/client" with the function "err := c.transport.do(); return err"
     When the giderrwrap analyzer checks the file
-    Then the diagnostic "GID-176: wrap with errors.Wrap …" is reported on "err"
+    Then the diagnostic "GID-176: an error from the app boundary must be wrapped with errors.Wrap …" is reported on "err"
 
   # --- Class 2: negative (clean code passes) ---
 
-  Scenario: negative — the error from a call is wrapped with Wrap
-    Given a package in "/dal/repository" with "err := r.call(); return errors.Wrap(err, \"select\")"
+  Scenario: negative — the error from an interface-method call is wrapped with Wrap
+    Given a package in "/dal/repository" with "err := r.conn.call(); return errors.Wrap(err, \"select\")"
+    When the giderrwrap analyzer checks the file
+    Then no diagnostic is reported
+
+  Scenario: negative — map a boundary error to a sentinel, then a single Wrap
+    Given a package in "/dal/repository" with "err := r.conn.call(); if isNoResult(err) { err = entity.ErrNotFound }; return errors.Wrap(err, \"select\")"
+    When the giderrwrap analyzer checks the file
+    Then no diagnostic is reported
+    # Reassigning err to a sentinel before one errors.Wrap avoids wrapping twice.
+
+  Scenario: negative — an error from a local package function (a pure builder) is not the boundary
+    Given a package in "/dal/repository" with "_, err := buildQuery(); return errors.WithMessage(err, \"build query\")"
+    When the giderrwrap analyzer checks the file
+    Then no diagnostic is reported
+    # buildQuery is a package function, not an interface-method call.
+
+  Scenario: negative — a method on a concrete type is not an interface-method call
+    Given a package in "/dal/repository" with "err := r.concreteHelper(); return errors.WithMessage(err, \"helper\")"
     When the giderrwrap analyzer checks the file
     Then no diagnostic is reported
 
