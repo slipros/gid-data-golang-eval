@@ -9,7 +9,7 @@
 //   - GID-169 (giderrfile): layer errors live in a dedicated file.
 //     In the root packages /domain/model and /dal/entity, package-level
 //     variables of type error are declared only in a file from settings.files
-//     (default: error.go, errors.go). Refines GID-144/GID-145: those define
+//     (default: error.go). Refines GID-144/GID-145: those define
 //     the "home" layer for errors, while GID-169 picks the exact file inside it.
 //
 // Forbidden outside the allowed package: declaring package-level variables

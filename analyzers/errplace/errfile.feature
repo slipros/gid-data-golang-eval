@@ -3,7 +3,7 @@
 Feature: GID-169 — layer errors live in a dedicated file
   As a developer
   I want package-level error variables in /domain/model and /dal/entity
-  to be declared only in a dedicated file (error.go/errors.go)
+  to be declared only in a dedicated file (error.go)
   So that layer errors are collected in one place and are easy to find
 
   # Refines GID-144 (domain-errors-in-model) and GID-145 (dal-errors-in-entity):
@@ -18,21 +18,40 @@ Feature: GID-169 — layer errors live in a dedicated file
     When the analyzer checks the file
     Then a "GID-169" diagnostic is reported on the variable "ErrSnapshotConflict"
 
-  Scenario: positive — an error var outside errors.go in /dal/entity
+  Scenario: positive — an error var outside error.go in /dal/entity
     Given the package path ends with the segments "dal/entity"
     And "var ErrRowLocked = errors.New(...)" is declared in the file "row.go"
     When the analyzer checks the file
     Then a "GID-169" diagnostic is reported on the variable "ErrRowLocked"
 
-  Scenario: negative — an error var in an allowed file
+  Scenario: positive — errors.go is no longer allowed by default in /domain/model
     Given the package path ends with the segments "domain/model"
     And "var ErrSnapshotNotFound = errors.New(...)" is declared in the file "errors.go"
+    When the analyzer checks the file with the default settings.files
+    Then a "GID-169" diagnostic is reported on the variable "ErrSnapshotNotFound"
+
+  Scenario: positive — errors.go is no longer allowed by default in /dal/entity
+    Given the package path ends with the segments "dal/entity"
+    And "ErrRowNotFound" and "ErrDuplicateKey" are declared in the file "errors.go"
+    When the analyzer checks the file with the default settings.files
+    Then a "GID-169" diagnostic is reported on each variable
+
+  Scenario: negative — an error var in error.go (the default allowed file) in /domain/model
+    Given the package path ends with the segments "domain/model"
+    And "var ErrSnapshotArchived = errors.New(...)" is declared in the file "error.go"
     When the analyzer checks the file
     Then no diagnostic is reported
 
-  Scenario: negative — an error var in errors.go in /dal/entity
+  Scenario: negative — an error var in error.go (the default allowed file) in /dal/entity
     Given the package path ends with the segments "dal/entity"
-    And "ErrRowNotFound" and "ErrDuplicateKey" are declared in the file "errors.go"
+    And "ErrRowExpired" and "ErrRowArchived" are declared in the file "error.go"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+
+  Scenario: negative — settings.files is configurable to allow other names
+    Given settings.files is customized to include "errors.go"
+    And the package path ends with the segments "domain/model" or "dal/entity"
+    And an error var is declared in the file "errors.go"
     When the analyzer checks the file
     Then no diagnostic is reported
 

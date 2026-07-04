@@ -2,19 +2,17 @@
 // lowercase first letter of the struct name; for slice types — by two letters
 // (type Snapshots []Snapshot -> ss).
 //
-// Styleguide exceptions: in validate packages the receiver is v, in handler packages — h.
+// No exceptions: the rule applies uniformly, including validate and handler
+// packages.
 package receivernaming
 
 import (
 	"go/ast"
 	"go/types"
-	"strings"
 	"unicode"
 	"unicode/utf8"
 
 	"golang.org/x/tools/go/analysis"
-
-	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 )
 
 const ruleID = "GID-103"
@@ -53,7 +51,7 @@ func checkReceiver(pass *analysis.Pass, fn *ast.FuncDecl) {
 		return
 	}
 	want := expected(typeName, isSlice)
-	if got == want || allowedException(pass.Pkg.Path(), got) {
+	if got == want {
 		return
 	}
 	pass.Reportf(recv.Names[0].Pos(),
@@ -82,15 +80,4 @@ func expected(typeName string, isSlice bool) string {
 		return letter + letter
 	}
 	return letter
-}
-
-// allowedException: v in validate packages, h in handler packages.
-func allowedException(pkgPath, got string) bool {
-	switch got {
-	case "v":
-		return pathseg.Contains(pkgPath, "validate") || strings.HasSuffix(pkgPath, "validator")
-	case "h":
-		return pathseg.Contains(pkgPath, "handler")
-	}
-	return false
 }

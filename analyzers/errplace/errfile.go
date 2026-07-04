@@ -20,14 +20,13 @@ var errFileScopes = [][]string{
 	{"dal", "entity"},
 }
 
-// FileAnalyzer — variant with the default file list (error.go, errors.go, err.go).
+// FileAnalyzer — variant with the default file list (error.go).
 var FileAnalyzer = NewFileAnalyzer(Settings{})
 
 // Settings — settings of rule GID-169 from .golangci.yml.
 type Settings struct {
 	// Files — names of files where layer error declarations are allowed.
-	// Empty → default ["error.go", "errors.go", "err.go"]
-	// (err.go is the canonical name from entity.md).
+	// Empty → default ["error.go"] (the canonical layer-errors file name).
 	Files []string `json:"files"`
 }
 
@@ -35,7 +34,7 @@ type Settings struct {
 func NewFileAnalyzer(s Settings) *analysis.Analyzer {
 	files := s.Files
 	if len(files) == 0 {
-		files = []string{"error.go", "errors.go", "err.go"}
+		files = []string{"error.go"}
 	}
 	allowed := make(map[string]struct{}, len(files))
 	for _, f := range files {
@@ -43,7 +42,7 @@ func NewFileAnalyzer(s Settings) *analysis.Analyzer {
 	}
 	return &analysis.Analyzer{
 		Name: "giderrfile",
-		Doc:  errFileRuleID + ": layer errors live in a dedicated file (error.go/errors.go/err.go). Fix: move errors into error.go",
+		Doc:  errFileRuleID + ": layer errors live in a dedicated file (error.go). Fix: move errors into error.go",
 		Run: func(pass *analysis.Pass) (any, error) {
 			return runErrFile(pass, allowed)
 		},
