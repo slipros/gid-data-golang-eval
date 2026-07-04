@@ -146,3 +146,27 @@ referenced against RULES.md and `.golangci.yml` at commit 4b6dfb9.*
   service.md "если явно не указано иное").
 - Stale `gidoptsstyle` description in `.golangci.yml` fixed.
 - Remaining open items (§2-§5) — pending separate decisions.
+
+## Decision log, round 2 (2026-07-04, owner) — ALL remaining items resolved
+
+- §2 GID-176: reworked (v2) — errors from **external calls** (another module,
+  incl. stdlib) are wrapped with `errors.Wrap` in ANY layer; interface-call
+  boundary extended to `/event/**`; the `/domain` Wrap-ban now applies to
+  same-module errors only. New **GID-237 `gidwithmessage`** bans
+  `errors.WithMessage` in `/domain/service` (usecase-only).
+- §2 GID-124: `String()` stays mandatory on every enum — model.md canon updated.
+- §2 model subpackages: allowed (top-down deps) — model.md updated.
+- §3 GID-133/103/126/169/113 + err113 reference: docs/registry synced;
+  the `v`/`h` receiver exceptions are REMOVED from the linter (decision:
+  receiver is always the first letter); canonical error file is `error.go`
+  (giderrfile default narrowed).
+- §4 GID-233: `string(enum)` cast is allowed by design (plain-string targets);
+  GID-215 narrowing documented as deliberate; GID-121 extended to all simple
+  types except `*bool` (escape `//nolint:gidnoptr`).
+- §5: implemented — GID-111 scope +`/client/**`; GID-121/123 scope +`/event/dto`;
+  **GID-238/239 `gidcliflags`** (kebab-case Name, UPPER_SNAKE env, Required or
+  default Value); **GID-240 `gidmodulealias`** + `pkg/<module>` module boundary
+  in the layer matrix; constructor-returns-error softened in repository.md
+  (may return error, not obliged — no rule needed).
+
+Released as **v0.8.0**.
