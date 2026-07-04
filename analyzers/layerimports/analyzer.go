@@ -21,8 +21,10 @@
 //     nothing about entity/repository.
 //
 // GID-224 (transport-imports):
-//   - transport (/server, /schedule, /validate, /event) and background jobs
-//     (/job) see only /domain/model
+//   - transport (/server, /schedule, /validate, /event) sees only /domain/model;
+//   - background jobs (/job) execute business logic, so they may additionally
+//     import /domain/service and /domain/usecase directly; infrastructure
+//     (dal, client, metric, event, transport, app) stays unavailable
 //     (and /validate) from the service layers — concrete service/usecase are
 //     injected through interfaces at the consumer.
 //
@@ -206,10 +208,10 @@ var layerRules = []layerRule{
 		id:    "GID-224",
 		scope: []string{"job"},
 		banned: [][]string{
-			{"dal"}, {"domain", "service"}, {"domain", "usecase"},
-			{"client"}, {"metric"}, {"event"}, {"server"}, {"schedule"}, {"app"},
+			{"dal"}, {"client"}, {"metric"}, {"event"},
+			{"server"}, {"schedule"}, {"app"},
 		},
-		reason: "a background job works only with domain/model; services and dependencies are injected as interfaces at the consumer",
+		reason: "a background job works through the business layers (model/service/usecase); infrastructure (dal, client, transport) is not available to it directly",
 	},
 	{
 		id:     "GID-226",
