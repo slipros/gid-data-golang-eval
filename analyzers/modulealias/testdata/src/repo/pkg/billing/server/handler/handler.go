@@ -3,7 +3,7 @@
 package handler
 
 import (
-	. "repo/internal/domain/model" // want `GID-240: import "repo/internal/domain/model" of shared internal entities must carry a common-prefixed alias \(e\.g\. commonservice\)`
+	. "repo/internal/domain/model" // want `GID-240: import "repo/internal/domain/model" of shared internal entities must carry a common-prefixed alias\. Fix: import it as commonmodel "repo/internal/domain/model"`
 
 	_ "repo/internal/domain/service"
 )

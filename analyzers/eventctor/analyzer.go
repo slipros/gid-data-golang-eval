@@ -128,7 +128,9 @@ func check(pass *analysis.Pass, sc scope, fn *ast.FuncDecl, sig *types.Signature
 	case scopeConsumer:
 		if !has {
 			pass.Reportf(fn.Name.Pos(),
-				"%s: a consumer constructor must take *logrus.Logger and build an Entry with broker/consumer fields (see event.md)",
+				"%s: a consumer constructor must take *logrus.Logger and build an Entry with broker/consumer fields "+
+					"(see event.md). Fix: add a logger *logrus.Logger parameter and build the Entry with WithField "+
+					"in the constructor",
 				ruleID)
 		}
 	case scopeProducer:

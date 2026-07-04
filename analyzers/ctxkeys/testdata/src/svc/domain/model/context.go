@@ -15,8 +15,8 @@ const (
 	JobKey     ContextKey = "job"
 
 	// Positive: not snake_case.
-	BadCamelKey ContextKey = "UserID" // want `GID-167: ContextKey value must be a snake_case string, got "UserID"`
-	BadDashKey  ContextKey = "user-id" // want `GID-167: ContextKey value must be a snake_case string, got "user-id"`
+	BadCamelKey ContextKey = "UserID"  // want `GID-167: ContextKey value must be a snake_case string, got "UserID"\. Fix: use "user_id"`
+	BadDashKey  ContextKey = "user-id" // want `GID-167: ContextKey value must be a snake_case string, got "user-id"\. Fix: use "user_id"`
 )
 
 type secretKey string
@@ -42,12 +42,12 @@ func GetUserID(ctx context.Context) (string, bool) { // want `GID-166: function 
 // --- GID-167: a key not of the ContextKey type ---
 
 func ContextWithSecret(ctx context.Context, s string) context.Context {
-	return context.WithValue(ctx, secretKey("secret"), s) // want `GID-167: context key must be the public type ContextKey \(type ContextKey string\), not "secretKey"`
+	return context.WithValue(ctx, secretKey("secret"), s) // want `GID-167: context key must be the public type ContextKey \(type ContextKey string\), not "secretKey"\. Fix: declare type ContextKey string and use its typed constants`
 }
 
 // Edge case: a raw string key.
 func ContextWithRaw(ctx context.Context, s string) context.Context {
-	return context.WithValue(ctx, "raw", s) // want `GID-167: context key must be the public type ContextKey \(type ContextKey string\), not a raw value`
+	return context.WithValue(ctx, "raw", s) // want `GID-167: context key must be the public type ContextKey \(type ContextKey string\), not a raw value\. Fix: declare type ContextKey string and use its typed constants`
 }
 
 // --- Negative: canonical helpers ---

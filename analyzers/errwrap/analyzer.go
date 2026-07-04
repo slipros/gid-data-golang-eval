@@ -133,8 +133,8 @@ func NewStaticAnalyzer(s Settings) *analysis.Analyzer {
 func NewServiceMessageAnalyzer(s Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name: "gidwithmessage",
-		Doc: ruleIDServiceMessage + ": errors.WithMessage is not used in a service — convert the error " +
-			"and wrap with errors.WithStack; WithMessage belongs to usecase",
+		Doc: ruleIDServiceMessage + ": errors.WithMessage is not used in a service. Fix: convert the error " +
+			"to a model error and wrap with errors.WithStack; adding message context belongs to usecase",
 		Run: func(pass *analysis.Pass) (any, error) {
 			return runServiceMessage(pass, s)
 		},
@@ -329,8 +329,8 @@ func checkNoServiceMessage(pass *analysis.Pass, fn *ast.FuncDecl) {
 		name := pkgErrorsCallName(pass, call)
 		if name == "WithMessage" || name == "WithMessagef" {
 			pass.Reportf(call.Pos(),
-				"%s: errors.WithMessage is not used in a service — convert the error and wrap with errors.WithStack; "+
-					"WithMessage belongs to usecase",
+				"%s: errors.WithMessage is not used in a service. Fix: convert the error to a model error and wrap "+
+					"with errors.WithStack; adding message context belongs to usecase",
 				ruleIDServiceMessage)
 		}
 		return true

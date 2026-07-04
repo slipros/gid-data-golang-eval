@@ -122,9 +122,20 @@ func checkAlias(pass *analysis.Pass, imp *ast.ImportSpec, path, prefix string) {
 }
 
 func report(pass *analysis.Pass, imp *ast.ImportSpec, path, prefix string) {
+	alias := prefix + lastSegment(path)
 	pass.Reportf(imp.Pos(),
-		"%s: import %q of shared internal entities must carry a %s-prefixed alias (e.g. %sservice)",
-		ruleID, path, prefix, prefix)
+		"%s: import %q of shared internal entities must carry a %s-prefixed alias. Fix: import it as %s %q",
+		ruleID, path, prefix, alias, path)
+}
+
+// lastSegment returns the final "/"-separated segment of path, used to build
+// the concrete alias suggestion (prefix + last segment, e.g. "common" +
+// "service" -> "commonservice").
+func lastSegment(path string) string {
+	if i := strings.LastIndex(path, "/"); i >= 0 {
+		return path[i+1:]
+	}
+	return path
 }
 
 // pkgModuleBoundary resolves the pkg/<module> application-module layout

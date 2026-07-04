@@ -123,21 +123,24 @@ func checkKeyTypes(pass *analysis.Pass, file *ast.File) {
 		named, ok := keyType.(*types.Named)
 		if !ok {
 			pass.Reportf(call.Args[1].Pos(),
-				"%s: context key must be the public type %s (type %s string), not a raw value",
-				ruleKey, keyTypeName, keyTypeName)
+				"%s: context key must be the public type %s (type %s string), not a raw value. "+
+					"Fix: declare type %s string and use its typed constants",
+				ruleKey, keyTypeName, keyTypeName, keyTypeName)
 			return true
 		}
 		namedObj := named.Obj()
 		gotName := namedObj.Name()
 		if gotName != keyTypeName {
 			pass.Reportf(call.Args[1].Pos(),
-				"%s: context key must be the public type %s (type %s string), not %q",
-				ruleKey, keyTypeName, keyTypeName, gotName)
+				"%s: context key must be the public type %s (type %s string), not %q. "+
+					"Fix: declare type %s string and use its typed constants",
+				ruleKey, keyTypeName, keyTypeName, gotName, keyTypeName)
 			return true
 		}
 		if basic, ok := named.Underlying().(*types.Basic); !ok || basic.Kind() != types.String {
 			pass.Reportf(call.Args[1].Pos(),
-				"%s: %s must be a named string type", ruleKey, keyTypeName)
+				"%s: %s must be a named string type. Fix: declare it as type %s string",
+				ruleKey, keyTypeName, keyTypeName)
 		}
 		return true
 	})
@@ -178,7 +181,8 @@ func checkKeyConsts(pass *analysis.Pass, gd *ast.GenDecl, file, keyTypeFile *ast
 			}
 			if val := constant.StringVal(objVal); !snakeCase.MatchString(val) {
 				pass.Reportf(name.Pos(),
-					"%s: %s value must be a snake_case string, got %q", ruleKey, keyTypeName, val)
+					"%s: %s value must be a snake_case string, got %q. Fix: use %q",
+					ruleKey, keyTypeName, val, toSnakeCase(val))
 			}
 		}
 	}
@@ -248,6 +252,26 @@ func containsCall(body *ast.BlockStmt, match func(*ast.CallExpr) bool) bool {
 		return true
 	})
 	return found
+}
+
+// toSnakeCase converts a camelCase or dashed name to snake_case: each hyphen
+// becomes an underscore, an underscore is inserted before an uppercase
+// letter that follows a lowercase/digit (so an acronym run like "ID" is not
+// split apart), then the whole name is lowercased.
+func toSnakeCase(name string) string {
+	name = strings.ReplaceAll(name, "-", "_")
+	var b strings.Builder
+	for i := 0; i < len(name); i++ {
+		c := name[i]
+		if c >= 'A' && c <= 'Z' {
+			if i > 0 && name[i-1] != '_' && (name[i-1] < 'A' || name[i-1] > 'Z') {
+				b.WriteByte('_')
+			}
+			c = c - 'A' + 'a'
+		}
+		b.WriteByte(c)
+	}
+	return b.String()
 }
 
 func isWithValue(pass *analysis.Pass, call *ast.CallExpr) bool {

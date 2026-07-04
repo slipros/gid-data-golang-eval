@@ -3,7 +3,7 @@ package entity
 
 // --- Positive: int-enum with ≥2 const values ---
 
-type Status int // want `GID-123: enum Status must be based on string, not int`
+type Status int // want `GID-123: enum Status must be based on string, not int\. Fix: declare type Status string and give the constants string values`
 
 const (
 	StatusActive   Status = 1
@@ -12,7 +12,7 @@ const (
 
 // --- Positive: alias to string ---
 
-type Code = string // want `GID-123: enum Code must be a named type, not an alias`
+type Code = string // want `GID-123: enum Code must be a named type, not an alias \(type Code = \.\.\.\)\. Fix: declare type Code string and retype the constants`
 
 // --- Negative: a correct string-enum ---
 

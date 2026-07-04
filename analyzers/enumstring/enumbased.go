@@ -61,8 +61,9 @@ func checkTypeDecl(pass *analysis.Pass, gd *ast.GenDecl, intEnums map[*types.Nam
 		// Check 1: alias to a basic string/int.
 		if ts.Assign != token.NoPos && isBasicStringOrInt(pass.TypesInfo.TypeOf(ts.Type)) {
 			pass.Reportf(ts.Name.Pos(),
-				"%s: enum %s must be a named type, not an alias (type %s = ...)",
-				ruleIDBased, ts.Name.Name, ts.Name.Name)
+				"%s: enum %s must be a named type, not an alias (type %s = ...). Fix: declare type %s string "+
+					"and retype the constants",
+				ruleIDBased, ts.Name.Name, ts.Name.Name, ts.Name.Name)
 			continue
 		}
 		// Check 2: a named int type with ≥2 const values.
@@ -76,7 +77,9 @@ func checkTypeDecl(pass *analysis.Pass, gd *ast.GenDecl, intEnums map[*types.Nam
 		}
 		if _, isIntEnum := intEnums[named]; isIntEnum {
 			pass.Reportf(ts.Name.Pos(),
-				"%s: enum %s must be based on string, not int", ruleIDBased, ts.Name.Name)
+				"%s: enum %s must be based on string, not int. Fix: declare type %s string and give the "+
+					"constants string values",
+				ruleIDBased, ts.Name.Name, ts.Name.Name)
 		}
 	}
 }

@@ -3,7 +3,7 @@
 package convert
 
 import (
-	"github.com/sirupsen/logrus" // want `GID-235: convert package "svc/server/grpc/handler/convert" must not import "github.com/sirupsen/logrus" — a converter is a pure function over vocabulary types \(model/entity/dto/client/pb\); business logic and side effects live in their layers`
+	"github.com/sirupsen/logrus" // want `GID-235: convert package "svc/server/grpc/handler/convert" must not import "github.com/sirupsen/logrus" — a converter is a pure function over vocabulary types\. Fix: import only model/entity/dto/client/pb; move the logic or side effect to its layer and pass the result into the converter`
 )
 
 var log = &logrus.Logger{}

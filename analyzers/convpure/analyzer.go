@@ -142,9 +142,9 @@ func checkThirdParty(pass *analysis.Pass, imp *ast.ImportSpec, path string, thir
 
 func report(pass *analysis.Pass, imp *ast.ImportSpec, path string) {
 	pass.Reportf(imp.Pos(),
-		"%s: convert package %q must not import %q — a converter is a pure "+
-			"function over vocabulary types (model/entity/dto/client/pb); "+
-			"business logic and side effects live in their layers",
+		"%s: convert package %q must not import %q — a converter is a pure function over vocabulary "+
+			"types. Fix: import only model/entity/dto/client/pb; move the logic or side effect to its "+
+			"layer and pass the result into the converter",
 		ruleID, pass.Pkg.Path(), path)
 }
 

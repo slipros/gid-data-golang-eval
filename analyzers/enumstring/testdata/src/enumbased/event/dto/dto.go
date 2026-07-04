@@ -4,11 +4,11 @@ package dto
 
 // --- Positive: alias to a basic string ---
 
-type StatusDTO = string // want `GID-123: enum StatusDTO must be a named type, not an alias`
+type StatusDTO = string // want `GID-123: enum StatusDTO must be a named type, not an alias \(type StatusDTO = \.\.\.\)\. Fix: declare type StatusDTO string and retype the constants`
 
 // --- Positive: int-enum with ≥2 const values ---
 
-type Kind int // want `GID-123: enum Kind must be based on string, not int`
+type Kind int // want `GID-123: enum Kind must be based on string, not int\. Fix: declare type Kind string and give the constants string values`
 
 const (
 	KindA Kind = 1

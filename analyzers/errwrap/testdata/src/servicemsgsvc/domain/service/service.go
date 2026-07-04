@@ -13,14 +13,14 @@ func (s *Service) call() error { return nil }
 
 func (s *Service) badWithMessage() error {
 	err := s.call()
-	return errors.WithMessage(err, "ctx") // want `GID-237: errors\.WithMessage is not used in a service — convert the error and wrap with errors\.WithStack; WithMessage belongs to usecase`
+	return errors.WithMessage(err, "ctx") // want `GID-237: errors\.WithMessage is not used in a service\. Fix: convert the error to a model error and wrap with errors\.WithStack; adding message context belongs to usecase`
 }
 
 // --- Boundary: errors.WithMessagef — the formatted variant is banned too ---
 
 func (s *Service) badWithMessagef() error {
 	err := s.call()
-	return errors.WithMessagef(err, "ctx %d", 1) // want `GID-237: errors\.WithMessage is not used in a service — convert the error and wrap with errors\.WithStack; WithMessage belongs to usecase`
+	return errors.WithMessagef(err, "ctx %d", 1) // want `GID-237: errors\.WithMessage is not used in a service\. Fix: convert the error to a model error and wrap with errors\.WithStack; adding message context belongs to usecase`
 }
 
 // --- Negative: errors.WithStack / errors.Wrap are fine in a service ---

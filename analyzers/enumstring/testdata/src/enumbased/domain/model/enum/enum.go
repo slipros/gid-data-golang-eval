@@ -3,11 +3,11 @@ package enum
 
 // --- Positive: alias to a basic string (a real event-collector case) ---
 
-type ConsentEventType = string // want `GID-123: enum ConsentEventType must be a named type, not an alias`
+type ConsentEventType = string // want `GID-123: enum ConsentEventType must be a named type, not an alias \(type ConsentEventType = \.\.\.\)\. Fix: declare type ConsentEventType string and retype the constants`
 
 // --- Positive: alias to a basic int ---
 
-type Weight = int // want `GID-123: enum Weight must be a named type, not an alias`
+type Weight = int // want `GID-123: enum Weight must be a named type, not an alias \(type Weight = \.\.\.\)\. Fix: declare type Weight string and retype the constants`
 
 // --- Positive: a group of untyped string constants (reported on the first) ---
 

@@ -13,6 +13,6 @@ var legacyModeFlag = &cli.BoolFlag{
 }
 
 // Not excluded — still flagged.
-var missingFlag = &cli.StringFlag{ // want `GID-239: flag "db-host" has neither Required nor a default Value — a flag consumed by wiring must be required or carry a default`
+var missingFlag = &cli.StringFlag{ // want `GID-239: flag "db-host" has neither Required nor a default Value\. Fix: add Required: true \(a flag consumed by wiring must not silently zero-value\) or set an explicit default Value`
 	Name: "db-host",
 }

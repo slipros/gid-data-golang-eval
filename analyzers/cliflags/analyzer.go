@@ -177,14 +177,36 @@ func checkFlagLit(pass *analysis.Pass, cfg Settings, lit *ast.CompositeLit) {
 		flagName = name
 	}
 	pass.Reportf(lit.Pos(),
-		"%s: flag %q has neither Required nor a default Value — a flag consumed by wiring must be required or carry a default",
+		"%s: flag %q has neither Required nor a default Value. Fix: add Required: true (a flag consumed "+
+			"by wiring must not silently zero-value) or set an explicit default Value",
 		ruleRequired, flagName)
 }
 
 func checkKebabCase(pass *analysis.Pass, value ast.Expr, name string) {
 	if !kebabCaseRe.MatchString(name) {
-		pass.Reportf(value.Pos(), "%s: cli flag name %q must be kebab-case", ruleNaming, name)
+		pass.Reportf(value.Pos(), "%s: cli flag name %q must be kebab-case. Fix: rename it to %q",
+			ruleNaming, name, toKebabCase(name))
 	}
+}
+
+// toKebabCase converts a camelCase or snake_case name to kebab-case: each
+// underscore becomes a hyphen, and a hyphen is inserted before an uppercase
+// letter that follows a lowercase/digit (so an acronym run like "ID" is not
+// split apart), then the whole name is lowercased.
+func toKebabCase(name string) string {
+	name = strings.ReplaceAll(name, "_", "-")
+	var b strings.Builder
+	for i := 0; i < len(name); i++ {
+		c := name[i]
+		if isUpperASCII(c) {
+			if i > 0 && name[i-1] != '-' && !isUpperASCII(name[i-1]) {
+				b.WriteByte('-')
+			}
+			c = toLowerASCII(c)
+		}
+		b.WriteByte(c)
+	}
+	return b.String()
 }
 
 // checkEnvVarsSlice checks a v2-style "EnvVars: []string{...}" field.
@@ -229,8 +251,39 @@ func isCliEnvVarsCall(pass *analysis.Pass, call *ast.CallExpr) bool {
 
 func checkUpperSnake(pass *analysis.Pass, node ast.Expr, name string) {
 	if !upperSnakeRe.MatchString(name) {
-		pass.Reportf(node.Pos(), "%s: env var %q must be UPPER_SNAKE_CASE", ruleNaming, name)
+		pass.Reportf(node.Pos(), "%s: env var %q must be UPPER_SNAKE_CASE. Fix: rename it to %q",
+			ruleNaming, name, toUpperSnake(name))
 	}
+}
+
+// toUpperSnake converts a camelCase name to UPPER_SNAKE_CASE: each hyphen
+// becomes an underscore, an underscore is inserted before an uppercase
+// letter that follows a lowercase/digit (so an acronym run like "ID" is not
+// split apart), then the whole name is uppercased.
+func toUpperSnake(name string) string {
+	name = strings.ReplaceAll(name, "-", "_")
+	var b strings.Builder
+	for i := 0; i < len(name); i++ {
+		c := name[i]
+		if isUpperASCII(c) {
+			if i > 0 && name[i-1] != '_' && !isUpperASCII(name[i-1]) {
+				b.WriteByte('_')
+			}
+			b.WriteByte(c)
+			continue
+		}
+		b.WriteByte(toUpperASCII(c))
+	}
+	return b.String()
+}
+
+func isUpperASCII(c byte) bool { return c >= 'A' && c <= 'Z' }
+func toLowerASCII(c byte) byte { return c - 'A' + 'a' }
+func toUpperASCII(c byte) byte {
+	if c >= 'a' && c <= 'z' {
+		return c - 'a' + 'A'
+	}
+	return c
 }
 
 func isTrueIdent(expr ast.Expr) bool {

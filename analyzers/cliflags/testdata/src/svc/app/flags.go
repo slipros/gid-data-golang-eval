@@ -8,12 +8,12 @@ import (
 // --- GID-238 positive class: bad Name casing ---
 
 var camelCaseFlag = &cli.StringFlag{
-	Name:     "myFlag", // want `GID-238: cli flag name "myFlag" must be kebab-case`
+	Name:     "myFlag", // want `GID-238: cli flag name "myFlag" must be kebab-case\. Fix: rename it to "my-flag"`
 	Required: true,
 }
 
 var snakeCaseFlag = &cli.StringFlag{
-	Name:     "my_flag", // want `GID-238: cli flag name "my_flag" must be kebab-case`
+	Name:     "my_flag", // want `GID-238: cli flag name "my_flag" must be kebab-case\. Fix: rename it to "my-flag"`
 	Required: true,
 }
 
@@ -22,19 +22,19 @@ var snakeCaseFlag = &cli.StringFlag{
 var badEnvVarsSliceFlag = &cli.StringFlag{
 	Name:     "db-url",
 	Required: true,
-	EnvVars:  []string{"db-url"}, // want `GID-238: env var "db-url" must be UPPER_SNAKE_CASE`
+	EnvVars:  []string{"db-url"}, // want `GID-238: env var "db-url" must be UPPER_SNAKE_CASE\. Fix: rename it to "DB_URL"`
 }
 
 var badEnvVarsCamelFlag = &cli.StringFlag{
 	Name:     "db-url",
 	Required: true,
-	EnvVars:  []string{"dbUrl"}, // want `GID-238: env var "dbUrl" must be UPPER_SNAKE_CASE`
+	EnvVars:  []string{"dbUrl"}, // want `GID-238: env var "dbUrl" must be UPPER_SNAKE_CASE\. Fix: rename it to "DB_URL"`
 }
 
 var badSourcesFlag = &cli.StringFlag{
 	Name:     "db-url",
 	Required: true,
-	Sources:  cli.EnvVars("db-url"), // want `GID-238: env var "db-url" must be UPPER_SNAKE_CASE`
+	Sources:  cli.EnvVars("db-url"), // want `GID-238: env var "db-url" must be UPPER_SNAKE_CASE\. Fix: rename it to "DB_URL"`
 }
 
 // --- GID-238 negative class: correctly-cased flags ---
@@ -73,7 +73,7 @@ var notAFlag = Config{
 
 // --- GID-239 positive class: neither Required nor Value ---
 
-var missingBoth = &cli.StringFlag{ // want `GID-239: flag "db-host" has neither Required nor a default Value — a flag consumed by wiring must be required or carry a default`
+var missingBoth = &cli.StringFlag{ // want `GID-239: flag "db-host" has neither Required nor a default Value\. Fix: add Required: true \(a flag consumed by wiring must not silently zero-value\) or set an explicit default Value`
 	Name: "db-host",
 }
 
@@ -100,7 +100,7 @@ var zeroValue = &cli.IntFlag{
 // still fires (Required/Value are still absent) but falls back to "<flag>" ---
 
 func dynamicName(name string) *cli.StringFlag {
-	return &cli.StringFlag{ // want `GID-239: flag "<flag>" has neither Required nor a default Value — a flag consumed by wiring must be required or carry a default`
+	return &cli.StringFlag{ // want `GID-239: flag "<flag>" has neither Required nor a default Value\. Fix: add Required: true \(a flag consumed by wiring must not silently zero-value\) or set an explicit default Value`
 		Name: name,
 	}
 }
