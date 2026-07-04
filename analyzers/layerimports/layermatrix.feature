@@ -83,17 +83,22 @@ Feature: GID-224…229 — the layer-isolation matrix
     When the analyzer checks the file
     Then no diagnostic is reported
 
-  # GID-228: the client — via an interface in domain/model
+  # GID-228: usecase does not call a client directly
 
-  Scenario: domain/service imports client — violation
+  Scenario: domain/usecase imports client — violation
+    Given the package "svc/domain/usecase" imports "svc/client/billing"
+    When the analyzer checks the file
+    Then a "GID-228" diagnostic is reported on the import "svc/client/billing"
+
+  Scenario: domain/service imports client — ok (the service converts model <-> client models)
     Given the package "svc/domain/service" imports "svc/client/billing"
     When the analyzer checks the file
-    Then a "GID-228" diagnostic is reported on the import "svc/client/billing"
+    Then no diagnostic is reported
 
-  Scenario: dal/repository imports client — violation
+  Scenario: dal/repository imports client — ok (client models are converted to entity in convert)
     Given the package "svc/dal/repository" imports "svc/client/billing"
     When the analyzer checks the file
-    Then a "GID-228" diagnostic is reported on the import "svc/client/billing"
+    Then no diagnostic is reported
 
   # GID-229: the client is isolated
 

@@ -2,6 +2,7 @@
 package usecase
 
 import (
+	"svc/client/billing" // want `GID-228: package "svc/domain/usecase" must not import "svc/client/billing"\. Fix: usecase orchestrates services; a client is used by a repository or directly by a service`
 	"svc/dal/entity"     // want `GID-132: package "svc/domain/usecase" must not import "svc/dal/entity"\. Fix: usecase works only with model and talks to DAL through services`
 	"svc/dal/repository" // want `GID-132: package "svc/domain/usecase" must not import "svc/dal/repository"\. Fix: usecase works only with model and talks to DAL through services`
 
@@ -16,6 +17,9 @@ type Upload struct {
 func (u *Upload) bad(id string) (entity.Snapshot, error) {
 	return u.repo.Snapshot(id)
 }
+
+// Positive (GID-228): usecase orchestrates services, it must not call a client directly.
+func (u *Upload) leakClient(c *billing.Client) {}
 
 // Negative: model in usecase is fine.
 func (u *Upload) good() model.Snapshot {

@@ -38,8 +38,10 @@
 //     vocabulary; the subpackages /domain/model/* are a full-fledged model layer.
 //
 // GID-228 (no-direct-client):
-//   - /domain/** and /dal/** do not import /client/** — the dependency on
-//     the client is described by an interface in /domain/model (GID-134).
+//   - /domain/usecase does not import /client/** — a client is used by a
+//     repository (client models are converted to entity in dal/repository/convert)
+//     or directly by a service (the service converts model <-> client models;
+//     its API always takes and returns model); /domain/model is shielded by GID-227.
 //
 // GID-229 (client-isolated):
 //   - /client/** does not import service layers (including all of /domain) —
@@ -187,15 +189,9 @@ var layerRules = []layerRule{
 	},
 	{
 		id:     "GID-228",
-		scope:  []string{"domain"},
+		scope:  []string{"domain", "usecase"},
 		banned: [][]string{{"client"}},
-		reason: "service/usecase depend on the client through an interface in domain/model, see GID-134",
-	},
-	{
-		id:     "GID-228",
-		scope:  []string{"dal"},
-		banned: [][]string{{"client"}},
-		reason: "dal does not call external APIs directly; the client is wired in app",
+		reason: "usecase orchestrates services; a client is used by a repository or directly by a service",
 	},
 	{
 		id:     "GID-225",

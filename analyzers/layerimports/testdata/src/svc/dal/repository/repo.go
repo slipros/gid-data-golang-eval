@@ -2,7 +2,7 @@
 package repository
 
 import (
-	"svc/client/billing" // want `GID-228: package "svc/dal/repository" must not import "svc/client/billing"\. Fix: dal does not call external APIs directly; the client is wired in app`
+	"svc/client/billing"
 	"svc/dal/entity"
 
 	"svc/domain/model" // want `GID-132: package "svc/dal/repository" must not import "svc/domain/model"\. Fix: the dal layer works only with entity, domain types are not available to it`
@@ -18,5 +18,6 @@ func (s *Snapshot) Snapshot(id string) (entity.Snapshot, error) {
 // Positive above: model is forbidden in the dal layer.
 func (s *Snapshot) leak(in *model.Snapshot) {}
 
-// Positive above (GID-228): external APIs are called by the client, which app wires.
+// Negative (GID-228): a repository is allowed to call a client directly and
+// convert its models to entity in dal/repository/convert.
 func (s *Snapshot) leakClient(c *billing.Client) {}

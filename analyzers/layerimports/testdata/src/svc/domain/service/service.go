@@ -3,7 +3,7 @@
 package service
 
 import (
-	"svc/client/billing" // want `GID-228: package "svc/domain/service" must not import "svc/client/billing"\. Fix: service/usecase depend on the client through an interface in domain/model, see GID-134`
+	"svc/client/billing"
 	"svc/dal/entity"
 	"svc/dal/repository" // want `GID-132: package "svc/domain/service" must not import "svc/dal/repository"\. Fix: a service depends on the repository through an interface next to the consumer`
 	"svc/metric"         // want `GID-226: package "svc/domain/service" must not import "svc/metric"\. Fix: domain receives metrics through an interface; the metric package is wired in app`
@@ -28,5 +28,7 @@ func fromEntity(in *entity.Snapshot) model.Snapshot {
 	return model.Snapshot{ID: in.ID}
 }
 
-// Positives above: the client — through an interface (GID-228), metrics — through an interface (GID-226).
+// Negative (GID-228): a service is allowed to call a client directly — its API
+// always takes and returns model, conversion model <-> client models is internal.
+// Positive above: metrics — through an interface (GID-226).
 func (s *Snapshot) leakDeps(c *billing.Client, m *metric.Prometheus) {}
