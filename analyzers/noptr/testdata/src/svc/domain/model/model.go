@@ -9,13 +9,21 @@ import (
 
 type SnapshotStatus string
 
+// Weight is a named type based on int — a boundary case: the ban on
+// pointers to simple types applies by the *underlying* basic kind, not just
+// to the bare int/string types.
+type Weight int
+
 // --- Positive cases ---
 
 type Snapshot struct {
-	ParentID    *uuid.UUID     // want `GID-120: \*uuid\.UUID is forbidden\. Fix: use uuid\.UUID and check emptiness with IsNil\(\)`
-	CompletedAt *time.Time     // want `GID-121: \*time\.Time is unnecessary in model\. Fix: use time\.Time and check absence with t\.IsZero\(\)`
-	Description *string        // want `GID-121: a pointer to a string type is unnecessary in model\. Fix: use the value and check len\(s\) == 0`
-	Status      *SnapshotStatus // want `GID-121: a pointer to a string type is unnecessary in model`
+	ParentID    *uuid.UUID      // want `GID-120: \*uuid\.UUID is forbidden\. Fix: use uuid\.UUID and check emptiness with IsNil\(\)`
+	CompletedAt *time.Time      // want `GID-121: \*time\.Time is unnecessary here\. Fix: use time\.Time and check absence with t\.IsZero\(\)`
+	Description *string         // want `GID-121: a pointer to a simple type is unnecessary here\. Fix: use the value and check the zero value`
+	Status      *SnapshotStatus // want `GID-121: a pointer to a simple type is unnecessary here`
+	Count       *int            // want `GID-121: a pointer to a simple type is unnecessary here`
+	Ratio       *float64        // want `GID-121: a pointer to a simple type is unnecessary here`
+	Priority    *Weight         // want `GID-121: a pointer to a simple type is unnecessary here`
 }
 
 // Boundary case: *uuid.UUID in a signature is also a GID-120 violation.
@@ -30,6 +38,7 @@ type Job struct {
 	CompletedAt time.Time
 	Description string
 	Status      SnapshotStatus
+	Count       int
 	Enabled     *bool // the pointer is justified: false is a valid value
 	Parent      *Job  // a nested struct — a pointer is allowed
 }

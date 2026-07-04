@@ -1,10 +1,13 @@
 // Package noptr implements the rules about nullable pointers:
 //
 //   - GID-120: *uuid.UUID is forbidden everywhere — emptiness is checked with IsNil();
-//   - GID-121: in /domain/model struct fields do not use *time.Time or
-//     pointers to string types — the zero value expresses absence
-//     (IsZero(), len == 0). A pointer is justified only when the zero value
-//     is meaningful (e.g. *bool).
+//   - GID-121: in /domain/model and /event/dto struct fields do not use
+//     pointers to simple types — *time.Time or a pointer to any basic
+//     numeric or string type (int*, uint*, float*, complex*, string,
+//     including named types based on them) — the zero value expresses
+//     absence (IsZero(), len == 0, == 0). *bool is exempt (false is itself
+//     a meaningful value), and so is a pointer to a nested struct. When a
+//     pointer cannot be avoided, escape with //nolint:gidnoptr.
 package noptr
 
 import (
@@ -24,18 +27,19 @@ const (
 // Analyzer — the GID rule: see Doc.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidnoptr",
-	Doc:  ruleUUID + "/" + ruleZero + ": forbid pointers where the type checks emptiness itself (uuid, time, string). Fix: use the value type",
+	Doc:  ruleUUID + "/" + ruleZero + ": forbid *uuid.UUID everywhere, and pointers to simple types (time, numeric, string) in domain/model and event/dto — the zero value checks emptiness itself. Fix: use the value type; escape with //nolint:gidnoptr when unavoidable",
 	Run:  run,
 }
 
 func run(pass *analysis.Pass) (any, error) {
-	inModel := pathseg.Contains(pass.Pkg.Path(), "domain", "model")
+	pkgPath := pass.Pkg.Path()
+	inScope := pathseg.Contains(pkgPath, "domain", "model") || pathseg.Contains(pkgPath, "event", "dto")
 	for _, file := range pass.Files {
 		if ast.IsGenerated(file) {
 			continue
 		}
 		checkUUIDPointers(pass, file)
-		if inModel {
+		if inScope {
 			checkModelFields(pass, file)
 		}
 	}
@@ -65,7 +69,8 @@ func checkUUIDPointers(pass *analysis.Pass, file *ast.File) {
 	})
 }
 
-// checkModelFields — GID-121: pointers to time.Time/string types in model fields.
+// checkModelFields — GID-121: pointers to simple types (time, numeric, string)
+// in /domain/model and /event/dto struct fields.
 func checkModelFields(pass *analysis.Pass, file *ast.File) {
 	for _, decl := range file.Decls {
 		gd, ok := decl.(*ast.GenDecl)
@@ -97,10 +102,10 @@ func checkModelField(pass *analysis.Pass, field *ast.Field) {
 	switch {
 	case isTime(elem):
 		pass.Reportf(field.Pos(),
-			"%s: *time.Time is unnecessary in model. Fix: use time.Time and check absence with t.IsZero()", ruleZero)
-	case isStringBased(elem):
+			"%s: *time.Time is unnecessary here. Fix: use time.Time and check absence with t.IsZero(); if a pointer is unavoidable, use //nolint:gidnoptr", ruleZero)
+	case isSimpleValueType(elem):
 		pass.Reportf(field.Pos(),
-			"%s: a pointer to a string type is unnecessary in model. Fix: use the value and check len(s) == 0", ruleZero)
+			"%s: a pointer to a simple type is unnecessary here. Fix: use the value and check the zero value (len(s) == 0 for strings, == 0 for numbers); if a pointer is unavoidable, use //nolint:gidnoptr", ruleZero)
 	}
 }
 
@@ -129,7 +134,16 @@ func isTime(t types.Type) bool {
 	return pkg != nil && pkg.Path() == "time" && obj.Name() == "Time"
 }
 
-func isStringBased(t types.Type) bool {
+// isSimpleValueType reports whether t's underlying type is a basic numeric or
+// string type (including a named type based on one), excluding bool — a
+// pointer to bool is exempt because false is itself a meaningful value.
+func isSimpleValueType(t types.Type) bool {
 	basic, ok := t.Underlying().(*types.Basic)
-	return ok && basic.Kind() == types.String
+	if !ok {
+		return false
+	}
+	if basic.Info()&types.IsBoolean != 0 {
+		return false
+	}
+	return basic.Info()&(types.IsInteger|types.IsFloat|types.IsComplex|types.IsString) != 0
 }

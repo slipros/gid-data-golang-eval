@@ -5,7 +5,7 @@ Feature: GID-123 — an enum is a named type based on string, not a bare string/
   I want enums in /domain/model and /dal/entity to be named string types
   So that enumerations are type-safe and uniform
   Source: styleguide.md#enum
-  Scope: packages in /domain/model/** and /dal/entity/**
+  Scope: packages in /domain/model/**, /dal/entity/** and /event/dto/**
 
   # --- Positive class: the violation is caught ---
 
@@ -24,10 +24,30 @@ Feature: GID-123 — an enum is a named type based on string, not a bare string/
     When the analyzer checks the file
     Then a single "GID-123" diagnostic is reported on the first constant of the group
 
+  Scenario: an alias to basic string in /event/dto — violation
+    Given "type StatusDTO = string" is declared in /event/dto
+    When the analyzer checks the file
+    Then a "GID-123" diagnostic is reported with the text "a named type, not an alias"
+
+  Scenario: an int enum in /event/dto — violation
+    Given "type Kind int" with the const values "KindA, KindB" is declared in /event/dto
+    When the analyzer checks the file
+    Then a "GID-123" diagnostic is reported with the text "must be based on string, not int"
+
+  Scenario: a group of untyped string constants in /event/dto — violation
+    Given a const group of two untyped string constants is declared in /event/dto
+    When the analyzer checks the file
+    Then a single "GID-123" diagnostic is reported on the first constant of the group
+
   # --- Negative class: clean code passes ---
 
   Scenario: a named string type with consts — ok
     Given "type EventType string" with const values is declared in /domain/model
+    When the analyzer checks the file
+    Then no diagnostic is reported
+
+  Scenario: a named string type with consts in /event/dto — ok
+    Given "type EventType string" with const values is declared in /event/dto
     When the analyzer checks the file
     Then no diagnostic is reported
 

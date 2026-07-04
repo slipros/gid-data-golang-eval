@@ -3,9 +3,10 @@
 //   - GID-124 (gidenumstring): every enum (a named string-based type
 //     with const values) must implement the String() string method.
 //   - GID-123 (gidenumbased): an enum is a named string-based type, not a
-//     bare string/int. Applies in /domain/model/** and /dal/entity/**.
-//     Catches an alias to a basic type (type X = string), an int-enum (a named
-//     int type with ≥2 const values) and a group of untyped string constants.
+//     bare string/int. Applies in /domain/model/**, /dal/entity/** and
+//     /event/dto/**. Catches an alias to a basic type (type X = string), an
+//     int-enum (a named int type with ≥2 const values) and a group of
+//     untyped string constants.
 package enumstring
 
 import (

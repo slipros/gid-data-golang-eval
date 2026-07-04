@@ -10,7 +10,11 @@ import (
 type cursor struct {
 	id *uuid.UUID // want `GID-120: \*uuid\.UUID is forbidden\. Fix: use uuid\.UUID and check emptiness with IsNil\(\)`
 
-	// GID-121 not applicable: outside model a pointer to time is allowed
-	// (in entity this is covered by GID-122 via sql.NullTime).
+	// GID-121 not applicable: outside model/event-dto a pointer to time is
+	// allowed (in entity this is covered by GID-122 via sql.NullTime).
 	at *time.Time
+
+	// GID-121 not applicable: outside model/event-dto a pointer to a
+	// simple numeric type is allowed too.
+	count *int
 }

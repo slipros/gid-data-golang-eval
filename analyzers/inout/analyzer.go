@@ -2,6 +2,10 @@
 // structs) is passed by pointer, output is returned by value.
 // Applies on the repo, service, usecase and handler layers.
 //
+// In /client/** packages the client has no domain/model or dal/entity of its
+// own, so the same rule applies to the client's own same-module named
+// structs (its request/response types) instead — see clientStructName.
+//
 // Exceptions:
 //   - pointwise: //nolint:gidinout
 //   - centrally: settings.exclude in .golangci.yml —
@@ -27,7 +31,13 @@ var scopes = [][]string{
 	{"handler"},
 }
 
-// layerTypeTrees — package trees whose structs are treated as layer data.
+// clientScope — the client layer tree. Unlike the scopes above, its
+// input/output data is not domain/model or dal/entity but the client's own
+// same-module named structs (see clientStructName).
+var clientScope = []string{"client"}
+
+// layerTypeTrees — package trees whose structs are treated as layer data
+// for the repo/service/usecase/handler scopes.
 var layerTypeTrees = [][]string{
 	{"domain", "model"},
 	{"dal", "entity"},
@@ -46,7 +56,7 @@ type Settings struct {
 func NewAnalyzer(s Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name: "gidinout",
-		Doc:  ruleID + ": input model/entity structs by pointer, output by value. Fix: take *T for input, return T for output",
+		Doc:  ruleID + ": input model/entity (or, in /client/**, the client's own) structs by pointer, output by value. Fix: take *T for input, return T for output",
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, s)
 		},
@@ -54,8 +64,14 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 }
 
 func run(pass *analysis.Pass, s Settings) (any, error) {
-	if !inScope(pass.Pkg.Path()) {
+	pkgPath := pass.Pkg.Path()
+	isClient := pathseg.Contains(pkgPath, clientScope...)
+	if !isClient && !inScope(pkgPath) {
 		return nil, nil
+	}
+	structName := layerStructName
+	if isClient {
+		structName = clientStructName(pkgPath)
 	}
 	for _, file := range pass.Files {
 		if ast.IsGenerated(file) {
@@ -69,16 +85,16 @@ func run(pass *analysis.Pass, s Settings) (any, error) {
 			if exclude.Match(s.Exclude, recvTypeName(fn), fn.Name.Name) {
 				continue
 			}
-			checkSignature(pass, fn)
+			checkSignature(pass, fn, structName)
 		}
 	}
 	return nil, nil
 }
 
-func checkSignature(pass *analysis.Pass, fn *ast.FuncDecl) {
+func checkSignature(pass *analysis.Pass, fn *ast.FuncDecl, structName func(types.Type) (string, bool)) {
 	if fn.Type.Params != nil {
 		for _, field := range fn.Type.Params.List {
-			if name, ok := layerStructName(pass.TypesInfo.TypeOf(field.Type)); ok {
+			if name, ok := structName(pass.TypesInfo.TypeOf(field.Type)); ok {
 				pass.Reportf(field.Pos(),
 					"%s: input data must be passed by pointer. Fix: use *%s", ruleID, name)
 			}
@@ -91,7 +107,7 @@ func checkSignature(pass *analysis.Pass, fn *ast.FuncDecl) {
 			if !ok {
 				continue
 			}
-			if name, ok := layerStructName(ptr.Elem()); ok {
+			if name, ok := structName(ptr.Elem()); ok {
 				pass.Reportf(field.Pos(),
 					"%s: output data must be returned by value. Fix: use %s", ruleID, name)
 			}
@@ -120,6 +136,33 @@ func layerStructName(t types.Type) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+// clientStructName builds a struct-name check for the client scope: a
+// client has no dedicated model/entity tree, so any same-module named
+// struct (the client's own request/response type, wherever it is declared)
+// counts as its input/output data. A struct from a foreign module
+// (a third-party or generated dependency, e.g. a protobuf stub) does not.
+func clientStructName(pkgPath string) func(types.Type) (string, bool) {
+	modRoot := pathseg.Segments(pkgPath)[0]
+	return func(t types.Type) (string, bool) {
+		named, ok := t.(*types.Named)
+		if !ok {
+			return "", false
+		}
+		if _, ok := named.Underlying().(*types.Struct); !ok {
+			return "", false
+		}
+		obj := named.Obj()
+		if obj.Pkg() == nil {
+			return "", false
+		}
+		pkg := obj.Pkg()
+		if pathseg.Segments(pkg.Path())[0] != modRoot {
+			return "", false
+		}
+		return pkg.Name() + "." + obj.Name(), true
+	}
 }
 
 func inScope(pkgPath string) bool {

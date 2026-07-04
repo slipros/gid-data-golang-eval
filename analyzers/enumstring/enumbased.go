@@ -13,7 +13,8 @@ import (
 const ruleIDBased = "GID-123"
 
 // BasedAnalyzer implements GID-123: an enum is a named string-based type,
-// not a bare string/int. Applies only in /domain/model/** and /dal/entity/**.
+// not a bare string/int. Applies in /domain/model/**, /dal/entity/** and
+// /event/dto/**.
 var BasedAnalyzer = &analysis.Analyzer{
 	Name: "gidenumbased",
 	Doc:  ruleIDBased + ": an enum must be a named type based on string, not a bare string/int. Fix: declare a named string type",
@@ -22,7 +23,10 @@ var BasedAnalyzer = &analysis.Analyzer{
 
 func runBased(pass *analysis.Pass) (any, error) {
 	pkgPath := pass.Pkg.Path()
-	if !pathseg.Contains(pkgPath, "domain", "model") && !pathseg.Contains(pkgPath, "dal", "entity") {
+	inScope := pathseg.Contains(pkgPath, "domain", "model") ||
+		pathseg.Contains(pkgPath, "dal", "entity") ||
+		pathseg.Contains(pkgPath, "event", "dto")
+	if !inScope {
 		return nil, nil
 	}
 
