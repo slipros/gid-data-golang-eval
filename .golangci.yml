@@ -15,8 +15,11 @@ run:
   modules-download-mode: readonly
 
 issues:
-  max-issues-per-linter: 50      # Limit the output
-  max-same-issues: 3             # Do not show the same issue 100 times
+  # 0 = unlimited: the same issue may occur many times in different places,
+  # and an LLM agent needs the full list to fix everything (a capped output
+  # hides the real amount of work — e.g. 210 giddirtree findings vs 3 shown).
+  max-issues-per-linter: 0
+  max-same-issues: 0
   new: false                     # false = check all code, true = changes only
   # one line may violate several rules — show them all
   uniq-by-line: false
@@ -449,7 +452,7 @@ linters:
         original-url: github.com/slipros/gid-data-golang-eval
       giddirtree:
         type: module
-        description: 'GID-158: folder-tree control: only allowed subfolders'
+        description: 'GID-158: folder-tree control: only allowed subfolders (default: the canonical internal/ tree incl. job and schedule)'
         original-url: github.com/slipros/gid-data-golang-eval
         # Tree of this repository (replaces the default service tree).
         # Format: "folder" -> allowed subfolders; any nesting level.
@@ -507,7 +510,7 @@ linters:
         original-url: github.com/slipros/gid-data-golang-eval
       gidreceiver:
         type: module
-        description: 'GID-103: receiver is the first letter of the type, two for slice types (v/h for validators/handlers)'
+        description: 'GID-103: receiver is the lowercase first letter of the type, two for slice types; no exceptions'
         original-url: github.com/slipros/gid-data-golang-eval
       gidctor:
         type: module
@@ -519,7 +522,7 @@ linters:
         original-url: github.com/slipros/gid-data-golang-eval
       gidnoptr:
         type: module
-        description: 'GID-120/121: forbid *uuid.UUID; in model no *time.Time or pointers to string'
+        description: 'GID-120/121: forbid *uuid.UUID; in model and event/dto no pointers to simple types (except *bool)'
         original-url: github.com/slipros/gid-data-golang-eval
       gidsqlnull:
         type: module
@@ -541,7 +544,7 @@ linters:
         #     - ch
       gidenumbased:
         type: module
-        description: 'GID-123: enum is a named string type, not alias/int/bare const'
+        description: 'GID-123: enum is a named string type, not alias/int/bare const (model/entity/event-dto)'
         original-url: github.com/slipros/gid-data-golang-eval
       gidmodeltags:
         type: module
@@ -556,7 +559,7 @@ linters:
         type: module
         description: 'GID-169: layer errors in /domain/model and /dal/entity live in error.go'
         original-url: github.com/slipros/gid-data-golang-eval
-        # Allowed file names (default: error.go, errors.go and err.go):
+        # Allowed file names (default: error.go — the canonical name):
         # settings:
         #   files:
         #     - error.go
@@ -583,7 +586,7 @@ linters:
         original-url: github.com/slipros/gid-data-golang-eval
       giderrwrap:
         type: module
-        description: 'GID-176: errors from the boundary (client, repository) use errors.Wrap; in domain use WithMessage'
+        description: 'GID-176: an error from an external call (another module; interface deps in client/repository/event) is wrapped with errors.Wrap in any layer; same-module errors in domain are not re-wrapped'
         original-url: github.com/slipros/gid-data-golang-eval
         # Exclusions ("Method" | "Type.Method"):
         # settings:
@@ -778,6 +781,13 @@ linters:
         type: module
         description: 'GID-234: errors in /domain/model are bound to their entity (ErrSnapshotNotFound), generic names (ErrNotFound) are forbidden'
         original-url: github.com/slipros/gid-data-golang-eval
+        # The banned generic-name list can be replaced; point exceptions via exclude:
+        # settings:
+        #   names:
+        #     - ErrNotFound
+        #     - ErrAlreadyExists
+        #   exclude:
+        #     - ErrLegacy
       gidconvpure:
         type: module
         description: 'GID-235: a convert package imports only vocabulary types (model/entity/dto/client/pb) — no business layers or side-effect libraries'
@@ -820,13 +830,6 @@ linters:
         # The alias prefix can be replaced:
         # settings:
         #   prefix: common
-        # The banned generic-name list can be replaced; point exceptions via exclude:
-        # settings:
-        #   names:
-        #     - ErrNotFound
-        #     - ErrAlreadyExists
-        #   exclude:
-        #     - ErrLegacy
 
   exclusions:
     generated: lax
