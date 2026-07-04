@@ -2,7 +2,7 @@
 #   golangci-lint custom
 # The golangci-lint version is pinned — versions of shared libraries in go.mod
 # (especially golang.org/x/tools) must match it.
-version: v2.9.0
+version: v2.12.2
 name: custom-gcl
 destination: ./bin
 

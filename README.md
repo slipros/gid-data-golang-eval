@@ -31,7 +31,7 @@ the linter does that deterministically.
 
 ## Quick start
 
-Requires golangci-lint **v2.9.0** (pinned in `.custom-gcl.yml`).
+Requires golangci-lint **v2.12.2** (pinned in `.custom-gcl.yml`).
 
 ```sh
 make build         # build the bin/custom-gcl binary
@@ -44,7 +44,7 @@ make install-hook  # git pre-commit hook with the local check
 
 `gid*` linters are golangci-lint module plugins: a regular `golangci-lint run`
 does **not** see them — they are compiled into a separate `custom-gcl` binary
-(full golangci-lint v2.9.0 + our linters). You use the built binary exactly like
+(full golangci-lint v2.12.2 + our linters). You use the built binary exactly like
 regular golangci-lint — standard and `gid*` linters run in a single pass over a
 single `.golangci.yml`. Build the binary in one of two ways.
 
@@ -62,11 +62,11 @@ nothing else to clone or copy.
 
 ### Option B — `golangci-lint custom` (.custom-gcl.yml)
 
-A local binary inside the project (requires golangci-lint v2.9.0 installed):
+A local binary inside the project (requires golangci-lint v2.12.2 installed):
 
 ```yaml
 # .custom-gcl.yml
-version: v2.9.0
+version: v2.12.2
 name: custom-gcl
 destination: ./bin
 plugins:

@@ -1,6 +1,6 @@
 .PHONY: build build-install install eval lint lint-fast install-hook clean
 
-## build: build the custom-gcl binary (requires golangci-lint v2.9.0)
+## build: build the custom-gcl binary (requires golangci-lint v2.12.2)
 build:
 	golangci-lint custom
 
