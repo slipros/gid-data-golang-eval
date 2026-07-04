@@ -48,6 +48,13 @@
 //   - /client/** does not import service layers (including all of /domain) —
 //     the client has its own types, conversion lives at the consumer.
 //
+// GID-241 (repository-wiring-only) — an allow-list, unlike the deny rules
+// above: /dal/repository/** may be imported ONLY by the composition root
+// (/app/**) and by the repository layer itself (its convert/ and build/
+// subpackages). Every other importer — including any future folder the deny
+// matrix does not know about — is a violation: a repository is consumed by
+// services through an interface (GID-132/134) and constructed in app.
+//
 // Bans apply only within a single module. The module boundary is resolved in
 // priority order:
 //  1. the /internal/ segment (canonical layout) — the module root is the
@@ -80,6 +87,9 @@ import (
 
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 )
+
+// repoWiringID — GID-241 (repository-wiring-only), the allow-list rule.
+const repoWiringID = "GID-241"
 
 // Rule order matters: the first matching rule is reported for an import
 // (specific rules before general ones), so duplicate diagnostics are not produced.
@@ -268,13 +278,20 @@ type RuleSetting struct {
 // NewAnalyzer builds the analyzer for import direction between layers.
 func NewAnalyzer(s Settings) *analysis.Analyzer {
 	rules := effectiveRules(s)
+	checkRepo := true
+	for _, id := range s.Disable {
+		if id == repoWiringID {
+			checkRepo = false
+		}
+	}
 	return &analysis.Analyzer{
 		Name: "gidlayerimports",
-		Doc: "GID-132/GID-170/GID-172/GID-224…229: dependency direction " +
+		Doc: "GID-132/GID-170/GID-172/GID-224…229/GID-241: dependency direction " +
 			"between layers (isolation matrix: dal/domain/server/schedule/" +
-			"validate/event/client/metric/app)",
+			"validate/event/job/client/metric/app; repository imports are " +
+			"allow-listed to app and the repository layer itself)",
 		Run: func(pass *analysis.Pass) (any, error) {
-			return run(pass, rules)
+			return run(pass, rules, checkRepo)
 		},
 	}
 }
@@ -334,7 +351,7 @@ func segments(path string) []string {
 	return out
 }
 
-func run(pass *analysis.Pass, rules []layerRule) (any, error) {
+func run(pass *analysis.Pass, rules []layerRule, checkRepo bool) (any, error) {
 	pkgPath := pass.Pkg.Path()
 	var scoped []layerRule
 	//nolint:gidallptr // the plugin does not depend on the internal gdhelper library
@@ -343,19 +360,19 @@ func run(pass *analysis.Pass, rules []layerRule) (any, error) {
 			scoped = append(scoped, rule)
 		}
 	}
-	if len(scoped) == 0 {
+	if len(scoped) == 0 && !checkRepo {
 		return nil, nil
 	}
 	for _, file := range pass.Files {
 		if ast.IsGenerated(file) {
 			continue
 		}
-		checkImports(pass, scoped, file)
+		checkImports(pass, scoped, file, checkRepo)
 	}
 	return nil, nil
 }
 
-func checkImports(pass *analysis.Pass, rules []layerRule, file *ast.File) {
+func checkImports(pass *analysis.Pass, rules []layerRule, file *ast.File, checkRepo bool) {
 	for _, imp := range file.Imports {
 		path, err := strconv.Unquote(imp.Path.Value)
 		if err != nil {
@@ -364,13 +381,19 @@ func checkImports(pass *analysis.Pass, rules []layerRule, file *ast.File) {
 		if !sameModule(pass.Pkg.Path(), path) {
 			continue
 		}
-		reportFirstMatch(pass, rules, imp, path)
+		if reportFirstMatch(pass, rules, imp, path) {
+			continue // one diagnostic per import: the deny matrix wins
+		}
+		if checkRepo {
+			reportRepositoryImport(pass, imp, path)
+		}
 	}
 }
 
 // reportFirstMatch reports the first matching rule: specific rules come
 // before general ones, and a single import does not get duplicate diagnostics.
-func reportFirstMatch(pass *analysis.Pass, rules []layerRule, imp *ast.ImportSpec, path string) {
+// It returns true when a diagnostic was emitted.
+func reportFirstMatch(pass *analysis.Pass, rules []layerRule, imp *ast.ImportSpec, path string) bool {
 	//nolint:gidallptr // the plugin does not depend on the internal gdhelper library
 	for _, rule := range rules {
 		for _, banned := range rule.banned {
@@ -380,9 +403,29 @@ func reportFirstMatch(pass *analysis.Pass, rules []layerRule, imp *ast.ImportSpe
 			pass.Reportf(imp.Pos(),
 				"%s: package %q must not import %q. Fix: %s",
 				rule.id, pass.Pkg.Path(), path, rule.reason)
-			return
+			return true
 		}
 	}
+	return false
+}
+
+// reportRepositoryImport implements GID-241: an import of /dal/repository/**
+// is allowed only from the composition root (/app/**) and from the repository
+// layer itself. Unlike the deny matrix, the allow-list needs no knowledge of
+// the importer's folder — a new layer folder is banned by default.
+func reportRepositoryImport(pass *analysis.Pass, imp *ast.ImportSpec, path string) {
+	if !pathseg.Contains(path, "dal", "repository") {
+		return
+	}
+	pkgPath := pass.Pkg.Path()
+	if pathseg.Contains(pkgPath, "app") || pathseg.Contains(pkgPath, "dal", "repository") {
+		return
+	}
+	pass.Reportf(imp.Pos(),
+		"%s: package %q must not import %q — a repository is wired in app and consumed by services "+
+			"through an interface (GID-132/134). Fix: declare an <Entity>Repository interface next to "+
+			"the consumer and inject the concrete repository in the composition root",
+		repoWiringID, pkgPath, path)
 }
 
 // sameModule tells whether an import belongs to the same module as the

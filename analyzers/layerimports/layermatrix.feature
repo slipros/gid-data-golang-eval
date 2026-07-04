@@ -170,3 +170,25 @@ Feature: GID-224…229 — the layer-isolation matrix
 #  [x] Case classes covered: positive, negative, boundary, non-applicability
 #  [x] testdata with // want for analysistest
 #  [x] Rule enabled in .golangci.yml
+
+  # --- GID-241: repository imports are allow-listed (requirement 2026-07-04) ---
+
+  Scenario: an unknown new folder imports the repository — violation
+    Given package "svc/cron" (not present in the deny matrix) imports "svc/dal/repository"
+    When the analyzer checks the file
+    Then a "GID-241" diagnostic tells to declare a consumer-side interface and wire the repository in app
+
+  Scenario: the composition root imports the repository — ok
+    Given package "svc/app" imports "svc/dal/repository"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+
+  Scenario: the repository layer imports its own subpackage — ok
+    Given package "svc/dal/repository" imports "svc/dal/repository/build"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+
+  Scenario: a deny-matrix scope imports the repository — the matrix wins, one diagnostic
+    Given package "svc/domain/service" imports "svc/dal/repository"
+    When the analyzer checks the file
+    Then only a "GID-132" diagnostic is reported (no GID-241 duplicate)
