@@ -1,14 +1,17 @@
 // Package pkgstutter implements rule GID-193 (no-pkg-stutter): an exported
-// top-level symbol (type, function, var, const) must not start with the
+// top-level symbol (type, function, var, const) must not start or end with the
 // package name. From outside such a symbol reads with a stutter:
-// widget.WidgetOptions, widget.WidgetService — the package name already gives
-// context, the prefix is redundant. widget.Options, widget.Service suffice.
+// widget.WidgetOptions, repository.SnapshotRepository — the package name
+// already gives context, repeating it is redundant. widget.Options and
+// repository.Snapshot (the entity name) suffice.
 //
 // Comparison is done at the CamelCase word boundary: the package name must
-// match the symbol's first word entirely. Package widget matches
-// WidgetOptions/WidgetCount, but package log does NOT match Logger (Logger
-// starts with the word "Logger", not "Log"), and package conv does NOT match
-// Convert (the word is "Convert", not "Conv").
+// match the symbol's first or last word entirely. Package widget matches
+// WidgetOptions/WidgetCount, package repository matches SnapshotRepository,
+// but package log does NOT match Logger (Logger starts with the word
+// "Logger", not "Log"), and package story does NOT match History (the tail
+// "story" is not a separate word). An exact match (widget.Widget) is allowed —
+// it reads like time.Time.
 //
 // Exceptions (not matched):
 //   - New* constructors — our GID-104 requires New<Entity>, the conflict is resolved in its favor;
@@ -33,7 +36,7 @@ const ruleID = "GID-193"
 // Analyzer — rule GID-193: an exported symbol does not repeat the package name (widget.WidgetOptions).
 var Analyzer = &analysis.Analyzer{
 	Name: "gidpkgstutter",
-	Doc:  ruleID + ": an exported symbol must not repeat the package name; from outside it stutters (widget.WidgetOptions). Fix: drop the prefix",
+	Doc:  ruleID + ": an exported symbol must not repeat the package name as its first or last word; from outside it stutters (widget.WidgetOptions, repository.SnapshotRepository). Fix: drop the repetition",
 	Run:  run,
 }
 
@@ -83,19 +86,25 @@ func checkGenDecl(pass *analysis.Pass, pkgName string, gd *ast.GenDecl) {
 	}
 }
 
-// report emits a diagnostic if name is exported and its first CamelCase word
-// matches the package name (case-insensitively).
+// report emits a diagnostic if name is exported and its first or last
+// CamelCase word matches the package name (case-insensitively).
 func report(pass *analysis.Pass, pkgName, name string, pos token.Pos) {
 	if !ast.IsExported(name) {
 		return
 	}
-	if !stutters(pkgName, name) {
+	if stutters(pkgName, name) {
+		suffix := name[len(pkgName):]
+		pass.Reportf(pos,
+			"%s: %s repeats the package name %s. Fix: from outside it is %s.%s; drop the prefix",
+			ruleID, name, pkgName, pkgName, suffix)
 		return
 	}
-	suffix := name[len(pkgName):]
-	pass.Reportf(pos,
-		"%s: %s repeats the package name %s. Fix: from outside it is %s.%s; drop the prefix",
-		ruleID, name, pkgName, pkgName, suffix)
+	if stuttersSuffix(pkgName, name) {
+		base := name[:len(name)-len(pkgName)]
+		pass.Reportf(pos,
+			"%s: %s repeats the package name %s. Fix: from outside it is %s.%s; drop the %q suffix and name the symbol after the entity",
+			ruleID, name, pkgName, pkgName, base, name[len(name)-len(pkgName):])
+	}
 }
 
 // stutters reports whether the symbol starts with the package name as a
@@ -114,4 +123,20 @@ func stutters(pkgName, name string) bool {
 	// letter. If lowercase, the package name is only a prefix of a word.
 	next := rune(name[len(pkgName)])
 	return unicode.IsUpper(next)
+}
+
+// stuttersSuffix reports whether the symbol ends with the package name as a
+// separate CamelCase word (repository.SnapshotRepository). The tail must begin
+// with a capital letter — otherwise the package name is just the end of
+// another word (story → History). An exact match is allowed, as with the
+// prefix: widget.Widget reads like time.Time.
+func stuttersSuffix(pkgName, name string) bool {
+	if len(name) <= len(pkgName) {
+		return false // an exact match or shorter — allowed
+	}
+	tail := name[len(name)-len(pkgName):]
+	if !strings.EqualFold(tail, pkgName) {
+		return false
+	}
+	return unicode.IsUpper(rune(tail[0]))
 }

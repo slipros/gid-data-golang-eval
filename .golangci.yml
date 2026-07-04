@@ -680,7 +680,7 @@ linters:
         original-url: github.com/slipros/gid-data-golang-eval
       gidpkgstutter:
         type: module
-        description: 'GID-193: an exported symbol does not repeat the package name (except New*)'
+        description: 'GID-193: an exported symbol does not repeat the package name as prefix or suffix (except New* and the exact match)'
         original-url: github.com/slipros/gid-data-golang-eval
       gidentitymethod:
         type: module

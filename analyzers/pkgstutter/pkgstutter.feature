@@ -90,3 +90,25 @@ Feature: GID-193 — ban on the "package.SymbolWithPackageName" stutter
 #  [x] Case classes covered: positive, negative, boundary, non-applicability
 #  [x] testdata with // want for analysistest
 #  [ ] Rule enabled in .golangci.yml
+
+  # --- Suffix stutter (requirement 2026-07-04) ---
+
+  Scenario: type ends with the package name — violation
+    Given package "repository" declares "type SnapshotRepository struct{}"
+    When the analyzer checks the file
+    Then a "GID-193" diagnostic suggests naming the symbol after the entity ("repository.Snapshot")
+
+  Scenario: dependency interface with another role's suffix — ok
+    Given package "service" declares "type SnapshotRepository interface{...}"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+
+  Scenario: package name is only the tail of a word — ok
+    Given package "story" declares "type History struct{}"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+
+  Scenario: exact match of the package name — ok
+    Given package "repository" declares "type Repository struct{}"
+    When the analyzer checks the file
+    Then no diagnostic is reported (reads like time.Time)

@@ -9,5 +9,5 @@ import (
 )
 
 func TestAnalyzer(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), pkgstutter.Analyzer, "widget", "log", "mainpkg")
+	analysistest.Run(t, analysistest.TestData(), pkgstutter.Analyzer, "widget", "log", "mainpkg", "repository", "service", "story")
 }

@@ -172,7 +172,7 @@ Statuses: ✅ done · 🛠 in progress · 🔜 todo · ⛔ not portable (stays o
 | GID-190 | error-last | `error` is the last return parameter; concrete error types in results are banned (the typed-nil trap) — the `error` interface is returned | google: errors | ✅ | ✅ |
 | GID-191 | subtest-naming | Subtest names in `t.Run` — no spaces or slashes (literals) | google: subtest names | ✅ | ✅ |
 | GID-192 | flag-in-main | `flag.*`/flag registration only in the `main` package; the flag name is snake_case, the variable is camelCase | google: flags | ✅ | ✅ |
-| GID-193 | no-pkg-stutter | An exported symbol does not repeat the package name (`widget.NewWidget`, `widget.WidgetOptions`). **Exception**: `New<Entity>` constructors (GID-104 takes precedence) | google: repetition | ✅ | ✅ |
+| GID-193 | no-pkg-stutter | An exported symbol does not repeat the package name as its first **or last** CamelCase word (`widget.WidgetOptions`, `repository.SnapshotRepository` — the struct is named after the entity). An exact match (`widget.Widget`) is allowed — it reads like `time.Time`. **Exception**: `New<Entity>` constructors (GID-104 takes precedence) | google: repetition; repository.md + requirement 2026-07-04 | ✅ | ✅ |
 
 Dropped as contradicting our styleguide: the `_` prefix for private globals (Uber), enum start at one (we use string enums — GID-123), `var _ Iface` compliance assertions (judgment), go.uber.org/atomic.
 
