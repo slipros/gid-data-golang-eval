@@ -26,7 +26,12 @@ the linter does that deterministically.
 - **[RULES.md](RULES.md)** — rule registry with statuses; every rule must have an eval
 - `analyzers/` — go/analysis analyzers (one rule or a group of related GID-IDs = one linter)
 - `analyzers/patterns/` — simple AST pattern rules (GID-001…008), layer 1
-- `.golangci.yml` — reference config with all linters and settings examples;
+- `.golangci.yml` — this repo's own config (self-lint): all linters plus
+  repo-specific settings (its own `giddirtree` tree, testdata exclusions);
+- `gid-golangci.yml` — **distributable config for services**: the same rule
+  set with the canonical gid.team `internal/` tree (app, client, dal, domain,
+  event, job, metric, schedule, server, validate) and no repo-specific
+  exclusions. Copy it next to the custom-gcl binary or into the service repo;
   based on the production config of consent-api (UDMP/backend-go) with GID layers on top
 
 ## Quick start
@@ -78,7 +83,7 @@ Build: `golangci-lint custom` → `./bin/custom-gcl`.
 
 ### Next (for both options)
 
-1. Start from the reference [.golangci.yml](.golangci.yml) — enable the `gid*`
+1. Start from the distributable [gid-golangci.yml](gid-golangci.yml) — enable the `gid*`
    linters you need, configure exceptions (`settings.exclude`, `settings.tree`,
    `settings.tags`, …); drop the repo-specific bits (exclusions for `testdata`,
    `giddirtree.settings.tree`).
