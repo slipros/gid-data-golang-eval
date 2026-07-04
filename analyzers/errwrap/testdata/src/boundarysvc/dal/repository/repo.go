@@ -28,24 +28,24 @@ func (r *Repo) concreteHelper() error { return nil }
 
 func (r *Repo) badPassThrough() error {
 	err := r.conn.call()
-	return err // want `GID-176: an error from the app boundary must be wrapped with errors\.Wrap\. Fix: collect stack and context`
+	return err // want `GID-176: an error from an external call must be wrapped with errors\.Wrap\. Fix: collect stack and context`
 }
 
 func (r *Repo) badPassThroughMulti() (int, error) {
 	n, err := r.conn.callRow()
-	return n, err // want `GID-176: an error from the app boundary must be wrapped with errors\.Wrap\. Fix: collect stack and context`
+	return n, err // want `GID-176: an error from an external call must be wrapped with errors\.Wrap\. Fix: collect stack and context`
 }
 
 // --- Positive: WithStack/WithMessage add no context ---
 
 func (r *Repo) badWithStack() error {
 	err := r.conn.call()
-	return errors.WithStack(err) // want `GID-176: an error from the app boundary must be wrapped with errors\.Wrap \(WithStack adds no context\)`
+	return errors.WithStack(err) // want `GID-176: an error from an external call must be wrapped with errors\.Wrap \(WithStack adds no context\)`
 }
 
 func (r *Repo) badWithMessage() error {
 	err := r.conn.call()
-	return errors.WithMessage(err, "ctx") // want `GID-176: an error from the app boundary must be wrapped with errors\.Wrap \(WithMessage adds no context\)`
+	return errors.WithMessage(err, "ctx") // want `GID-176: an error from an external call must be wrapped with errors\.Wrap \(WithMessage adds no context\)`
 }
 
 // --- Negative: the error from an interface-method call is wrapped with Wrap ---

@@ -14,3 +14,5 @@ func Wrapf(err error, format string, args ...any) error { return err }
 func WithStack(err error) error { return err }
 
 func WithMessage(err error, message string) error { return err }
+
+func WithMessagef(err error, format string, args ...any) error { return err }

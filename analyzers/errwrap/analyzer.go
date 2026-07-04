@@ -1,18 +1,31 @@
 // Package errwrap implements the per-layer error handling rules:
 //
-//   - GID-176 (giderrwrap): errors from outside are wrapped with errors.Wrap.
-//     At the application boundary (/client/** and /dal/repository) an error
-//     from an external call is neither passed through as is (return err) nor
-//     enriched without context (WithStack/WithMessage) — Wrap is required:
-//     it collects the stack AND adds the mandatory context. The boundary is an
-//     interface-method call (an injected external dependency, e.g.
-//     c.conn.Select(...)); a call to a local package function (a pure SQL
-//     builder build.Select(...), a concrete-type method) is not the boundary
-//     and may be enriched with WithMessage. Inside the
-//     application (/domain/**), Wrap is forbidden for an already received
-//     non-static error (the stack was collected at the boundary) — context is
-//     added with WithMessage. Returning a static error (package-level var, a
-//     named error type) at the boundary is not a GID-176 violation (that is GID-177 territory).
+//   - GID-176 (giderrwrap): every external call — a third-party library, a DB
+//     connection, an HTTP/Kafka client, the standard library — has its error
+//     wrapped with errors.Wrap, in ANY layer. Two call shapes count as an
+//     external call:
+//     (a) a direct call to a function/method whose declaring package lies
+//     outside the current module (stdlib counts as external too) — this is
+//     checked everywhere, regardless of layer;
+//     (b) an interface-method call (an injected external dependency, e.g.
+//     c.conn.Select(...)) inside the scoped boundary layers — /client/**,
+//     /dal/repository, /event/** (a Kafka producer/consumer talks to an
+//     external system). A call to a local package function (a pure SQL
+//     builder build.Select(...)) or a concrete-type method that is not (a) is
+//     not a boundary call and may be enriched with WithMessage or passed
+//     through as is.
+//     An external error is neither passed through as is (return err) nor
+//     enriched without context (WithStack/WithMessage) — Wrap is required: it
+//     collects the stack AND adds the mandatory context. To map it to a
+//     sentinel, reassign then wrap once (the sentinel-then-Wrap pattern stays
+//     legal). Inside the application (/domain/**), Wrap is forbidden for a
+//     same-module non-static error (a same-module call result or a function
+//     parameter) — its stack, if any, was already collected upstream; context
+//     is added with WithMessage. Wrap of an external-call error inside
+//     /domain/** is required, not forbidden — the domain may be the first
+//     place that calls out (e.g. a DB connection reached directly from a
+//     service). Returning a static error (package-level var, a named error
+//     type) is not a GID-176 violation (that is GID-177 territory).
 //
 //   - GID-177 (gidstaticerr): static errors are wrapped with WithStack.
 //     Returning a static error (a package-level error var ErrSome or a
@@ -20,6 +33,11 @@
 //     without a wrapper lacks a stack — errors.WithStack is required (or
 //     errors.Wrap if context is needed). A wrapped error (WithStack/Wrap) is fine.
 //     The var declarations themselves are not touched (they are not returns).
+//
+//   - GID-237 (gidwithmessage): in /domain/service, errors.WithMessage and
+//     errors.WithMessagef are banned — a service converts the error and wraps
+//     it with errors.WithStack; adding a message to an incoming error belongs
+//     to /domain/usecase.
 //
 // pkg/errors is detected by the import path github.com/pkg/errors.
 // Generated code (ast.IsGenerated) is skipped.
@@ -29,6 +47,7 @@ import (
 	"go/ast"
 	"go/token"
 	"go/types"
+	"strings"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/types/typeutil"
@@ -38,14 +57,37 @@ import (
 )
 
 const (
-	ruleIDWrap   = "GID-176"
-	ruleIDStatic = "GID-177"
+	ruleIDWrap           = "GID-176"
+	ruleIDStatic         = "GID-177"
+	ruleIDServiceMessage = "GID-237"
+
+	pkgErrorsPath = "github.com/pkg/errors"
 )
 
-// boundaryScopes — boundary layers for GID-176 (part 1): an external call.
+// boundaryScopes — layers where an interface-method call (an injected
+// external dependency) counts as a GID-176 boundary call: /client/**,
+// /dal/repository, /event/** (a Kafka producer/consumer talks to an external
+// system). A direct call into a package outside the current module (see
+// isExternalCall) is a boundary call everywhere, regardless of this list.
+const (
+	// errSourceExternal — the value comes from a direct call to a function/method
+	// whose declaring package lies outside the current module (mechanism a):
+	// a boundary call in ANY layer.
+	errSourceExternal errSource = iota + 1
+	// errSourceInterface — the value comes from an interface-method call on an
+	// injected dependency (mechanism b): a boundary call only inside boundaryScopes.
+	errSourceInterface
+)
+
 var boundaryScopes = [][]string{
 	{"client"},
 	{"dal", "repository"},
+	{"event"},
+}
+
+// serviceMessageScopes — layers where GID-237 bans errors.WithMessage/WithMessagef.
+var serviceMessageScopes = [][]string{
+	{"domain", "service"},
 }
 
 // WrapAnalyzer — GID-176 with default settings (no exclusions).
@@ -54,11 +96,15 @@ var WrapAnalyzer = NewWrapAnalyzer(Settings{})
 // StaticAnalyzer — GID-177 with default settings (no exclusions).
 var StaticAnalyzer = NewStaticAnalyzer(Settings{})
 
+// ServiceMessageAnalyzer — GID-237 with default settings (no exclusions).
+var ServiceMessageAnalyzer = NewServiceMessageAnalyzer(Settings{})
+
 // Settings — linter settings from .golangci.yml.
 type Settings struct {
 	// Exclude — names of constructor/error exclusions that collect
-	// the stack themselves (for example, gderror.NewUnhandledValueError):
-	// "Function" or "Package.Function".
+	// the stack themselves (for example, gderror.NewUnhandledValueError),
+	// or of methods exempted from a per-function rule (GID-237): "Function"
+	// / "Method" or "Package.Function" / "Type.Method".
 	Exclude []string `json:"exclude"`
 }
 
@@ -66,8 +112,8 @@ type Settings struct {
 func NewWrapAnalyzer(s Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name: "giderrwrap",
-		Doc: ruleIDWrap + ": errors from outside are wrapped with errors.Wrap; " +
-			"inside the app, wrap a non-static error with WithMessage, not Wrap",
+		Doc: ruleIDWrap + ": every external call's error is wrapped with errors.Wrap, in any layer; " +
+			"inside /domain/**, wrap a same-module non-static error with WithMessage, not Wrap",
 		Run: runWrap,
 	}
 }
@@ -83,15 +129,27 @@ func NewStaticAnalyzer(s Settings) *analysis.Analyzer {
 	}
 }
 
+// NewServiceMessageAnalyzer builds the GID-237 analyzer.
+func NewServiceMessageAnalyzer(s Settings) *analysis.Analyzer {
+	return &analysis.Analyzer{
+		Name: "gidwithmessage",
+		Doc: ruleIDServiceMessage + ": errors.WithMessage is not used in a service — convert the error " +
+			"and wrap with errors.WithStack; WithMessage belongs to usecase",
+		Run: func(pass *analysis.Pass) (any, error) {
+			return runServiceMessage(pass, s)
+		},
+	}
+}
+
 // ===== GID-176 =====
+
+// errSource — why a local error variable counts toward the GID-176 boundary.
+type errSource int
 
 func runWrap(pass *analysis.Pass) (any, error) {
 	pkgPath := pass.Pkg.Path()
 	boundary := inBoundary(pkgPath)
 	domain := pathseg.Contains(pkgPath, "domain")
-	if !boundary && !domain {
-		return nil, nil
-	}
 	for _, file := range pass.Files {
 		if ast.IsGenerated(file) {
 			continue
@@ -101,21 +159,24 @@ func runWrap(pass *analysis.Pass) (any, error) {
 			if !ok || fn.Body == nil {
 				continue
 			}
-			if boundary && funcReturnsError(pass, fn) {
-				checkBoundaryPassThrough(pass, fn)
+			if !funcReturnsError(pass, fn) {
+				continue
 			}
-		}
-		if domain {
-			checkDomainWrap(pass, file)
+			callErrs := classifyCallErrors(pass, fn, boundary)
+			checkMustWrap(pass, fn, callErrs)
+			if domain {
+				checkDomainWrapBan(pass, fn, callErrs)
+			}
 		}
 	}
 	return nil, nil
 }
 
-// checkBoundaryPassThrough — GID-176 part 1: at the boundary a non-static
-// error from a call must not be passed through without Wrap.
-func checkBoundaryPassThrough(pass *analysis.Pass, fn *ast.FuncDecl) {
-	callErrs := localCallErrors(pass, fn)
+// checkMustWrap — GID-176: a tracked external-call error (see classifyCallErrors)
+// must not be passed through or enriched without a stack (WithStack/WithMessage);
+// only errors.Wrap collects the stack and adds context. Applies in every layer:
+// classifyCallErrors decides per-error whether it is tracked at all.
+func checkMustWrap(pass *analysis.Pass, fn *ast.FuncDecl, callErrs map[types.Object]errSource) {
 	ast.Inspect(fn.Body, func(n ast.Node) bool {
 		ret, ok := n.(*ast.ReturnStmt)
 		if !ok {
@@ -127,9 +188,9 @@ func checkBoundaryPassThrough(pass *analysis.Pass, fn *ast.FuncDecl) {
 			if call, ok := expr.(*ast.CallExpr); ok {
 				name := pkgErrorsCallName(pass, call)
 				if name == "WithStack" || name == "WithMessage" {
-					if len(call.Args) > 0 && isLocalCallErr(pass, call.Args[0], callErrs) {
+					if len(call.Args) > 0 && isTrackedCallErr(pass, call.Args[0], callErrs) {
 						pass.Reportf(call.Pos(),
-							"%s: an error from the app boundary must be wrapped with errors.Wrap (%s adds no context). "+
+							"%s: an error from an external call must be wrapped with errors.Wrap (%s adds no context). "+
 								"Fix: collect stack and context; to map a sentinel, reassign then wrap once: "+
 								"if IsNoResult(err) { err = ErrNoResult }; return errors.Wrap(err, ...)",
 							ruleIDWrap, name)
@@ -139,9 +200,9 @@ func checkBoundaryPassThrough(pass *analysis.Pass, fn *ast.FuncDecl) {
 				// errors.Wrap / any other call — fine (Wrap is already correct).
 				continue
 			}
-			if isLocalCallErr(pass, expr, callErrs) {
+			if isTrackedCallErr(pass, expr, callErrs) {
 				pass.Reportf(expr.Pos(),
-					"%s: an error from the app boundary must be wrapped with errors.Wrap. "+
+					"%s: an error from an external call must be wrapped with errors.Wrap. "+
 						"Fix: collect stack and context; to map a sentinel, reassign then wrap once: "+
 						"if IsNoResult(err) { err = ErrNoResult }; return errors.Wrap(err, ...)",
 					ruleIDWrap)
@@ -151,9 +212,12 @@ func checkBoundaryPassThrough(pass *analysis.Pass, fn *ast.FuncDecl) {
 	})
 }
 
-// checkDomainWrap — GID-176 part 2: in /domain/** wrapping a non-static error with Wrap is forbidden.
-func checkDomainWrap(pass *analysis.Pass, file *ast.File) {
-	ast.Inspect(file, func(n ast.Node) bool {
+// checkDomainWrapBan — GID-176 in /domain/**: wrapping a same-module non-static
+// error with Wrap is forbidden (its stack, if any, was already collected
+// upstream) — WithMessage is used instead. Wrapping an external-call error
+// (see classifyCallErrors) is required, not forbidden, so it is not reported here.
+func checkDomainWrapBan(pass *analysis.Pass, fn *ast.FuncDecl, callErrs map[types.Object]errSource) {
+	ast.Inspect(fn.Body, func(n ast.Node) bool {
 		call, ok := n.(*ast.CallExpr)
 		if !ok {
 			return true
@@ -164,16 +228,23 @@ func checkDomainWrap(pass *analysis.Pass, file *ast.File) {
 		if len(call.Args) == 0 {
 			return true
 		}
-		// A static error (model.ErrX, &BigError{}) — Wrap is allowed.
-		if isStaticError(pass, call.Args[0]) {
+		arg := call.Args[0]
+		// A static error (model.ErrX, &BigError{}) — Wrap is required, it collects the stack first.
+		if isStaticError(pass, arg) {
 			return true
 		}
-		// A non-static one (a local variable from a call, etc.) — forbidden.
-		if isErrorExpr(pass, call.Args[0]) {
-			pass.Reportf(call.Pos(),
-				"%s: the stack is already collected at the boundary. Fix: use errors.WithMessage instead of errors.Wrap for an incoming error",
-				ruleIDWrap)
+		if !isErrorExpr(pass, arg) {
+			return true
 		}
+		// An external-call error — Wrap is required here too (v2), not forbidden.
+		if callErrs[objectOfErrExpr(pass, arg)] == errSourceExternal {
+			return true
+		}
+		// A same-module error (a same-module call result, a parameter) — forbidden.
+		pass.Reportf(call.Pos(),
+			"%s: the stack is already collected upstream for a same-module error. "+
+				"Fix: use errors.WithMessage instead of errors.Wrap for an incoming error",
+			ruleIDWrap)
 		return true
 	})
 }
@@ -225,6 +296,71 @@ func checkStaticReturn(pass *analysis.Pass, s Settings, expr ast.Expr) {
 	}
 }
 
+// ===== GID-237 =====
+
+func runServiceMessage(pass *analysis.Pass, s Settings) (any, error) {
+	if !inServiceMessageScope(pass.Pkg.Path()) {
+		return nil, nil
+	}
+	for _, file := range pass.Files {
+		if ast.IsGenerated(file) {
+			continue
+		}
+		for _, decl := range file.Decls {
+			fn, ok := decl.(*ast.FuncDecl)
+			if !ok || fn.Body == nil {
+				continue
+			}
+			if exclude.Match(s.Exclude, recvTypeName(fn), fn.Name.Name) {
+				continue
+			}
+			checkNoServiceMessage(pass, fn)
+		}
+	}
+	return nil, nil
+}
+
+func checkNoServiceMessage(pass *analysis.Pass, fn *ast.FuncDecl) {
+	ast.Inspect(fn.Body, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		name := pkgErrorsCallName(pass, call)
+		if name == "WithMessage" || name == "WithMessagef" {
+			pass.Reportf(call.Pos(),
+				"%s: errors.WithMessage is not used in a service — convert the error and wrap with errors.WithStack; "+
+					"WithMessage belongs to usecase",
+				ruleIDServiceMessage)
+		}
+		return true
+	})
+}
+
+func inServiceMessageScope(pkgPath string) bool {
+	for _, scope := range serviceMessageScopes {
+		if pathseg.Contains(pkgPath, scope...) {
+			return true
+		}
+	}
+	return false
+}
+
+// recvTypeName returns the name of fn's receiver type ("" for a free function).
+func recvTypeName(fn *ast.FuncDecl) string {
+	if fn.Recv == nil || len(fn.Recv.List) == 0 {
+		return ""
+	}
+	t := fn.Recv.List[0].Type
+	if star, ok := t.(*ast.StarExpr); ok {
+		t = star.X
+	}
+	if ident, ok := t.(*ast.Ident); ok {
+		return ident.Name
+	}
+	return ""
+}
+
 // ===== shared helpers =====
 
 func inBoundary(pkgPath string) bool {
@@ -239,7 +375,6 @@ func inBoundary(pkgPath string) bool {
 // pkgErrorsCallName returns the name of the github.com/pkg/errors function
 // if call invokes it; otherwise "".
 func pkgErrorsCallName(pass *analysis.Pass, call *ast.CallExpr) string {
-	const pkgErrorsPath = "github.com/pkg/errors"
 	fn := typeutil.Callee(pass.TypesInfo, call)
 	f, ok := fn.(*types.Func)
 	if !ok || f.Pkg() == nil {
@@ -283,13 +418,20 @@ func funcReturnsError(pass *analysis.Pass, fn *ast.FuncDecl) bool {
 	return false
 }
 
-// localCallErrors collects the function's local variables whose value comes
-// from an interface-method call and implements error (err := c.conn.f();
-// a, err := c.conn.f()). The application boundary is an interface-method call
-// on an injected external dependency; an error from a local package function
-// (a pure SQL builder, etc.) or a concrete-type method is not a boundary error.
-func localCallErrors(pass *analysis.Pass, fn *ast.FuncDecl) map[types.Object]struct{} {
-	out := map[types.Object]struct{}{}
+// classifyCallErrors collects the function's local variables whose value
+// implements error and comes from a call that counts as a GID-176 boundary
+// call, tagged with why:
+//   - errSourceExternal — a direct call to a function/method whose declaring
+//     package lies outside the current module (err := json.Unmarshal(...));
+//     tracked in every layer;
+//   - errSourceInterface — an interface-method call on an injected dependency
+//     (err := c.conn.Select(...)); tracked only when boundary is true (the
+//     current package is inside boundaryScopes).
+//
+// A call to a local same-module package function (a pure SQL builder, etc.)
+// or a method on a concrete same-module type is neither and is not tracked.
+func classifyCallErrors(pass *analysis.Pass, fn *ast.FuncDecl, boundary bool) map[types.Object]errSource {
+	out := map[types.Object]errSource{}
 	ast.Inspect(fn.Body, func(n ast.Node) bool {
 		assign, ok := n.(*ast.AssignStmt)
 		if !ok {
@@ -303,8 +445,13 @@ func localCallErrors(pass *analysis.Pass, fn *ast.FuncDecl) map[types.Object]str
 		if !ok {
 			return true
 		}
-		// Only an interface-method call is the boundary.
-		if !isInterfaceMethodCall(pass, call) {
+		var src errSource
+		switch {
+		case isExternalCall(pass, call):
+			src = errSourceExternal
+		case boundary && isInterfaceMethodCall(pass, call):
+			src = errSourceInterface
+		default:
 			return true
 		}
 		for _, lhs := range assign.Lhs {
@@ -316,11 +463,54 @@ func localCallErrors(pass *analysis.Pass, fn *ast.FuncDecl) map[types.Object]str
 			if obj == nil || !isErrorType(obj.Type()) {
 				continue
 			}
-			out[obj] = struct{}{}
+			out[obj] = src
 		}
 		return true
 	})
 	return out
+}
+
+// isExternalCall reports whether call invokes a function or method whose
+// declaring package lies outside the current module — a direct call into a
+// third-party library or the standard library (stdlib counts as external
+// too). github.com/pkg/errors itself is excluded: calling New/Wrap/WithStack/
+// WithMessage is the wrapping mechanism, not a dependency whose error needs
+// wrapping.
+func isExternalCall(pass *analysis.Pass, call *ast.CallExpr) bool {
+	fn := typeutil.Callee(pass.TypesInfo, call)
+	f, ok := fn.(*types.Func)
+	if !ok {
+		return false
+	}
+	calleePkgObj := f.Pkg()
+	if calleePkgObj == nil {
+		return false
+	}
+	calleePkg := calleePkgObj.Path()
+	if calleePkg == pkgErrorsPath {
+		return false
+	}
+	return !sameModule(pass.Pkg.Path(), calleePkg)
+}
+
+// sameModule reports whether calleePkgPath (the package declaring the called
+// function/method) belongs to the same module as pkgPath (the package under
+// analysis). Mirrors the module-boundary convention used across the linter
+// (analyzers/layerimports): for the canonical layout the /internal/ segment
+// marks the module boundary; otherwise (testdata, a non-standard layout) the
+// first path segment is compared. A package outside the module — including
+// the standard library — is external.
+func sameModule(pkgPath, calleePkgPath string) bool {
+	const internalSeg = "/internal/"
+	if module, _, ok := strings.Cut(pkgPath, internalSeg); ok {
+		return calleePkgPath == module || strings.HasPrefix(calleePkgPath, module+internalSeg)
+	}
+	return firstSegment(pkgPath) == firstSegment(calleePkgPath)
+}
+
+func firstSegment(path string) string {
+	seg, _, _ := strings.Cut(path, "/")
+	return seg
 }
 
 // isInterfaceMethodCall reports whether call invokes a method on a value of
@@ -349,17 +539,23 @@ func isInterfaceMethodCall(pass *analysis.Pass, call *ast.CallExpr) bool {
 	return isIface
 }
 
-func isLocalCallErr(pass *analysis.Pass, expr ast.Expr, callErrs map[types.Object]struct{}) bool {
-	id, ok := expr.(*ast.Ident)
-	if !ok {
-		return false
-	}
-	obj := objectOf(pass, id)
+func isTrackedCallErr(pass *analysis.Pass, expr ast.Expr, callErrs map[types.Object]errSource) bool {
+	obj := objectOfErrExpr(pass, expr)
 	if obj == nil {
 		return false
 	}
-	_, ok = callErrs[obj]
+	_, ok := callErrs[obj]
 	return ok
+}
+
+// objectOfErrExpr returns the object expr refers to when it is a plain
+// identifier (a local error variable); nil otherwise.
+func objectOfErrExpr(pass *analysis.Pass, expr ast.Expr) types.Object {
+	id, ok := expr.(*ast.Ident)
+	if !ok {
+		return nil
+	}
+	return objectOf(pass, id)
 }
 
 // isErrorExpr reports that the expression has type error and is not

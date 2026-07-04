@@ -17,7 +17,7 @@ type Client struct {
 
 func (c *Client) badPassThrough() error {
 	err := c.transport.do()
-	return err // want `GID-176: an error from the app boundary must be wrapped with errors\.Wrap\. Fix: collect stack and context`
+	return err // want `GID-176: an error from an external call must be wrapped with errors\.Wrap\. Fix: collect stack and context`
 }
 
 // --- Negative: wrapped with Wrap ---

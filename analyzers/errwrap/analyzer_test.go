@@ -16,9 +16,20 @@ func TestWrapAnalyzerDomain(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), errwrap.WrapAnalyzer, "domainsvc/...")
 }
 
+func TestWrapAnalyzerEvent(t *testing.T) {
+	analysistest.Run(t, analysistest.TestData(), errwrap.WrapAnalyzer, "eventsvc/...")
+}
+
 func TestStaticAnalyzer(t *testing.T) {
 	a := errwrap.NewStaticAnalyzer(errwrap.Settings{
 		Exclude: []string{"gderror.NewUnhandledValueError"},
 	})
 	analysistest.Run(t, analysistest.TestData(), a, "staticsvc/...")
+}
+
+func TestServiceMessageAnalyzer(t *testing.T) {
+	a := errwrap.NewServiceMessageAnalyzer(errwrap.Settings{
+		Exclude: []string{"Service.excludedMethod"},
+	})
+	analysistest.Run(t, analysistest.TestData(), a, "servicemsgsvc/...")
 }
