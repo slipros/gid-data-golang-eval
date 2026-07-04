@@ -156,6 +156,8 @@ linters:
     - gidfsmmap        # GID-231
     - gidprotorequired # GID-232
     - gidenumcast      # GID-233
+    - gidconvpure      # GID-235
+    - gidserviceentity # GID-236
     - giderrname       # GID-234
   disable:
     # The disabled list comes from the consent-api base (a deliberate team choice).
@@ -364,7 +366,7 @@ linters:
         original-url: github.com/slipros/gid-data-golang-eval
       gidoptsstyle:
         type: module
-        description: 'GID-152: opts by pointer in params, embedded in the struct'
+        description: 'GID-152: opts by pointer in params; stored as a named unexported field (embedding is forbidden)'
         original-url: github.com/slipros/gid-data-golang-eval
       gidlogconstruct:
         type: module
@@ -773,6 +775,25 @@ linters:
         type: module
         description: 'GID-234: errors in /domain/model are bound to their entity (ErrSnapshotNotFound), generic names (ErrNotFound) are forbidden'
         original-url: github.com/slipros/gid-data-golang-eval
+      gidconvpure:
+        type: module
+        description: 'GID-235: a convert package imports only vocabulary types (model/entity/dto/client/pb) — no business layers or side-effect libraries'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # The third-party ban list can be replaced (default: logrus):
+        # settings:
+        #   packages:
+        #     - github.com/sirupsen/logrus
+      gidserviceentity:
+        type: module
+        description: 'GID-236: a service uses only the repository of its own entity; other entities are orchestrated in usecase'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # Interface-name suffixes to check and point exceptions:
+        # settings:
+        #   suffixes:
+        #     - Repository
+        #   exclude:
+        #     - 'Snapshot.jobRepository'  # Type.Field
+        #     - 'Legacy'                  # the whole service struct
         # The banned generic-name list can be replaced; point exceptions via exclude:
         # settings:
         #   names:

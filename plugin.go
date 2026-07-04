@@ -20,6 +20,7 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/constscope"
 	"github.com/slipros/gid-data-golang-eval/analyzers/constvarorder"
 	"github.com/slipros/gid-data-golang-eval/analyzers/convnaming"
+	"github.com/slipros/gid-data-golang-eval/analyzers/convpure"
 	"github.com/slipros/gid-data-golang-eval/analyzers/createupdate"
 	"github.com/slipros/gid-data-golang-eval/analyzers/ctornaming"
 	"github.com/slipros/gid-data-golang-eval/analyzers/ctxkeys"
@@ -81,6 +82,7 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/privatefunc"
 	"github.com/slipros/gid-data-golang-eval/analyzers/protorequired"
 	"github.com/slipros/gid-data-golang-eval/analyzers/receivernaming"
+	"github.com/slipros/gid-data-golang-eval/analyzers/serviceentity"
 	"github.com/slipros/gid-data-golang-eval/analyzers/servicemodel"
 	"github.com/slipros/gid-data-golang-eval/analyzers/servicesingle"
 	"github.com/slipros/gid-data-golang-eval/analyzers/sqlnull"
@@ -101,6 +103,7 @@ func init() {
 	register.Plugin("giddomainerrors", newSingleAnalyzerPlugin(errplace.DomainAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("giddalerrors", newSingleAnalyzerPlugin(errplace.DALAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidservicesingle", newSingleAnalyzerPlugin(servicesingle.Analyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidserviceentity", newConfigurablePlugin(serviceentity.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidonlypkgerrors", newSingleAnalyzerPlugin(onlypkgerrors.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidlayerimports", newConfigurablePlugin(layerimports.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidservicemodel", newSingleAnalyzerPlugin(servicemodel.Analyzer, register.LoadModeTypesInfo))
@@ -129,6 +132,7 @@ func init() {
 	register.Plugin("gidreceiver", newSingleAnalyzerPlugin(receivernaming.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidctor", newSingleAnalyzerPlugin(ctornaming.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidconvnaming", newSingleAnalyzerPlugin(convnaming.Analyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidconvpure", newConfigurablePlugin(convpure.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidnoptr", newSingleAnalyzerPlugin(noptr.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidsqlnull", newSingleAnalyzerPlugin(sqlnull.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidenumstring", newSingleAnalyzerPlugin(enumstring.Analyzer, register.LoadModeTypesInfo))
