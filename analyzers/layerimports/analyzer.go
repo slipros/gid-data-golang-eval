@@ -47,10 +47,24 @@
 //   - /client/** does not import service layers (including all of /domain) —
 //     the client has its own types, conversion lives at the consumer.
 //
-// Bans apply only within a single module: for packages with an /internal/
-// segment the module prefix is compared, for the rest — the first path
-// segment (testdata, non-standard layout). Third-party libraries with
-// client/event/metric segments in their path are not affected.
+// Bans apply only within a single module. The module boundary is resolved in
+// priority order:
+//  1. the /internal/ segment (canonical layout) — the module root is the
+//     prefix before it;
+//  2. otherwise a /pkg/<module>/ segment (module.md: the application-module
+//     layout — pkg/<module> repeats the same layered structure as internal/,
+//     scoped to one module) — the module root is <prefix>/pkg/<module>, and
+//     the full layer matrix applies inside it exactly as inside internal/;
+//  3. otherwise the first path segment (testdata, non-standard layout).
+//
+// Because the module root differs between /internal/ and /pkg/<module>, an
+// import from pkg/<module>/** of repo/internal/** (shared entities) is,
+// by this rule, a cross-module import — sameModule is false and the matrix
+// does not ban it. This is intentional: module.md treats such access to
+// common internal/ entities as legal.
+//
+// Third-party libraries with client/event/metric segments in their path are
+// not affected.
 //
 // Per-project relaxation — settings.disable (list of GID-IDs); custom rules —
 // settings.rules (id, scope, banned, reason). Pointwise — //nolint:gidlayerimports.
@@ -363,15 +377,37 @@ func reportFirstMatch(pass *analysis.Pass, rules []layerRule, imp *ast.ImportSpe
 
 // sameModule tells whether an import belongs to the same module as the
 // importing package: layer bans do not affect third-party libraries
-// with client/event/metric segments in their path. For the canonical layout
-// the /internal/ segment serves as the module boundary; otherwise (testdata,
-// non-standard layout) the first path segment is compared.
+// with client/event/metric segments in their path. The module boundary is
+// resolved in priority order — see the package doc comment: /internal/,
+// then /pkg/<module>/, then (testdata, non-standard layout) the first path
+// segment.
 func sameModule(pkgPath, importPath string) bool {
 	const internalSeg = "/internal/"
 	if module, _, ok := strings.Cut(pkgPath, internalSeg); ok {
 		return strings.HasPrefix(importPath, module+internalSeg)
 	}
+	if module, ok := pkgModuleRoot(pkgPath); ok {
+		return importPath == module || strings.HasPrefix(importPath, module+"/")
+	}
 	return firstSegment(pkgPath) == firstSegment(importPath)
+}
+
+// pkgModuleRoot returns the "<prefix>/pkg/<module>" root for a package path
+// under the pkg/<module> application-module layout, or ok=false if pkgPath
+// has no /pkg/ segment (or nothing follows it).
+func pkgModuleRoot(pkgPath string) (string, bool) {
+	// The module.md application-module layout marker: pkg/<module>/ repeats
+	// the same layered structure (dal/, domain/, server/) as internal/.
+	const pkgSeg = "/pkg/"
+	prefix, rest, ok := strings.Cut(pkgPath, pkgSeg)
+	if !ok || rest == "" {
+		return "", false
+	}
+	module, _, _ := strings.Cut(rest, "/")
+	if module == "" {
+		return "", false
+	}
+	return prefix + pkgSeg + module, true
 }
 
 func firstSegment(path string) string {

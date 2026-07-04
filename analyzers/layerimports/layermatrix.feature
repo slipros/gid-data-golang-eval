@@ -112,6 +112,38 @@ Feature: GID-224…229 — the layer-isolation matrix
     When the analyzer checks the file
     Then no diagnostic is reported
 
+  # Module boundary: the pkg/<module> application-module layout (module.md)
+
+  Scenario: server imports domain/service inside pkg/<module> — violation
+    Given the package "repo/pkg/billing/server/handler" imports "repo/pkg/billing/domain/service"
+    When the analyzer checks the file
+    Then a "GID-224" diagnostic is reported on the import "repo/pkg/billing/domain/service"
+
+  Scenario: dal/repository imports domain/model inside pkg/<module> — violation
+    Given the package "repo/pkg/billing/dal/repository" imports "repo/pkg/billing/domain/model"
+    When the analyzer checks the file
+    Then a "GID-132" diagnostic is reported on the import "repo/pkg/billing/domain/model"
+
+  Scenario: domain/service imports dal/repository inside pkg/<module> — violation
+    Given the package "repo/pkg/billing/domain/service" imports "repo/pkg/billing/dal/repository"
+    When the analyzer checks the file
+    Then a "GID-132" diagnostic is reported on the import "repo/pkg/billing/dal/repository"
+
+  Scenario: server imports domain/model inside pkg/<module> — ok
+    Given the package "repo/pkg/billing/server/handler" imports "repo/pkg/billing/domain/model"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+
+  Scenario: pkg/<module> imports a dal entity from repo/internal/** — a different module, ok
+    Given the package "repo/pkg/billing/server/handler" imports "repo/internal/dal/entity"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+
+  Scenario: pkg/<module> imports domain/model from repo/internal/** — a different module, ok
+    Given the package "repo/pkg/billing/domain/service" imports "repo/internal/domain/model"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+
   # Third-party libraries and settings
 
   Scenario: a layer imports a third-party library with the segment "client" — ok

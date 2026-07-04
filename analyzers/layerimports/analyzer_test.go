@@ -22,6 +22,16 @@ func TestAnalyzer(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), layerimports.Analyzer, "svc/...")
 }
 
+// TestAnalyzerPkgModuleLayout — the pkg/<module> application-module layout
+// (module.md): the module boundary is <prefix>/pkg/<module>, not /internal/,
+// so the full layer matrix (GID-132, GID-224) applies inside pkg/billing
+// exactly as inside internal/, while importing shared entities from
+// repo/internal/** (a different module by this rule) stays legal and
+// unflagged (testdata/src/repo/...).
+func TestAnalyzerPkgModuleLayout(t *testing.T) {
+	analysistest.Run(t, analysistest.TestData(), layerimports.Analyzer, "repo/...")
+}
+
 // TestAnalyzerSettings — settings.disable turns off a built-in rule,
 // settings.rules adds a custom one (testdata/src/custom/...).
 func TestAnalyzerSettings(t *testing.T) {
