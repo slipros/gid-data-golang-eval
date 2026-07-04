@@ -22,9 +22,10 @@ import (
 const ruleID = "GID-158"
 
 // defaultTree — the canonical service structure (ARCHITECTURE.md).
-// Folders not listed as a key are not restricted.
+// Folders not listed as a key are not restricted. job holds background
+// jobs (optional); schedule is a transport leaf (see GID-224/225).
 var defaultTree = map[string][]string{
-	"internal":                {"app", "client", "dal", "domain", "event", "metric", "server"},
+	"internal":                {"app", "client", "dal", "domain", "event", "job", "metric", "schedule", "server"},
 	"internal/dal":            {"entity", "repository"},
 	"internal/dal/repository": {"convert", "build"},
 	"internal/domain":         {"model", "service", "usecase"},
