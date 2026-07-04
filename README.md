@@ -63,6 +63,11 @@ go install github.com/slipros/gid-data-golang-eval/cmd/custom-gcl@latest
 
 `custom-gcl` lands in `$(go env GOPATH)/bin` (add it to `PATH`). To upgrade, rerun
 `go install` with a newer tag. A service only needs its `.golangci.yml` —
+
+> **After upgrading the binary run `custom-gcl cache clean`.** The golangci-lint
+> result cache keys on the config and the checked sources, not on the gid rules
+> embedded in the binary — without cleaning it replays stale diagnostics from
+> the previous revision.
 nothing else to clone or copy.
 
 ### Option B — `golangci-lint custom` (.custom-gcl.yml)
