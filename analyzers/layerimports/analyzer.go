@@ -21,13 +21,14 @@
 //     nothing about entity/repository.
 //
 // GID-224 (transport-imports):
-//   - transport (/server, /schedule, /validate, /event) sees only /domain/model
+//   - transport (/server, /schedule, /validate, /event) and background jobs
+//     (/job) see only /domain/model
 //     (and /validate) from the service layers — concrete service/usecase are
 //     injected through interfaces at the consumer.
 //
 // GID-225 (root-and-leaves):
-//   - /internal/app (composition root) and the transport leaves (/server,
-//     /schedule, /validate) are imported by nobody.
+//   - /internal/app (composition root) and the leaves (/server, /schedule,
+//     /validate, /job) are imported by nobody.
 //
 // GID-226 (metric-standalone):
 //   - /metric does not import service layers; domain/dal receive metrics
@@ -131,7 +132,7 @@ var layerRules = []layerRule{
 		scope: []string{"domain", "model"},
 		banned: [][]string{
 			{"domain", "service"}, {"domain", "usecase"},
-			{"client"}, {"metric"}, {"server"}, {"schedule"}, {"validate"},
+			{"client"}, {"metric"}, {"server"}, {"schedule"}, {"validate"}, {"job"},
 		},
 		reason: "domain/model is the pure vocabulary of the service; layers do not flow into it",
 	},
@@ -140,7 +141,7 @@ var layerRules = []layerRule{
 		scope: []string{"metric"},
 		banned: [][]string{
 			{"dal"}, {"domain"}, {"client"}, {"event"},
-			{"server"}, {"schedule"}, {"validate"},
+			{"server"}, {"schedule"}, {"validate"}, {"job"},
 		},
 		reason: "the metric package is a standalone Prometheus aggregator; service layers are not available to it",
 	},
@@ -149,7 +150,7 @@ var layerRules = []layerRule{
 		scope: []string{"client"},
 		banned: [][]string{
 			{"domain"}, {"event"}, {"metric"},
-			{"server"}, {"schedule"}, {"validate"},
+			{"server"}, {"schedule"}, {"validate"}, {"job"},
 		},
 		reason: "the client has its own types; model <-> client DTO conversion lives at the consumer",
 	},
@@ -158,7 +159,7 @@ var layerRules = []layerRule{
 		scope: []string{"server"},
 		banned: [][]string{
 			{"dal"}, {"domain", "service"}, {"domain", "usecase"},
-			{"client"}, {"metric"}, {"event"}, {"schedule"}, {"app"},
+			{"client"}, {"metric"}, {"event"}, {"schedule"}, {"job"}, {"app"},
 		},
 		reason: "transport works only with domain/model; services and dependencies are injected as interfaces at the consumer",
 	},
@@ -167,7 +168,7 @@ var layerRules = []layerRule{
 		scope: []string{"schedule"},
 		banned: [][]string{
 			{"dal"}, {"domain", "service"}, {"domain", "usecase"},
-			{"client"}, {"metric"}, {"event"}, {"server"}, {"app"},
+			{"client"}, {"metric"}, {"event"}, {"server"}, {"job"}, {"app"},
 		},
 		reason: "transport works only with domain/model; services and dependencies are injected as interfaces at the consumer",
 	},
@@ -176,7 +177,7 @@ var layerRules = []layerRule{
 		scope: []string{"validate"},
 		banned: [][]string{
 			{"dal"}, {"domain", "service"}, {"domain", "usecase"},
-			{"client"}, {"metric"}, {"event"}, {"server"}, {"schedule"}, {"app"},
+			{"client"}, {"metric"}, {"event"}, {"server"}, {"schedule"}, {"job"}, {"app"},
 		},
 		reason: "validators work only with domain/model and request types",
 	},
@@ -185,9 +186,18 @@ var layerRules = []layerRule{
 		scope: []string{"event"},
 		banned: [][]string{
 			{"dal"}, {"domain", "service"}, {"domain", "usecase"},
-			{"client"}, {"metric"}, {"server"}, {"schedule"}, {"app"},
+			{"client"}, {"metric"}, {"server"}, {"schedule"}, {"job"}, {"app"},
 		},
 		reason: "transport works only with domain/model; services and dependencies are injected as interfaces at the consumer",
+	},
+	{
+		id:    "GID-224",
+		scope: []string{"job"},
+		banned: [][]string{
+			{"dal"}, {"domain", "service"}, {"domain", "usecase"},
+			{"client"}, {"metric"}, {"event"}, {"server"}, {"schedule"}, {"app"},
+		},
+		reason: "a background job works only with domain/model; services and dependencies are injected as interfaces at the consumer",
 	},
 	{
 		id:     "GID-226",
@@ -210,13 +220,13 @@ var layerRules = []layerRule{
 	{
 		id:     "GID-225",
 		scope:  []string{"domain"},
-		banned: [][]string{{"app"}, {"server"}, {"schedule"}, {"validate"}},
+		banned: [][]string{{"app"}, {"server"}, {"schedule"}, {"validate"}, {"job"}},
 		reason: "the composition root and transport are leaves; nobody imports them",
 	},
 	{
 		id:     "GID-225",
 		scope:  []string{"dal"},
-		banned: [][]string{{"app"}, {"server"}, {"schedule"}, {"validate"}},
+		banned: [][]string{{"app"}, {"server"}, {"schedule"}, {"validate"}, {"job"}},
 		reason: "the composition root and transport are leaves; nobody imports them",
 	},
 	{

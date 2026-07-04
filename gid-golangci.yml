@@ -353,7 +353,7 @@ linters:
         original-url: github.com/slipros/gid-data-golang-eval
       gidlayerimports:
         type: module
-        description: 'GID-132/170/172/224…229: layer isolation matrix (dal/domain/server/schedule/validate/event/client/metric/app)'
+        description: 'GID-132/170/172/224…229: layer isolation matrix (dal/domain/server/schedule/validate/event/job/client/metric/app)'
         original-url: github.com/slipros/gid-data-golang-eval
         # Relaxing the built-in matrix and adding custom rules:
         # settings:
