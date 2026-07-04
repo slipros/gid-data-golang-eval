@@ -158,6 +158,9 @@ linters:
     - gidenumcast      # GID-233
     - gidconvpure      # GID-235
     - gidserviceentity # GID-236
+    - gidwithmessage   # GID-237
+    - gidcliflags      # GID-238/239
+    - gidmodulealias   # GID-240
     - giderrname       # GID-234
   disable:
     # The disabled list comes from the consent-api base (a deliberate team choice).
@@ -794,6 +797,29 @@ linters:
         #   exclude:
         #     - 'Snapshot.jobRepository'  # Type.Field
         #     - 'Legacy'                  # the whole service struct
+      gidwithmessage:
+        type: module
+        description: 'GID-237: errors.WithMessage is banned in /domain/service — WithStack after conversion; message context belongs to usecase'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # Exclusions ("Method" | "Type.Method"):
+        # settings:
+        #   exclude:
+        #     - 'Legacy.Enrich'
+      gidcliflags:
+        type: module
+        description: 'GID-238/239: cli flag Name is kebab-case, env vars are UPPER_SNAKE_CASE; a flag needs Required or a default Value'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # Flags exempt from GID-239:
+        # settings:
+        #   exclude:
+        #     - 'debug'
+      gidmodulealias:
+        type: module
+        description: 'GID-240: imports of shared internal entities from pkg/<module> carry a common-prefixed alias (commonservice)'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # The alias prefix can be replaced:
+        # settings:
+        #   prefix: common
         # The banned generic-name list can be replaced; point exceptions via exclude:
         # settings:
         #   names:

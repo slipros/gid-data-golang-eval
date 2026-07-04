@@ -17,6 +17,7 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/chainperline"
 	"github.com/slipros/gid-data-golang-eval/analyzers/chanbuf"
 	"github.com/slipros/gid-data-golang-eval/analyzers/chandir"
+	"github.com/slipros/gid-data-golang-eval/analyzers/cliflags"
 	"github.com/slipros/gid-data-golang-eval/analyzers/constscope"
 	"github.com/slipros/gid-data-golang-eval/analyzers/constvarorder"
 	"github.com/slipros/gid-data-golang-eval/analyzers/convnaming"
@@ -66,6 +67,7 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/mapcap"
 	"github.com/slipros/gid-data-golang-eval/analyzers/metricstruct"
 	"github.com/slipros/gid-data-golang-eval/analyzers/modelmethod"
+	"github.com/slipros/gid-data-golang-eval/analyzers/modulealias"
 	"github.com/slipros/gid-data-golang-eval/analyzers/nilslice"
 	"github.com/slipros/gid-data-golang-eval/analyzers/nobatch"
 	"github.com/slipros/gid-data-golang-eval/analyzers/nogetprefix"
@@ -146,6 +148,7 @@ func init() {
 	register.Plugin("gidintransaction", newSingleAnalyzerPlugin(intransaction.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("giderrwrap", newConfigurablePlugin(errwrap.NewWrapAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidstaticerr", newConfigurablePlugin(errwrap.NewStaticAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidwithmessage", newConfigurablePlugin(errwrap.NewServiceMessageAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidifaceplace", newSingleAnalyzerPlugin(ifaceplace.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidembedmutex", newSingleAnalyzerPlugin(embedmutex.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidchanbuf", newSingleAnalyzerPlugin(chanbuf.Analyzer, register.LoadModeTypesInfo))
@@ -181,6 +184,8 @@ func init() {
 	register.Plugin("gidprotorequired", newConfigurablePlugin(protorequired.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidenumcast", newSingleAnalyzerPlugin(enumcast.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("giderrname", newConfigurablePlugin(errname.NewAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidcliflags", newConfigurablePlugin(cliflags.NewAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidmodulealias", newConfigurablePlugin(modulealias.NewAnalyzer, register.LoadModeTypesInfo))
 	// Layer 1 (former ruleguard) — simple AST patterns, now native analyzers.
 	register.Plugin("gidtimenow", newSingleAnalyzerPlugin(patterns.TimeNowAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("giduuidnil", newSingleAnalyzerPlugin(patterns.UUIDNilAnalyzer, register.LoadModeTypesInfo))
