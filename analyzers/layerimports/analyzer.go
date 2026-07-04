@@ -50,10 +50,12 @@
 //
 // GID-241 (repository-wiring-only) — an allow-list, unlike the deny rules
 // above: /dal/repository/** may be imported ONLY by the composition root
-// (/app/**) and by the repository layer itself (its convert/ and build/
-// subpackages). Every other importer — including any future folder the deny
-// matrix does not know about — is a violation: a repository is consumed by
-// services through an interface (GID-132/134) and constructed in app.
+// (/app/**), by the repository layer itself (its convert/ and build/
+// subpackages) and by the pkg/<module> root package — module.go is the
+// module's composition root that wires the module's own repositories into
+// its services (module.md). Every other importer — including any future
+// folder the deny matrix does not know about — is a violation: a repository
+// is consumed by services through an interface (GID-132/134).
 //
 // Bans apply only within a single module. The module boundary is resolved in
 // priority order:
@@ -420,6 +422,9 @@ func reportRepositoryImport(pass *analysis.Pass, imp *ast.ImportSpec, path strin
 	pkgPath := pass.Pkg.Path()
 	if pathseg.Contains(pkgPath, "app") || pathseg.Contains(pkgPath, "dal", "repository") {
 		return
+	}
+	if root, ok := pkgModuleRoot(pkgPath); ok && root == pkgPath {
+		return // the pkg/<module> root: module.go is the module's composition root (module.md)
 	}
 	pass.Reportf(imp.Pos(),
 		"%s: package %q must not import %q — a repository is wired in app and consumed by services "+
