@@ -12,9 +12,11 @@ Feature: GID-243 — on error, non-error results must be nil/zero
   #   (a) the operand is a constructing call — status.Error/Errorf (grpc/status),
   #       errors.New/Wrap/Wrapf/Errorf/WithStack/WithMessage/WithMessagef (pkg/errors), fmt.Errorf; or
   #   (b) the return is lexically inside an `if <e> != nil { ... }` block guarding that same <e>.
-  # → at least one non-error result must be zero: nil / false / a zero basic literal (0, 0.0, "")
-  # / an empty composite literal T{}. A variable, a populated literal, or &T{} (a non-nil pointer —
-  # the pointer zero VALUE is nil, not an address) are NOT zero.
+  # → at least one non-error result must be zero: nil / an empty composite literal T{} / ANY constant
+  # expression whose constant value is the zero value of its type — a zero basic literal (0, 0.0, ""),
+  # false, AND a named constant that evaluates to zero (a proto/enum *_UNSPECIFIED = 0, written as a
+  # selector but equal to the enum's zero value). A variable, a populated literal, &T{} (a non-nil
+  # pointer — the pointer zero VALUE is nil, not an address), or a NON-zero constant are NOT zero.
 
   # --- Class 1: positive (the violation is caught) ---
 
@@ -31,6 +33,13 @@ Feature: GID-243 — on error, non-error results must be nil/zero
     Then the diagnostic "GID-243: on error, non-error results must be nil/zero (got a non-zero value alongside a non-nil error) …" is reported on "return res, err"
     # err is guarded by the enclosing `if err != nil` — a definitely non-nil error; res is a plain
     # variable, not a zero literal.
+
+  Scenario: positive (c) — a NON-zero enum constant alongside an error is still flagged
+    Given the function "func badNonZeroEnum() (pb.Status, error) { return pb.Status_STATUS_ACTIVE, status.Error(codes.Internal, \"x\") }"
+    When the giderrzeroret analyzer checks the file
+    Then the diagnostic "GID-243: on error, non-error results must be nil/zero …" is reported on the return statement
+    # pb.Status_STATUS_ACTIVE is a const with value 1 — NON-zero. The zero-const relaxation must not
+    # leak to non-zero constants: returning a real enum value alongside an error is still a violation.
 
   # --- Class 2: negative (clean code passes) ---
 
@@ -50,6 +59,20 @@ Feature: GID-243 — on error, non-error results must be nil/zero
     When the giderrzeroret analyzer checks the file
     Then no diagnostic is reported
     # The error operand is the nil literal — never "definitely non-nil" — so the rule does not apply at all.
+
+  Scenario: negative — a zero-valued proto enum constant (*_UNSPECIFIED = 0) alongside a constructing error
+    Given the function "func goodProtoUnspecified(s string) (pb.Status, error) { return pb.Status_STATUS_UNSPECIFIED, errors.WithStack(errors.New(\"unhandled: \" + s)) }"
+    When the giderrzeroret analyzer checks the file
+    Then no diagnostic is reported
+    # pb.Status_STATUS_UNSPECIFIED is a const with value 0 — the enum's zero value — even though it is
+    # written as a selector, not a literal 0. Its constant value (constant.Sign == 0) makes it zero.
+    # This closes a false-positive gap found on real enum-converter code.
+
+  Scenario: negative — a string-based enum's zero member ("") alongside an error
+    Given the function "func goodStringEnumUnspecified() (model.TranscribeJobSource, error) { return model.TranscribeJobSourceUnspecified, errors.WithStack(errors.New(\"x\")) }"
+    When the giderrzeroret analyzer checks the file
+    Then no diagnostic is reported
+    # model.TranscribeJobSourceUnspecified is a string const == "" — the zero value of the enum type.
 
   # --- Class 3: boundary ---
 

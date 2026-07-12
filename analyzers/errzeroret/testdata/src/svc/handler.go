@@ -2,6 +2,7 @@
 package svc
 
 import (
+	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -59,6 +60,44 @@ func forward(req int) (int, error) {
 func goodNilErr() (int, error) {
 	res := 42
 	return res, nil
+}
+
+// --- Negative: a zero-valued enum constant alongside a constructing error — ok.
+// The proto *_UNSPECIFIED member is the enum's zero value (const 0), written as
+// a selector rather than a literal — semantically "returned zero on error". ---
+
+func goodProtoUnspecified(s string) (pb.Status, error) {
+	return pb.Status_STATUS_UNSPECIFIED, errors.WithStack(errors.New("unhandled: " + s))
+}
+
+// --- Negative: a string-based enum's zero member ("") alongside an error — ok ---
+
+func goodStringEnumUnspecified() (model.TranscribeJobSource, error) {
+	return model.TranscribeJobSourceUnspecified, errors.WithStack(errors.New("x"))
+}
+
+// --- Negative: an int-based enum's zero member (0) alongside a guarded error — ok ---
+
+func priorityCall() (model.Priority, error) { return model.PriorityUnspecified, nil }
+
+func goodIntEnumUnspecifiedGuarded() (model.Priority, error) {
+	p, err := priorityCall()
+	if err != nil {
+		return model.PriorityUnspecified, err
+	}
+	return p, nil
+}
+
+// --- Positive: a NON-zero enum constant alongside an error is still flagged.
+// A non-zero constant is not the zero value — the zero-const relaxation must
+// not leak to it. ---
+
+func badNonZeroEnum() (pb.Status, error) {
+	return pb.Status_STATUS_ACTIVE, status.Error(codes.Internal, "x") // want `GID-243: on error, non-error results must be nil/zero`
+}
+
+func badNonZeroStringEnum() (model.TranscribeJobSource, error) {
+	return model.TranscribeJobSourceUpload, errors.WithStack(errors.New("x")) // want `GID-243: on error, non-error results must be nil/zero`
 }
 
 // --- Non-applicability: a single-result return (no other result to check) ---

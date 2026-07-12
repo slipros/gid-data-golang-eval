@@ -13,11 +13,16 @@
 //   - (b) a plain identifier, and the return is lexically inside an
 //     `if <e> != nil { ... }` block that guards that same <e>.
 //
-// "Zero" — nil, the boolean false, a zero basic literal (0, 0.0, ""), or an
-// empty composite literal T{}. A variable, a populated composite literal
-// (T{A: 1}), the address of any composite literal (&T{}, &T{A: 1} — a
-// non-nil pointer; the zero VALUE of a pointer is nil, not an address), or a
-// call — none of these count as zero.
+// "Zero" — nil, an empty composite literal T{}, or ANY constant expression
+// whose constant value is the zero value of its type: a zero basic literal
+// (0, 0.0, ""), the boolean false, AND a named constant that evaluates to
+// zero — most importantly a proto/enum *_UNSPECIFIED constant (const 0),
+// which IS the enum's zero value even though it is written as a selector
+// (govorunpb.Status_STATUS_UNSPECIFIED) rather than a literal. A variable, a
+// populated composite literal (T{A: 1}), the address of any composite literal
+// (&T{}, &T{A: 1} — a non-nil pointer; the zero VALUE of a pointer is nil,
+// not an address), a call, or a NON-zero constant (an enum value != 0) — none
+// of these count as zero.
 //
 // Deliberately NOT reported: an unconditional final forward
 // (return resp, err, where err is a plain variable neither guarded by an
@@ -29,10 +34,9 @@ package errzeroret
 
 import (
 	"go/ast"
+	"go/constant"
 	"go/token"
 	"go/types"
-	"strconv"
-	"strings"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/types/typeutil"
@@ -180,7 +184,7 @@ func checkReturn(pass *analysis.Pass, ret *ast.ReturnStmt, guarded map[types.Obj
 		return
 	}
 	for _, res := range ret.Results[:len(ret.Results)-1] {
-		if !isZeroValue(res) {
+		if !isZeroValue(pass, res) {
 			pass.Reportf(ret.Pos(),
 				"%s: on error, non-error results must be nil/zero (got a non-zero value alongside a non-nil "+
 					"error). Fix: return nil / T{} alongside the error",
@@ -232,36 +236,46 @@ func isConstructingErrorCall(pass *analysis.Pass, call *ast.CallExpr) bool {
 	return false
 }
 
-// isZeroValue reports whether expr is a zero-value literal: nil, false, a
-// zero basic literal (0, 0.0, ""), or an empty composite literal T{}. A
-// variable, a populated composite literal, the address of any composite
-// literal (&T{}/&T{A: 1} — a non-nil pointer; the pointer zero value is nil,
-// not an address), and a call are all NOT zero.
-func isZeroValue(expr ast.Expr) bool {
-	switch e := expr.(type) {
-	case *ast.Ident:
-		return e.Name == "nil" || e.Name == "false"
-	case *ast.BasicLit:
-		return isZeroBasicLit(e)
-	case *ast.CompositeLit:
-		return len(e.Elts) == 0
+// isZeroValue reports whether expr is a zero value: the nil identifier, an
+// empty composite literal T{}, or any constant expression whose constant
+// value is the zero value of its type (a zero basic literal 0/0.0/"", the
+// boolean false, AND a named constant that evaluates to zero — e.g. a
+// proto/enum *_UNSPECIFIED constant, written as a selector but equal to the
+// enum's zero value). A variable, a populated composite literal, the address
+// of any composite literal (&T{}/&T{A: 1} — a non-nil pointer; the pointer
+// zero value is nil, not an address), a call, or a NON-zero constant are all
+// NOT zero.
+func isZeroValue(pass *analysis.Pass, expr ast.Expr) bool {
+	// The nil identifier — the zero value of pointers/interfaces/slices/maps/…
+	if id, ok := expr.(*ast.Ident); ok && id.Name == "nil" {
+		return true
 	}
-	return false
+	// An empty composite literal T{} — the zero value of a struct/array; a
+	// populated one (T{A: 1}) is not. (&T{} is an *ast.UnaryExpr, not a
+	// CompositeLit — a non-nil pointer, correctly not matched here.)
+	if cl, ok := expr.(*ast.CompositeLit); ok {
+		return len(cl.Elts) == 0
+	}
+	// Any constant expression whose constant value is the zero value of its
+	// type: a literal (0/""/false) or a named constant (an enum *_UNSPECIFIED
+	// = 0). A non-zero constant (an enum value != 0) is not zero.
+	return isZeroConst(pass, expr)
 }
 
-func isZeroBasicLit(lit *ast.BasicLit) bool {
-	switch lit.Kind {
-	case token.INT:
-		v := strings.ReplaceAll(lit.Value, "_", "")
-		n, err := strconv.ParseInt(v, 0, 64)
-		return err == nil && n == 0
-	case token.FLOAT:
-		v := strings.ReplaceAll(lit.Value, "_", "")
-		f, err := strconv.ParseFloat(v, 64)
-		return err == nil && f == 0
-	case token.STRING:
-		s, err := strconv.Unquote(lit.Value)
-		return err == nil && s == ""
+// isZeroConst reports whether expr is a constant whose value is the zero
+// value for its kind (numeric sign 0, empty string, or false).
+func isZeroConst(pass *analysis.Pass, expr ast.Expr) bool {
+	tv, ok := pass.TypesInfo.Types[expr]
+	if !ok || tv.Value == nil {
+		return false
+	}
+	switch tv.Value.Kind() {
+	case constant.Int, constant.Float, constant.Complex:
+		return constant.Sign(tv.Value) == 0
+	case constant.String:
+		return constant.StringVal(tv.Value) == ""
+	case constant.Bool:
+		return !constant.BoolVal(tv.Value)
 	}
 	return false
 }
