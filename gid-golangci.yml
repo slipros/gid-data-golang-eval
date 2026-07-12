@@ -168,6 +168,7 @@ linters:
     - gidmodulealias   # GID-240
     - giderrname       # GID-234
     - giderrmapfunc    # GID-242
+    - giderrzeroret    # GID-243
   disable:
     # The disabled list comes from the consent-api base (a deliberate team choice).
     # Some of them would cover GID rules — marked with a comment.
@@ -859,6 +860,10 @@ linters:
       giderrmapfunc:
         type: module
         description: 'GID-242: a dedicated function classifying its own error parameter via errors.Is is forbidden (any target, not just gRPC) — handle inline, at the call site'
+        original-url: github.com/slipros/gid-data-golang-eval
+      giderrzeroret:
+        type: module
+        description: 'GID-243: on error, non-error results in a multi-value return must be nil/zero'
         original-url: github.com/slipros/gid-data-golang-eval
 
   exclusions:
