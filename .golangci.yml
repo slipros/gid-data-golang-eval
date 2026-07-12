@@ -834,7 +834,7 @@ linters:
         #   prefix: common
       giderrmapfunc:
         type: module
-        description: 'GID-242: a dedicated function classifying its own error parameter via errors.Is is forbidden (any target, not just gRPC) — handle inline, at the call site'
+        description: 'GID-242: a dedicated error-mapper function (classifies its own error parameter via errors.Is/errors.As AND returns error) is forbidden — map inline, at the call site; bool-predicates and wrappers are fine'
         original-url: github.com/slipros/gid-data-golang-eval
       giderrzeroret:
         type: module
