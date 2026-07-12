@@ -188,7 +188,7 @@ func init() {
 	register.Plugin("giderrname", newConfigurablePlugin(errname.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidcliflags", newConfigurablePlugin(cliflags.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidmodulealias", newConfigurablePlugin(modulealias.NewAnalyzer, register.LoadModeTypesInfo))
-	register.Plugin("giderrmapfunc", newSingleAnalyzerPlugin(errmapfunc.Analyzer, register.LoadModeTypesInfo))
+	register.Plugin("giderrmapfunc", newConfigurablePlugin(errmapfunc.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("giderrzeroret", newSingleAnalyzerPlugin(errzeroret.Analyzer, register.LoadModeTypesInfo))
 	// Layer 1 (former ruleguard) — simple AST patterns, now native analyzers.
 	register.Plugin("gidtimenow", newSingleAnalyzerPlugin(patterns.TimeNowAnalyzer, register.LoadModeTypesInfo))

@@ -834,8 +834,16 @@ linters:
         #   prefix: common
       giderrmapfunc:
         type: module
-        description: 'GID-242: a dedicated error-mapper function (classifies its own error parameter via errors.Is/errors.As AND returns error) is forbidden — map inline, at the call site; bool-predicates and wrappers are fine'
+        description: 'GID-242: a dedicated error-mapper function (classifies its own error parameter via errors.Is/errors.As from stdlib or github.com/pkg/errors AND returns error) is forbidden — map inline, at the call site; bool-predicates and wrappers are fine'
         original-url: github.com/slipros/gid-data-golang-eval
+        # The classifier packages (whose Is/As calls count) can be replaced —
+        # e.g. to add a project-internal errors facade that re-exports Is/As.
+        # Default: ["errors", "github.com/pkg/errors"].
+        # settings:
+        #   packages:
+        #     - errors
+        #     - github.com/pkg/errors
+        #     - myproject/pkg/errs
       giderrzeroret:
         type: module
         description: 'GID-243: on error, non-error results in a multi-value return must be nil/zero'

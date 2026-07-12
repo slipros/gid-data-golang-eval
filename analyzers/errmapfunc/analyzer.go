@@ -13,10 +13,17 @@
 // Detect: a top-level FuncDecl F such that ALL of
 //   - F has a NAMED parameter of type error (e.g. err error), AND
 //   - F's body calls errors.Is(<that parameter>, ...) OR
-//     errors.As(<that parameter>, &target) (the standard library errors.Is /
-//     errors.As — chain inspection / type-assert stays allowed, see GID-146)
-//     with that parameter as the first argument, anywhere, AND
+//     errors.As(<that parameter>, &target) — where errors is any of the
+//     configured classifier packages (settings.packages; default: the
+//     standard library "errors" and github.com/pkg/errors, which forwards
+//     Is/As to stdlib since v0.9.1; gid.team code uses pkg/errors, GID-146) —
+//     with that parameter as the first argument, anywhere (chain inspection /
+//     type-assert stays allowed, see GID-146), AND
 //   - F's result list includes error (F returns error, or (T, error), ...).
+//
+// settings.packages lets a project add its own errors-facade package paths
+// (e.g. an internal errors wrapper that re-exports Is/As) without a code
+// change; when empty, defaultPackages is used.
 //
 // All three hold together → F is a dedicated error mapper, reported on F's
 // declaration.
@@ -48,16 +55,47 @@ import (
 
 const ruleID = "GID-242"
 
-// Analyzer — rule GID-242 (no settings: the rule is absolute, no exceptions).
-var Analyzer = &analysis.Analyzer{
-	Name: "giderrmapfunc",
-	Doc: ruleID + ": a dedicated error-mapper function (classifies its own error parameter via errors.Is " +
-		"AND returns error — maps error to error/status) is forbidden; bool-predicates and wrappers are fine. " +
-		"Fix: remove the function, inline the switch errors.Is(...) into the caller",
-	Run: run,
+// defaultPackages — the errors-classifier packages whose Is/As calls are
+// recognized: the standard library and github.com/pkg/errors (which forwards
+// Is/As to stdlib since v0.9.1). gid.team code uses pkg/errors exclusively
+// (GID-146). A project can replace this list via settings.packages.
+var defaultPackages = []string{
+	"errors",
+	"github.com/pkg/errors",
 }
 
-func run(pass *analysis.Pass) (any, error) {
+// Analyzer — rule GID-242 with the default classifier-package list.
+var Analyzer = NewAnalyzer(Settings{})
+
+// Settings — linter settings from .golangci.yml.
+type Settings struct {
+	// Packages — errors-classifier package import paths whose Is/As calls
+	// count. Replaces the default list (stdlib "errors" + github.com/pkg/errors).
+	Packages []string `json:"packages"`
+}
+
+// NewAnalyzer builds the GID-242 analyzer from linter settings (.golangci.yml).
+func NewAnalyzer(s Settings) *analysis.Analyzer {
+	pkgs := s.Packages
+	if len(pkgs) == 0 {
+		pkgs = defaultPackages
+	}
+	classifierPkgs := make(map[string]bool, len(pkgs))
+	for _, p := range pkgs {
+		classifierPkgs[p] = true
+	}
+	return &analysis.Analyzer{
+		Name: "giderrmapfunc",
+		Doc: ruleID + ": a dedicated error-mapper function (classifies its own error parameter via errors.Is/errors.As " +
+			"AND returns error — maps error to error/status) is forbidden; bool-predicates and wrappers are fine. " +
+			"Fix: remove the function, inline the switch errors.Is(...) into the caller",
+		Run: func(pass *analysis.Pass) (any, error) {
+			return run(pass, classifierPkgs)
+		},
+	}
+}
+
+func run(pass *analysis.Pass, classifierPkgs map[string]bool) (any, error) {
 	for _, file := range pass.Files {
 		if ast.IsGenerated(file) {
 			continue
@@ -67,17 +105,17 @@ func run(pass *analysis.Pass) (any, error) {
 			if !ok || fn.Body == nil {
 				continue
 			}
-			checkFunc(pass, fn)
+			checkFunc(pass, fn, classifierPkgs)
 		}
 	}
 	return nil, nil
 }
 
 // checkFunc reports fn if it is a dedicated error mapper: it has an error
-// parameter, its body calls errors.Is on that parameter, AND it returns
-// error. A function that does not return error (e.g. a bool predicate) is a
-// legitimate classifier/helper and is not reported.
-func checkFunc(pass *analysis.Pass, fn *ast.FuncDecl) {
+// parameter, its body calls errors.Is/As (from a classifier package) on that
+// parameter, AND it returns error. A function that does not return error
+// (e.g. a bool predicate) is a legitimate classifier/helper and is not reported.
+func checkFunc(pass *analysis.Pass, fn *ast.FuncDecl, classifierPkgs map[string]bool) {
 	errParams := errorParams(pass, fn)
 	if len(errParams) == 0 {
 		return
@@ -91,7 +129,7 @@ func checkFunc(pass *analysis.Pass, fn *ast.FuncDecl) {
 		if !ok {
 			return true
 		}
-		if isErrorsClassifyOnParam(pass, call, errParams) {
+		if isErrorsClassifyOnParam(pass, call, errParams, classifierPkgs) {
 			mapsParam = true
 		}
 		return true
@@ -145,18 +183,22 @@ func errorParams(pass *analysis.Pass, fn *ast.FuncDecl) map[types.Object]bool {
 }
 
 // isErrorsClassifyOnParam reports whether call is errors.Is(x, ...) or
-// errors.As(x, ...) (the standard library errors package) where x — the
-// first argument — resolves to one of errParams.
-func isErrorsClassifyOnParam(pass *analysis.Pass, call *ast.CallExpr, errParams map[types.Object]bool) bool {
-	const stdErrorsPkgPath = "errors"
-
+// errors.As(x, ...) — where errors is any of classifierPkgs — and x, the
+// first argument, resolves to one of errParams. Matching is done on the
+// RESOLVED callee package (typeutil.Callee), so a source-level import alias
+// (stderrors "errors", pkgerrors "github.com/pkg/errors") is handled
+// automatically. The default classifierPkgs cover the standard library and
+// github.com/pkg/errors; settings.packages replaces them.
+func isErrorsClassifyOnParam(
+	pass *analysis.Pass, call *ast.CallExpr, errParams map[types.Object]bool, classifierPkgs map[string]bool,
+) bool {
 	fn := typeutil.Callee(pass.TypesInfo, call)
 	f, ok := fn.(*types.Func)
 	if !ok || (f.Name() != "Is" && f.Name() != "As") {
 		return false
 	}
 	pkg := f.Pkg()
-	if pkg == nil || pkg.Path() != stdErrorsPkgPath {
+	if pkg == nil || !classifierPkgs[pkg.Path()] {
 		return false
 	}
 	if len(call.Args) == 0 {

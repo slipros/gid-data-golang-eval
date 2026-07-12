@@ -10,14 +10,20 @@ Feature: GID-242 — a dedicated error-mapper function is forbidden
   classifies and is legitimate, not a mapper.
 
   # Layer: go/analysis (package errmapfunc, linter giderrmapfunc), LoadModeTypesInfo.
-  # No settings, no exceptions — the rule is absolute (owner's decision).
+  # No exceptions — the rule is absolute (owner's decision). Config: settings.packages —
+  # the classifier package paths whose Is/As calls count; default ["errors", "github.com/pkg/errors"].
   #
   # Detect: a top-level FuncDecl F such that ALL of
   #   - F has a NAMED parameter of type error, AND
-  #   - F's body calls errors.Is(<that parameter>, ...) OR errors.As(<that parameter>, ...)
-  #     (stdlib errors package, that parameter as the first argument) anywhere, AND
+  #   - F's body calls errors.Is(<that parameter>, ...) OR errors.As(<that parameter>, ...) —
+  #     where errors is any of the configured classifier packages (default: stdlib "errors" +
+  #     github.com/pkg/errors, which forwards Is/As to stdlib since v0.9.1; gid.team code uses
+  #     pkg/errors, GID-146) — with that parameter as the first argument, anywhere, AND
   #   - F's result list includes error (F returns error, or (T, error), ...).
-  # All three together → reported on F's declaration.
+  # All three together → reported on F's declaration. The package is matched on the RESOLVED
+  # callee (typeutil.Callee -> f.Pkg().Path()), so import aliases (pkgerrors "github.com/pkg/errors",
+  # stderrors "errors") are handled automatically. A project-internal errors facade that re-exports
+  # Is/As is added via settings.packages — no code change needed.
   #
   # Discriminator #1 (return type, owner refinement 2026-07-12): only functions that RETURN
   # error are mappers. A bool-predicate over the error parameter is a legitimate classifier.
@@ -41,6 +47,18 @@ Feature: GID-242 — a dedicated error-mapper function is forbidden
     When the giderrmapfunc analyzer checks the file
     Then the diagnostic "GID-242: a dedicated error-mapper function is forbidden …" is reported on "mapErrTuple"
 
+  Scenario: positive — a mapper via github.com/pkg/errors.Is (the gid.team default, not stdlib "errors")
+    Given the top-level function "func mapPkgErr(err error) error { if pkgerrors.Is(err, ErrX) { return status.Error(codes.NotFound, \"not found\") }; return err }" with pkgerrors imported as github.com/pkg/errors
+    When the giderrmapfunc analyzer checks the file
+    Then the diagnostic "GID-242: a dedicated error-mapper function is forbidden …" is reported on "mapPkgErr"
+    # pkgerrors.Is has package path github.com/pkg/errors, not "errors" — the whitelist must include both;
+    # this is the real-code case the stdlib-only whitelist was silently missing.
+
+  Scenario: positive — a mapper via github.com/pkg/errors.As
+    Given the top-level function "func mapPkgErrAs(err error) error { var t *CustomErr; if pkgerrors.As(err, &t) { return status.Error(codes.Internal, t.Msg) }; return err }" with pkgerrors imported as github.com/pkg/errors
+    When the giderrmapfunc analyzer checks the file
+    Then the diagnostic "GID-242: a dedicated error-mapper function is forbidden …" is reported on "mapPkgErrAs"
+
   # --- Class 2: negative (clean code passes) ---
 
   Scenario: negative — a bool-predicate classifies via errors.Is but does not map (returns bool)
@@ -53,6 +71,12 @@ Feature: GID-242 — a dedicated error-mapper function is forbidden
     Given the function "func isCustom(err error) bool { var t *CustomErr; return errors.As(err, &t) }"
     When the giderrmapfunc analyzer checks the file
     Then no diagnostic is reported
+
+  Scenario: negative — a bool-predicate via github.com/pkg/errors.Is — return-type discriminator holds for pkg/errors too
+    Given the function "func isPkgRetryable(err error) bool { return pkgerrors.Is(err, ErrX) }" with pkgerrors imported as github.com/pkg/errors
+    When the giderrmapfunc analyzer checks the file
+    Then no diagnostic is reported
+    # pkg/errors is in the classification-API whitelist, but the function returns bool, not error — a predicate.
 
   Scenario: negative — classifies via errors.Is but returns a plain int (HTTP status), not error
     Given the function "func mapToHTTPStatus(err error) int { switch { case errors.Is(err, ErrX): return http.StatusNotFound; default: return http.StatusInternalServerError } }"
@@ -92,6 +116,16 @@ Feature: GID-242 — a dedicated error-mapper function is forbidden
     When the giderrmapfunc analyzer checks the file
     Then no diagnostic is reported
     # An unnamed parameter has no identifier errors.Is/As could ever branch on inside the body.
+
+  # --- Config: settings.packages adds a project errors facade ---
+
+  Scenario: config — a mapper via a project errors facade is flagged only when its package is in settings.packages
+    Given settings.packages contains "myerrors" and the mapper "func mapWithFacade(err error) error { if myerrors.Is(err, ErrX) { return myerrors.New(\"mapped\") }; return err }"
+    When the giderrmapfunc analyzer checks the file
+    Then the diagnostic "GID-242: a dedicated error-mapper function is forbidden …" is reported on "mapWithFacade"
+    # myerrors is neither "errors" nor github.com/pkg/errors — under the DEFAULT whitelist it is clean;
+    # only settings.packages=["myerrors"] makes the facade Is/As count. The facade bool-predicate
+    # (func isFacadeErr(err error) bool) stays legitimate. Covered by TestCustomPackages.
 
 # --- Checklist when adding a new rule ---
 #  [x] ID and description are recorded in the registry (RULES.md, GID-242)

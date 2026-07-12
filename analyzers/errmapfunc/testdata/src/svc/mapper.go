@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"net/http"
 
+	pkgerrors "github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -35,6 +36,28 @@ func mapErr(err error) error { // want `GID-242: a dedicated error-mapper functi
 	default:
 		return status.Error(codes.Internal, "internal error")
 	}
+}
+
+// --- Positive: a mapper via github.com/pkg/errors.Is (the gid.team default,
+// GID-146) — its package path is github.com/pkg/errors, not "errors", but it
+// is the same classification API and must be flagged. This is the real-code
+// case the stdlib-only whitelist was missing. ---
+
+func mapPkgErr(err error) error { // want `GID-242: a dedicated error-mapper function is forbidden`
+	if pkgerrors.Is(err, ErrX) {
+		return status.Error(codes.NotFound, "not found")
+	}
+	return err
+}
+
+// --- Positive: a mapper via github.com/pkg/errors.As ---
+
+func mapPkgErrAs(err error) error { // want `GID-242: a dedicated error-mapper function is forbidden`
+	var t *CustomErr
+	if pkgerrors.As(err, &t) {
+		return status.Error(codes.Internal, t.Msg)
+	}
+	return err
 }
 
 // --- Positive: a mapper classifying via errors.As (type-assert) and returning error ---
@@ -76,6 +99,13 @@ func isNotFound(err error) bool {
 func isCustom(err error) bool {
 	var t *CustomErr
 	return errors.As(err, &t)
+}
+
+// --- Negative: a bool-predicate via github.com/pkg/errors.Is — the return-type
+// discriminator holds regardless of which errors package is used ---
+
+func isPkgRetryable(err error) bool {
+	return pkgerrors.Is(err, ErrX)
 }
 
 // --- Negative: classifies via errors.Is but returns a plain int (HTTP status code),
