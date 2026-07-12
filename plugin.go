@@ -37,6 +37,7 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/enumplace"
 	"github.com/slipros/gid-data-golang-eval/analyzers/enumstring"
 	"github.com/slipros/gid-data-golang-eval/analyzers/errlast"
+	"github.com/slipros/gid-data-golang-eval/analyzers/errmapfunc"
 	"github.com/slipros/gid-data-golang-eval/analyzers/errname"
 	"github.com/slipros/gid-data-golang-eval/analyzers/errnew"
 	"github.com/slipros/gid-data-golang-eval/analyzers/errplace"
@@ -186,6 +187,7 @@ func init() {
 	register.Plugin("giderrname", newConfigurablePlugin(errname.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidcliflags", newConfigurablePlugin(cliflags.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidmodulealias", newConfigurablePlugin(modulealias.NewAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("giderrmapfunc", newSingleAnalyzerPlugin(errmapfunc.Analyzer, register.LoadModeTypesInfo))
 	// Layer 1 (former ruleguard) — simple AST patterns, now native analyzers.
 	register.Plugin("gidtimenow", newSingleAnalyzerPlugin(patterns.TimeNowAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("giduuidnil", newSingleAnalyzerPlugin(patterns.UUIDNilAnalyzer, register.LoadModeTypesInfo))
