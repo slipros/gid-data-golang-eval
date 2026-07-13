@@ -181,15 +181,38 @@ func runDeepEqual(pass *analysis.Pass) (any, error) {
 }
 
 func runUUIDVersion(pass *analysis.Pass) (any, error) {
+	// blessed holds the positions of generator calls wrapped in uuid.Must —
+	// the canonical uuid.Must(uuid.NewV7()) form. ast.Inspect visits the outer
+	// Must call before its NewV7 argument, so the set is already populated by
+	// the time we reach the inner call.
+	blessed := map[token.Pos]struct{}{}
 	inspectCalls(pass, func(call *ast.CallExpr) {
 		pkg, name := calleePkgPath(pass, call)
 		if pkg != gofrsUUID {
 			return
 		}
-		if _, ok := uuidVersionFuncs[name]; ok {
-			pass.Reportf(call.Pos(),
-				"GID-003: UUIDs must be generated uniformly. "+
-					"Fix: use uuid.Must(uuid.NewV7()) instead of uuid.%s().", name)
+		switch name {
+		case "Must":
+			// uuid.Must(uuid.NewV7()) — NewV7 is Must's sole argument.
+			if len(call.Args) == 1 {
+				if inner, ok := call.Args[0].(*ast.CallExpr); ok {
+					blessed[inner.Pos()] = struct{}{}
+				}
+			}
+		case "NewV7":
+			// NewV7 returns (UUID, error); the error never fires, so it must be
+			// consumed by uuid.Must rather than handled by hand.
+			if _, ok := blessed[call.Pos()]; !ok {
+				pass.Reportf(call.Pos(),
+					"GID-003: UUIDs must be generated via uuid.Must. "+
+						"Fix: use uuid.Must(uuid.NewV7()) instead of handling the error.")
+			}
+		default:
+			if _, ok := uuidVersionFuncs[name]; ok {
+				pass.Reportf(call.Pos(),
+					"GID-003: UUIDs must be generated uniformly. "+
+						"Fix: use uuid.Must(uuid.NewV7()) instead of uuid.%s().", name)
+			}
 		}
 	})
 	return nil, nil
