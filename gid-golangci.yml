@@ -782,7 +782,7 @@ linters:
         #       msg: 'use direct conn methods: Select, ScanRow, NamedStruct, Transaction'
       gidhandlershape:
         type: module
-        description: 'GID-230: a handler has Handle(ctx, ...) (..., error) and <Handler>Validator/<Handler>Service deps; the gRPC service struct exposes exported *Handler fields'
+        description: 'GID-230: a gRPC handler (under server/grpc/.../handler) has Handle(ctx, ...) (..., error) and <Handler>Validator/<Handler>Service deps; the gRPC service struct exposes exported *Handler fields. HTTP handlers (server/http/handler) are out of scope — see GID-162/GID-163'
         original-url: github.com/slipros/gid-data-golang-eval
         # Exclusions (besides //nolint:gidhandlershape) — struct type names:
         # settings:

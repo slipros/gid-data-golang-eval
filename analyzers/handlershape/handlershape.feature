@@ -9,8 +9,11 @@ Feature: GID-230 — gRPC handler shape (grpc-handler-shape)
   So that the transport layer follows the server.md template uniformly
 
   # Scope (pathseg, not strings.Contains):
-  #   - handler packages: import path contains segment "server" and ends with
-  #     segment "handler" (handler/convert, handler/validate are out of scope);
+  #   - handler packages: import path contains segment "server" and segment
+  #     "grpc" and ends with segment "handler" (handler/convert,
+  #     handler/validate are out of scope). HTTP handler packages
+  #     (internal/server/http/handler) are NOT in scope — their handlers use
+  #     the data-response.go shape and are governed by GID-162/GID-163;
   #   - service struct check: any other package under segment "server", on
   #     structs embedding a type named Unimplemented*Server.
   # Exported struct types only; names with the Options suffix are skipped.
@@ -98,6 +101,11 @@ Feature: GID-230 — gRPC handler shape (grpc-handler-shape)
   #     of the interface-typed fields that do exist.
   Scenario: non-applicability — embedded interface in a handler struct
     Given handler "Stream" embeds "io.Closer" and has a canonical Handle method
+    When the analyzer checks the file
+    Then no diagnostic is reported
+
+  Scenario: non-applicability — HTTP handler in server/http/handler (data-response shape)
+    Given the package "internal/server/http/handler" declares handler "UploadTranscribeJobAudio" with method "func (h *UploadTranscribeJobAudio) Handle(r *http.Request, f *dataresponse.Factory) *response.DataResponse" and a field "service uploadService"
     When the analyzer checks the file
     Then no diagnostic is reported
 

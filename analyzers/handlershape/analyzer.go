@@ -3,10 +3,14 @@
 // transport layer (server.md).
 //
 // Scope (via pathseg, never strings.Contains):
-//   - handler packages: import path contains segment "server" AND ends with
-//     segment "handler" (internal/server/grpc/<svc>/handler,
-//     internal/server/http/handler). Subpackages handler/convert and
-//     handler/validate are out of scope.
+//   - handler packages: import path contains segment "server" AND segment
+//     "grpc" AND ends with segment "handler"
+//     (internal/server/grpc/<svc>/handler). Subpackages handler/convert and
+//     handler/validate are out of scope. HTTP handler packages
+//     (internal/server/http/handler) are NOT in scope: their handlers follow
+//     the data-response.go shape (Handle(*http.Request, *dataresponse.Factory)
+//     *response.DataResponse) and are governed by GID-162/GID-163, not the
+//     gRPC handler shape enforced here.
 //   - service packages: any other package under segment "server" — only the
 //     gRPC service struct check applies there.
 //
@@ -80,9 +84,14 @@ func run(pass *analysis.Pass, cfg Settings) (any, error) {
 	if !pathseg.Contains(pkgPath, "server") {
 		return nil, nil
 	}
-	// Handler packages end with the "handler" segment; handler/convert and
-	// handler/validate do not and are out of scope.
-	isHandlerPkg := pathseg.EndsWith(pkgPath, "handler")
+	// gRPC handler packages end with the "handler" segment AND live under a
+	// "grpc" segment (internal/server/grpc/<svc>/handler). handler/convert and
+	// handler/validate do not end with "handler" and are out of scope. HTTP
+	// handler packages (internal/server/http/handler) are intentionally
+	// excluded: their handlers follow the data-response.go shape
+	// Handle(*http.Request, *dataresponse.Factory) *response.DataResponse and
+	// are governed by GID-162/GID-163, not the gRPC handler shape enforced here.
+	isHandlerPkg := pathseg.EndsWith(pkgPath, "handler") && pathseg.Contains(pkgPath, "grpc")
 	for _, file := range pass.Files {
 		if ast.IsGenerated(file) {
 			continue
