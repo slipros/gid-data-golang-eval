@@ -7,7 +7,7 @@ A custom golangci-lint plugin that turns the internal style guide
 
 Verified on 2026-06-07 by a full cross-check of all skill docs (31 files) against the registry:
 
-- every deterministically checkable style-guide rule is implemented (GID-001…GID-234,
+- every deterministically checkable style-guide rule is implemented (GID-001…GID-245,
   all ✅ with a mandatory eval) or covered by standard golangci-lint linters
   (layer 3, GID-201…GID-209);
 - heuristics that cannot be ported are explicitly listed in [RULES.md](RULES.md)

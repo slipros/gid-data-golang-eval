@@ -167,6 +167,8 @@ linters:
     - giderrname       # GID-234
     - giderrmapfunc    # GID-242
     - giderrzeroret    # GID-243
+    - gidsentinelwrap  # GID-244
+    - gidscanrow       # GID-245
   disable:
     # The disabled list comes from the consent-api base (a deliberate team choice).
     # Some of them would cover GID rules — marked with a comment.
@@ -848,6 +850,22 @@ linters:
         type: module
         description: 'GID-243: on error, non-error results in a multi-value return must be nil/zero'
         original-url: github.com/slipros/gid-data-golang-eval
+      gidsentinelwrap:
+        type: module
+        description: 'GID-244: map a boundary error to a sentinel by reassign-then-wrap-once, not by wrapping the sentinel in a guard branch that duplicates the outer errors.Wrap'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # Exclusions ("Method" | "Type.Method"):
+        # settings:
+        #   exclude:
+        #     - 'Repo.excludedMethod'
+      gidscanrow:
+        type: module
+        description: 'GID-245: an epgx Select into a one-field struct reads a single column — use ScanRow with the column pointer directly'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # Exclusions ("Method" | "Type.Method"):
+        # settings:
+        #   exclude:
+        #     - 'Repo.excludedMethod'
 
   exclusions:
     generated: lax

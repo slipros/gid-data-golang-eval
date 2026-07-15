@@ -86,6 +86,8 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/privatefunc"
 	"github.com/slipros/gid-data-golang-eval/analyzers/protorequired"
 	"github.com/slipros/gid-data-golang-eval/analyzers/receivernaming"
+	"github.com/slipros/gid-data-golang-eval/analyzers/scanrow"
+	"github.com/slipros/gid-data-golang-eval/analyzers/sentinelwrap"
 	"github.com/slipros/gid-data-golang-eval/analyzers/serviceentity"
 	"github.com/slipros/gid-data-golang-eval/analyzers/servicemodel"
 	"github.com/slipros/gid-data-golang-eval/analyzers/servicesingle"
@@ -151,6 +153,8 @@ func init() {
 	register.Plugin("giderrwrap", newConfigurablePlugin(errwrap.NewWrapAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidstaticerr", newConfigurablePlugin(errwrap.NewStaticAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidwithmessage", newConfigurablePlugin(errwrap.NewServiceMessageAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidsentinelwrap", newConfigurablePlugin(sentinelwrap.NewAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidscanrow", newConfigurablePlugin(scanrow.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidifaceplace", newSingleAnalyzerPlugin(ifaceplace.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidembedmutex", newSingleAnalyzerPlugin(embedmutex.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidchanbuf", newSingleAnalyzerPlugin(chanbuf.Analyzer, register.LoadModeTypesInfo))
