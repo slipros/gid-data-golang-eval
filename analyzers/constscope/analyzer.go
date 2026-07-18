@@ -8,6 +8,12 @@
 // declaration (var, type, another const). Violations: an exported const
 // outside model/entity and an unexported const used by exactly one
 // function — its place is inside that function.
+//
+// A definitional block — an iota block, or a group of ≥2 constants of the same
+// named type (a GID-123 string/int enum) — is a single unit: it is localized
+// only as a whole, and only when every one of its constants is used by one and
+// the same function. This keeps a local enum grouped instead of shredding its
+// values across the predicates that read them.
 package constscope
 
 import (
@@ -61,7 +67,9 @@ type constGroup struct {
 	decl *ast.GenDecl
 	// names — unexported candidates for localization.
 	names []*ast.Ident
-	// grouped — the values are tied via iota: the block can only be moved as a whole.
+	// grouped — the block is a definitional unit (an iota block, or a group of
+	// ≥2 consts of the same named type — a GID-123 enum): it can only be moved
+	// as a whole.
 	grouped bool
 	// skipLocal — the block contains an exported or excluded name,
 	// so we do not suggest localizing the iota block.
@@ -96,7 +104,7 @@ func collectGroups(pass *analysis.Pass, excluded map[string]struct{}) []*constGr
 			if !ok || gd.Tok != token.CONST {
 				continue
 			}
-			g := &constGroup{decl: gd, grouped: iotaDependent(gd)}
+			g := &constGroup{decl: gd, grouped: iotaDependent(gd) || enumGroup(pass, gd)}
 			for _, spec := range gd.Specs {
 				vs, ok := spec.(*ast.ValueSpec)
 				if !ok {
@@ -201,7 +209,7 @@ func collectUsage(pass *analysis.Pass, candidates map[types.Object]struct{}) map
 
 func reportGroup(pass *analysis.Pass, g *constGroup, usage map[types.Object]*useInfo) {
 	if g.grouped {
-		reportIotaGroup(pass, g, usage)
+		reportGroupedBlock(pass, g, usage)
 		return
 	}
 	for _, name := range g.names {
@@ -216,9 +224,10 @@ func reportGroup(pass *analysis.Pass, g *constGroup, usage map[types.Object]*use
 	}
 }
 
-// reportIotaGroup: an iota block can only be moved as a whole — the diagnostic
-// is emitted when all its constants are used by one and the same function.
-func reportIotaGroup(pass *analysis.Pass, g *constGroup, usage map[types.Object]*useInfo) {
+// reportGroupedBlock: a definitional block (iota or a named-type enum) can only
+// be moved as a whole — the diagnostic is emitted when all its constants are
+// used by one and the same function.
+func reportGroupedBlock(pass *analysis.Pass, g *constGroup, usage map[types.Object]*useInfo) {
 	if g.skipLocal {
 		return
 	}
@@ -269,6 +278,38 @@ func iotaDependent(gd *ast.GenDecl) bool {
 		}
 		if len(vs.Values) == 0 || slices.ContainsFunc(vs.Values, usesIota) {
 			return true
+		}
+	}
+	return false
+}
+
+// enumGroup reports whether the const block declares ≥2 constants of the same
+// named type whose underlying type is a basic type — a GID-123 string/int enum.
+// Such a block is a definitional unit: like an iota block, it is localized only
+// as a whole, so a local enum is not scattered across the functions that read it.
+func enumGroup(pass *analysis.Pass, gd *ast.GenDecl) bool {
+	counts := map[*types.Named]int{}
+	for _, spec := range gd.Specs {
+		vs, ok := spec.(*ast.ValueSpec)
+		if !ok {
+			continue
+		}
+		for _, name := range vs.Names {
+			obj := pass.TypesInfo.Defs[name]
+			if obj == nil {
+				continue
+			}
+			named, ok := obj.Type().(*types.Named)
+			if !ok {
+				continue
+			}
+			if _, ok := named.Underlying().(*types.Basic); !ok {
+				continue
+			}
+			counts[named]++
+			if counts[named] >= 2 {
+				return true
+			}
 		}
 	}
 	return false

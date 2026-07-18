@@ -17,7 +17,10 @@ Feature: GID-194 — constants are declared where they are used
   #   a test or generated file) makes the constant non-movable;
   # - an exported const outside model/entity is a violation: external usage
   #   is invisible to the analyzer, and shared constants live in model/entity;
-  # - an iota block can only be moved as a whole — it is evaluated as a group;
+  # - a definitional block can only be moved as a whole — it is evaluated as a
+  #   group: an iota block, or a group of ≥2 consts of the same named type
+  #   (a GID-123 string/int enum), so a local enum is not scattered across the
+  #   predicates that read its values;
   # - exclusions: //nolint:gidconstscope or settings.exclude (constant names).
 
   Scenario: positive — an exported constant in a service package
@@ -59,6 +62,19 @@ Feature: GID-194 — constants are declared where they are used
     When the analyzer checks the package
     Then a "GID-194" diagnostic is reported only about the export of "ModePrimary"
     And localizing the block is not suggested
+
+  Scenario: boundary — a named-type enum whose values are read by separate predicates
+    Given the type "taskStatus string" and the block "const (taskStarted; taskOK)" of that type
+    And "taskStarted" is used only by "isStarted" and "taskOK" only by "isOK"
+    When the analyzer checks the package
+    Then no diagnostic is reported
+    # a definitional enum block is localized only as a whole — it stays grouped at the top
+
+  Scenario: boundary — a named-type enum used entirely by one function
+    Given the type "phase string" and the block "const (phaseInit; phaseDone)" of that type
+    And both constants are used only by the function "phaseName"
+    When the analyzer checks the package
+    Then a single "GID-194" diagnostic is reported on the const block
 
   Scenario: boundary — usage in a package-level var
     Given the constant "defaultLabel" is used in the initialization of a package-level var

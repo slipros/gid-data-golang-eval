@@ -70,3 +70,38 @@ func use() (string, bool, bool, int, byte) {
 }
 
 var _ = use
+
+// --- Edge: a named-type string enum whose values are read by separate
+// predicates — a definitional group, localized only as a whole, so no
+// diagnostic: the enum stays grouped at the top (GID-123) ---
+
+type taskStatus string
+
+const (
+	taskStarted taskStatus = "started"
+	taskOK      taskStatus = "ok"
+)
+
+func isStarted(s taskStatus) bool { return s == taskStarted }
+
+func isOK(s taskStatus) bool { return s == taskOK }
+
+// --- Edge: a named-type enum used entirely by one function — moved as a whole,
+// a single diagnostic on the block ---
+
+type phase string
+
+const ( // want `GID-194: this constant group is used only in "phaseName"\. Fix: declare it inside that function`
+	phaseInit phase = "init"
+	phaseDone phase = "done"
+)
+
+func phaseName(p phase) string {
+	switch p {
+	case phaseInit:
+		return "init"
+	case phaseDone:
+		return "done"
+	}
+	return "unknown"
+}
