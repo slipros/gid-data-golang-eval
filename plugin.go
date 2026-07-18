@@ -10,6 +10,7 @@ import (
 	"golang.org/x/tools/go/analysis"
 
 	"github.com/slipros/gid-data-golang-eval/analyzers/allptr"
+	"github.com/slipros/gid-data-golang-eval/analyzers/approot"
 	"github.com/slipros/gid-data-golang-eval/analyzers/bansymbol"
 	"github.com/slipros/gid-data-golang-eval/analyzers/buildsig"
 	"github.com/slipros/gid-data-golang-eval/analyzers/bytesinloop"
@@ -155,6 +156,7 @@ func init() {
 	register.Plugin("gidwithmessage", newConfigurablePlugin(errwrap.NewServiceMessageAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidsentinelwrap", newConfigurablePlugin(sentinelwrap.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidscanrow", newConfigurablePlugin(scanrow.NewAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidapproot", newConfigurablePlugin(approot.NewAnalyzer, register.LoadModeSyntax))
 	register.Plugin("gidifaceplace", newSingleAnalyzerPlugin(ifaceplace.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidembedmutex", newSingleAnalyzerPlugin(embedmutex.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidchanbuf", newSingleAnalyzerPlugin(chanbuf.Analyzer, register.LoadModeTypesInfo))

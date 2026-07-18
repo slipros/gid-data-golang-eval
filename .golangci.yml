@@ -169,6 +169,7 @@ linters:
     - giderrzeroret    # GID-243
     - gidsentinelwrap  # GID-244
     - gidscanrow       # GID-245
+    - gidapproot       # GID-246
   disable:
     # The disabled list comes from the consent-api base (a deliberate team choice).
     # Some of them would cover GID rules — marked with a comment.
@@ -866,6 +867,16 @@ linters:
         # settings:
         #   exclude:
         #     - 'Repo.excludedMethod'
+      gidapproot:
+        type: module
+        description: 'GID-246: a struct named *Adapter is banned — an adapter only converts data between layers, and that mapping belongs in the layer''s convert subpackage (domain/service/convert, dal/repository/convert), not a standalone adapter type'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # Directory and type-name exclusions for legitimate adapters:
+        # settings:
+        #   exclude-paths:
+        #     - internal/client
+        #   exclude:
+        #     - LegacyAdapter
 
   exclusions:
     generated: lax
