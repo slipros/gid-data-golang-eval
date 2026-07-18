@@ -15,7 +15,7 @@ func TestAnalyzer(t *testing.T) {
 func TestAnalyzerExclude(t *testing.T) {
 	a := approot.NewAnalyzer(approot.Settings{
 		Exclude:      []string{"LegacyAdapter"},
-		ExcludePaths: []string{"client"},
+		ExcludePaths: []string{"legacy"},
 	})
 	analysistest.Run(t, analysistest.TestData(), a, "excludesvc/...")
 }

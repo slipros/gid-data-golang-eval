@@ -871,10 +871,11 @@ linters:
         type: module
         description: 'GID-246: a struct named *Adapter is banned — an adapter only converts data between layers, and that mapping belongs in the layer''s convert subpackage (domain/service/convert, dal/repository/convert), not a standalone adapter type'
         original-url: github.com/slipros/gid-data-golang-eval
-        # Directory and type-name exclusions for legitimate adapters:
+        # Escape hatch for a concrete proven case (legacy that can't be rewritten
+        # now) — not a blessing for a whole layer. By directory or by type name:
         # settings:
         #   exclude-paths:
-        #     - internal/client
+        #     - internal/legacy
         #   exclude:
         #     - LegacyAdapter
 

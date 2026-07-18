@@ -11,8 +11,10 @@ Feature: GID-246 — a struct named *Adapter is needless indirection (approot)
   # import path, needed by settings.exclude-paths) is reliably populated even when
   # the linter runs standalone.
   # The rule fires repository-wide — an adapter is a smell wherever it appears, not
-  # only in the composition root. Legitimate infrastructure adapters are exempted by
-  # directory (settings.exclude-paths) or by type name (settings.exclude).
+  # only in the composition root; no layer is privileged (an adapter in
+  # internal/client is the same smell as one in app/api/wiring). settings.exclude-paths
+  # (by directory) and settings.exclude (by type name) are an escape hatch for a
+  # concrete proven case (legacy that can't be rewritten now), not a layer blessing.
   # Generated code and _test.go files (mocks, stubs) are skipped.
   #
   # Motivation (incident 2026-07-15): govorun-server's app/api/wiring filled up with
@@ -75,10 +77,11 @@ Feature: GID-246 — a struct named *Adapter is needless indirection (approot)
     Then no diagnostic is reported for "LegacyAdapter" (others still flagged)
 
   Scenario: non-applicability — settings.exclude-paths exempts a directory
-    Given settings.exclude-paths contains "client" and an Adapter struct sits under /internal/client
+    Given settings.exclude-paths contains "legacy" and an Adapter struct sits under /internal/legacy
     When the gidapproot analyzer checks the file
     Then no diagnostic is reported
-    # Legitimate infrastructure adapters live under an excluded path.
+    # The escape hatch exempts whatever path is listed — for a proven legacy case,
+    # not as a blessing for any layer (an adapter in /internal/client IS flagged).
 
 # --- Checklist when adding a new rule ---
 #  [x] ID and description are recorded in the registry (RULES.md, GID-246)

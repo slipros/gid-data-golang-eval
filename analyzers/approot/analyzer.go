@@ -21,13 +21,16 @@
 //
 // Flagged: a struct type declaration whose name contains "adapter"
 // (case-insensitive substring, so DedupAdapter, adapterImpl, HTTPAdapterV2 all
-// match). Interfaces, type aliases and func types are not flagged — an interface
-// named Adapter is a consumer-side port, which is legitimate. Generated code and
-// _test.go files (mocks, stubs) are skipped.
+// match). No layer is privileged — an adapter in internal/client is the same
+// smell as one in app/api/wiring (a client returns its own client models; the
+// mapping to entity/model is done by dal/repository/convert or the service's
+// convert). Interfaces, type aliases and func types are not flagged — an
+// interface named Adapter is a consumer-side port, which is legitimate.
+// Generated code and _test.go files (mocks, stubs) are skipped.
 //
-// Legitimate adapters (e.g. an infrastructure adapter in internal/client) are
-// exempted by directory via settings.exclude-paths, or by type name via
-// settings.exclude.
+// settings.exclude-paths (by directory) and settings.exclude (by type name) are
+// an escape hatch for a concrete, proven case (legacy that cannot be rewritten
+// right now) — not a blanket blessing for any layer.
 package approot
 
 import (
@@ -52,8 +55,8 @@ type Settings struct {
 	// Exclude — type names exempted from the rule.
 	Exclude []string `json:"exclude"`
 	// ExcludePaths — "/"-joined path-segment sequences; a package whose import
-	// path contains such a sequence is skipped (e.g. "internal/client" keeps
-	// legitimate infrastructure adapters alive).
+	// path contains such a sequence is skipped. An escape hatch for a concrete
+	// proven case (e.g. "internal/legacy"), not a blessing for a whole layer.
 	ExcludePaths []string `json:"exclude-paths"`
 }
 
@@ -129,7 +132,7 @@ func nameHasMarker(name string) bool {
 }
 
 // excludedPath reports whether pkgPath contains any of the excluded segment
-// sequences (each entry is a "/"-joined sequence, e.g. "internal/client").
+// sequences (each entry is a "/"-joined sequence, e.g. "internal/legacy").
 func excludedPath(pkgPath string, excludes []string) bool {
 	for _, e := range excludes {
 		seq := pathseg.Segments(strings.Trim(e, "/"))
