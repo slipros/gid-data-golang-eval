@@ -901,8 +901,10 @@ linters:
         text: ST1000
       # --- specifics of this repository ---
       # AST analyzers compare identifier names and signature arities —
-      # string and numeric literals are legitimate here
-      - path: analyzers/
+      # string and numeric literals are legitimate here. internal/pathseg is
+      # the layer matcher: its code and table test are dense with path-segment
+      # string literals, legitimate for the same reason.
+      - path: (analyzers/|internal/pathseg/)
         linters:
           - goconst
           - mnd

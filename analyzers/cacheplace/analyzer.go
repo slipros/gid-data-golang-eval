@@ -60,7 +60,10 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 }
 
 func run(pass *analysis.Pass, cachePkgs []string) (any, error) {
-	if !pathseg.Contains(pass.Pkg.Path(), "domain") {
+	// The domain layer is anchored to the module root: a package nested under
+	// a different layer (e.g. .../server/grpc/domain/...) is NOT the domain
+	// layer, so pathseg.HasLayer (not Contains) is used here.
+	if !pathseg.HasLayer(pass.Pkg.Path(), "domain") {
 		return nil, nil
 	}
 	for _, file := range pass.Files {

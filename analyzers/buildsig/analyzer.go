@@ -41,7 +41,7 @@ var Analyzer = &analysis.Analyzer{
 }
 
 func run(pass *analysis.Pass) (any, error) {
-	inBuild := pathseg.Contains(pass.Pkg.Path(), "dal", "repository", "build")
+	inBuild := pathseg.HasLayer(pass.Pkg.Path(), "dal", "repository", "build")
 
 	for _, file := range pass.Files {
 		if ast.IsGenerated(file) {

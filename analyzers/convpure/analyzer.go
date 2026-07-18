@@ -119,11 +119,11 @@ func checkImports(pass *analysis.Pass, file *ast.File, thirdParty []string) {
 // checkSameModule reports the first banned layer matched by path, unless
 // path falls under the event/dto exception.
 func checkSameModule(pass *analysis.Pass, imp *ast.ImportSpec, path string) {
-	if pathseg.Contains(path, "event", "dto") {
+	if pathseg.HasLayer(path, "event", "dto") {
 		return
 	}
 	for _, banned := range bannedLayers {
-		if !pathseg.Contains(path, banned...) {
+		if !pathseg.HasLayer(path, banned...) {
 			continue
 		}
 		report(pass, imp, path)

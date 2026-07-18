@@ -73,8 +73,11 @@ func NewAnalyzer(cfg Settings) *analysis.Analyzer {
 }
 
 func run(pass *analysis.Pass, cfg Settings) (any, error) {
-	// Scope: only packages of the validate layer.
-	if !pathseg.Contains(pass.Pkg.Path(), "validate") {
+	// Scope: only packages of the validate layer. "validate" is a leaf
+	// package (e.g. handler/validate, domain/validate) nested at any depth
+	// under a transport/domain layer — not anchored to the module root — so
+	// match on the trailing segment, not the leading (layer) segments.
+	if !pathseg.EndsWith(pass.Pkg.Path(), "validate") {
 		return nil, nil
 	}
 	for _, file := range pass.Files {

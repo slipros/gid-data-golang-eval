@@ -75,8 +75,12 @@
 // does not ban it. This is intentional: module.md treats such access to
 // common internal/ entities as legal.
 //
-// Third-party libraries with client/event/metric segments in their path are
-// not affected.
+// A layer is anchored to the module root: it is matched against the leading
+// segments of the path *after* the module root, not by a segment occurring
+// anywhere in the path. So a nested client/event/metric segment below another
+// layer (e.g. a server-side package .../connect/client/interceptor) is not the
+// client layer, and third-party libraries with such segments in their path are
+// likewise not affected.
 //
 // Per-project relaxation — settings.disable (list of GID-IDs); custom rules —
 // settings.rules (id, scope, banned, reason). Pointwise — //nolint:gidlayerimports.
@@ -360,7 +364,7 @@ func run(pass *analysis.Pass, rules []layerRule, checkRepo bool) (any, error) {
 	var scoped []layerRule
 	//nolint:gidallptr // the plugin does not depend on the internal gdhelper library
 	for _, rule := range rules {
-		if pathseg.Contains(pkgPath, rule.scope...) {
+		if pathseg.HasLayer(pkgPath, rule.scope...) {
 			scoped = append(scoped, rule)
 		}
 	}
@@ -401,7 +405,7 @@ func reportFirstMatch(pass *analysis.Pass, rules []layerRule, imp *ast.ImportSpe
 	//nolint:gidallptr // the plugin does not depend on the internal gdhelper library
 	for _, rule := range rules {
 		for _, banned := range rule.banned {
-			if !pathseg.Contains(path, banned...) {
+			if !pathseg.HasLayer(path, banned...) {
 				continue
 			}
 			pass.Reportf(imp.Pos(),
@@ -418,14 +422,14 @@ func reportFirstMatch(pass *analysis.Pass, rules []layerRule, imp *ast.ImportSpe
 // layer itself. Unlike the deny matrix, the allow-list needs no knowledge of
 // the importer's folder — a new layer folder is banned by default.
 func reportRepositoryImport(pass *analysis.Pass, imp *ast.ImportSpec, path string) {
-	if !pathseg.Contains(path, "dal", "repository") {
+	if !pathseg.HasLayer(path, "dal", "repository") {
 		return
 	}
 	pkgPath := pass.Pkg.Path()
-	if pathseg.Contains(pkgPath, "app") || pathseg.Contains(pkgPath, "dal", "repository") {
+	if pathseg.HasLayer(pkgPath, "app") || pathseg.HasLayer(pkgPath, "dal", "repository") {
 		return
 	}
-	if root, ok := pkgModuleRoot(pkgPath); ok && root == pkgPath {
+	if root, ok := pathseg.PkgModuleRoot(pkgPath); ok && root == pkgPath {
 		return // the pkg/<module> root: module.go is the module's composition root (module.md)
 	}
 	pass.Reportf(imp.Pos(),
@@ -446,28 +450,10 @@ func sameModule(pkgPath, importPath string) bool {
 	if module, _, ok := strings.Cut(pkgPath, internalSeg); ok {
 		return strings.HasPrefix(importPath, module+internalSeg)
 	}
-	if module, ok := pkgModuleRoot(pkgPath); ok {
+	if module, ok := pathseg.PkgModuleRoot(pkgPath); ok {
 		return importPath == module || strings.HasPrefix(importPath, module+"/")
 	}
 	return firstSegment(pkgPath) == firstSegment(importPath)
-}
-
-// pkgModuleRoot returns the "<prefix>/pkg/<module>" root for a package path
-// under the pkg/<module> application-module layout, or ok=false if pkgPath
-// has no /pkg/ segment (or nothing follows it).
-func pkgModuleRoot(pkgPath string) (string, bool) {
-	// The module.md application-module layout marker: pkg/<module>/ repeats
-	// the same layered structure (dal/, domain/, server/) as internal/.
-	const pkgSeg = "/pkg/"
-	prefix, rest, ok := strings.Cut(pkgPath, pkgSeg)
-	if !ok || rest == "" {
-		return "", false
-	}
-	module, _, _ := strings.Cut(rest, "/")
-	if module == "" {
-		return "", false
-	}
-	return prefix + pkgSeg + module, true
 }
 
 func firstSegment(path string) string {

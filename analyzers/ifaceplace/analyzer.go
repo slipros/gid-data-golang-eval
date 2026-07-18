@@ -137,7 +137,7 @@ func checkExpr(pass *analysis.Pass, consumer *types.Package, expr ast.Expr) {
 		return
 	}
 	// The model layer: allowed only for service/usecase consumers.
-	if pathseg.Contains(declPath, "domain", "model") && isServiceOrUsecase(consumer.Path()) {
+	if pathseg.HasLayer(declPath, "domain", "model") && isServiceOrUsecase(consumer.Path()) {
 		return
 	}
 	// Someone else's "own" package (or the model layer for non service/usecase) — a violation.
@@ -151,7 +151,7 @@ func checkExpr(pass *analysis.Pass, consumer *types.Package, expr ast.Expr) {
 // the path contains at least one layer segment.
 func isOwnPackage(path string) bool {
 	for _, seg := range layerSegments {
-		if pathseg.Contains(path, seg) {
+		if pathseg.HasLayer(path, seg) {
 			return true
 		}
 	}
@@ -161,6 +161,6 @@ func isOwnPackage(path string) bool {
 // isServiceOrUsecase reports that the consumer is the domain/service
 // or domain/usecase layer.
 func isServiceOrUsecase(path string) bool {
-	return pathseg.Contains(path, "domain", "service") ||
-		pathseg.Contains(path, "domain", "usecase")
+	return pathseg.HasLayer(path, "domain", "service") ||
+		pathseg.HasLayer(path, "domain", "usecase")
 }

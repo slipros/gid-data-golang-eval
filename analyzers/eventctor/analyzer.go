@@ -6,10 +6,11 @@
 //     with broker/consumer fields; in the producer layer the constructor takes
 //     no logger — errors are propagated to the caller.
 //
-// Scope is determined by the import path segments: consumer — a package with
-// segments event and consumer, producer — with segments event and producer.
-// Subpackages with segments validate and convert are excluded: they hold
-// validators and converters, not consumers/producers.
+// Scope is determined by the import path: the package must be in the event
+// layer (anchored to the module root — pathseg.HasLayer), and its own name
+// (leaf segment) must be consumer or producer (pathseg.EndsWith). Leaf
+// packages named validate or convert are excluded: they hold validators and
+// converters, not consumers/producers.
 //
 // A constructor is an exported function ^New[A-Z] returning a pointer to a
 // struct type declared IN THE SAME PACKAGE. This automatically excludes
@@ -68,17 +69,21 @@ func NewAnalyzer(cfg Settings) *analysis.Analyzer {
 type scope int
 
 func pkgScope(pkgPath string) scope {
-	if !pathseg.Contains(pkgPath, "event") {
+	// The event layer is anchored to the module root: a package nested under a
+	// different layer (e.g. .../server/grpc/event/consumer) is NOT the event
+	// layer, so pathseg.HasLayer (not Contains) is used here.
+	if !pathseg.HasLayer(pkgPath, "event") {
 		return scopeNone
 	}
-	// validate/convert hold validators and converters, not consumers/producers.
-	if pathseg.Contains(pkgPath, "validate") || pathseg.Contains(pkgPath, "convert") {
+	// validate/convert are leaf packages (validators/converters, not
+	// consumers/producers) — matched by the package's own name via EndsWith.
+	if pathseg.EndsWith(pkgPath, "validate") || pathseg.EndsWith(pkgPath, "convert") {
 		return scopeNone
 	}
 	switch {
-	case pathseg.Contains(pkgPath, "consumer"):
+	case pathseg.EndsWith(pkgPath, "consumer"):
 		return scopeConsumer
-	case pathseg.Contains(pkgPath, "producer"):
+	case pathseg.EndsWith(pkgPath, "producer"):
 		return scopeProducer
 	default:
 		return scopeNone

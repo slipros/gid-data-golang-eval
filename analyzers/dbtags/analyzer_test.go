@@ -20,5 +20,5 @@ func TestCustomTags(t *testing.T) {
 
 // TestModelAnalyzer — GID-168: a ban on db tags on struct fields in /domain/**.
 func TestModelAnalyzer(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), dbtags.ModelAnalyzer, "modeltags/...")
+	analysistest.Run(t, analysistest.TestData(), dbtags.ModelAnalyzer, "modeltags/...", "nesteddomain/...")
 }

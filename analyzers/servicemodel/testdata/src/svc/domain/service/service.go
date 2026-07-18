@@ -6,6 +6,7 @@ import (
 
 	"svc/dal/entity"
 	"svc/domain/model"
+	nestedentity "svc/server/grpc/dal/entity"
 )
 
 type Snapshot struct{}
@@ -39,6 +40,14 @@ func (s *Snapshot) Snapshot(ctx context.Context, id string) (model.Snapshot, err
 
 func (s *Snapshot) Create(ctx context.Context, in *model.CreateSnapshot) error {
 	return nil
+}
+
+// Boundary case: server/grpc/dal/entity is a package that merely contains
+// the segments "dal", "entity" nested below another layer (server/grpc) —
+// it is not the real /dal/entity layer, so referencing it must NOT be
+// flagged (would be a false positive under path Contains).
+func (s *Snapshot) SnapshotNested(ctx context.Context, id string) (nestedentity.FakeEntity, error) {
+	return nestedentity.FakeEntity{}, nil
 }
 
 // --- Not applicable: unexported helpers (conversion) ---

@@ -63,8 +63,8 @@ var Analyzer = &analysis.Analyzer{
 func run(pass *analysis.Pass) (any, error) {
 	pkgPath := pass.Pkg.Path()
 
-	inModel := pathseg.Contains(pkgPath, "domain", "model")
-	inEntity := pathseg.Contains(pkgPath, "dal", "entity")
+	inModel := pathseg.HasLayer(pkgPath, "domain", "model")
+	inEntity := pathseg.HasLayer(pkgPath, "dal", "entity")
 
 	var forbidden map[string]string
 	switch {

@@ -6,7 +6,8 @@
 //     entity the interface is a dependency of.
 //
 // Scope: packages in the layers /domain/service, /domain/usecase, /dal/repository,
-// /server/**, /event/** (pathseg.Contains). Declarations of interface types
+// /server/**, /event/** (pathseg.HasLayer — anchored to the module root).
+// Declarations of interface types
 // whose name EXACTLY matches a bare role from the dictionary are checked.
 // Generated code is skipped.
 package ifacenaming
@@ -96,11 +97,14 @@ func run(pass *analysis.Pass, roles map[string]struct{}) (any, error) {
 	return nil, nil
 }
 
-// inScope reports whether the package belongs to a layer where the rule applies.
+// inScope reports whether the package belongs to a layer where the rule
+// applies. The layer is anchored to the module root (pathseg.HasLayer): a
+// segment nested below another layer, e.g. .../dal/entity/event/…, is NOT
+// that layer.
 func inScope(path string) bool {
-	return pathseg.Contains(path, "domain", "service") ||
-		pathseg.Contains(path, "domain", "usecase") ||
-		pathseg.Contains(path, "dal", "repository") ||
-		pathseg.Contains(path, "server") ||
-		pathseg.Contains(path, "event")
+	return pathseg.HasLayer(path, "domain", "service") ||
+		pathseg.HasLayer(path, "domain", "usecase") ||
+		pathseg.HasLayer(path, "dal", "repository") ||
+		pathseg.HasLayer(path, "server") ||
+		pathseg.HasLayer(path, "event")
 }

@@ -36,10 +36,10 @@ func run(pass *analysis.Pass) (any, error) {
 	pkgPath := pass.Pkg.Path()
 
 	// Scope: only the DAL layer, excluding the canonical place /dal/entity/enum.
-	if !pathseg.Contains(pkgPath, "dal") {
+	if !pathseg.HasLayer(pkgPath, "dal") {
 		return nil, nil
 	}
-	if pathseg.Contains(pkgPath, "dal", "entity", "enum") {
+	if pathseg.HasLayer(pkgPath, "dal", "entity", "enum") {
 		return nil, nil
 	}
 

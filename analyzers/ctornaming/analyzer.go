@@ -24,7 +24,7 @@ var Analyzer = &analysis.Analyzer{
 }
 
 func run(pass *analysis.Pass) (any, error) {
-	if pathseg.Contains(pass.Pkg.Path(), "app") {
+	if pathseg.HasLayer(pass.Pkg.Path(), "app") {
 		return nil, nil
 	}
 	for _, file := range pass.Files {

@@ -88,7 +88,7 @@ func checkConverterPlace(pass *analysis.Pass, fn *ast.FuncDecl) {
 
 func inScope(pkgPath string) bool {
 	for _, scope := range scopes {
-		if pathseg.Contains(pkgPath, scope...) {
+		if pathseg.HasLayer(pkgPath, scope...) {
 			return true
 		}
 	}

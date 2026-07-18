@@ -79,7 +79,7 @@ func findEntityType(t types.Type, seen map[types.Type]bool) string {
 	switch tt := t.(type) {
 	case *types.Named:
 		obj := tt.Obj()
-		if pkg := obj.Pkg(); pkg != nil && pathseg.Contains(pkg.Path(), "dal", "entity") {
+		if pkg := obj.Pkg(); pkg != nil && pathseg.HasLayer(pkg.Path(), "dal", "entity") {
 			return pkg.Name() + "." + obj.Name()
 		}
 		return findEntityType(tt.Underlying(), seen)

@@ -36,18 +36,19 @@ type layerRoot struct {
 
 func run(pass *analysis.Pass) (any, error) {
 	pkgPath := pass.Pkg.Path()
+	// The layer root is anchored to the module root (LayerSegments): a nested
+	// dal/repository or domain/service below another layer is not this layer.
+	layers := pathseg.LayerSegments(pkgPath)
 	//nolint:gidallptr // the plugin does not depend on the internal gdhelper library
 	for _, root := range layerRoots {
-		idx := pathseg.Index(pkgPath, root.seq...)
-		if idx < 0 {
+		if !pathseg.HasLayer(pkgPath, root.seq...) {
 			continue
 		}
-		segs := pathseg.Segments(pkgPath)
-		next := idx + len(root.seq)
-		if next >= len(segs) {
+		next := len(root.seq)
+		if next >= len(layers) {
 			continue // the layer root itself — fine
 		}
-		if _, ok := root.allowed[segs[next]]; ok {
+		if _, ok := root.allowed[layers[next]]; ok {
 			continue
 		}
 		rootPath := strings.Join(root.seq, "/")

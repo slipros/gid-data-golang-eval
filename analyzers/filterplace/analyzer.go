@@ -41,10 +41,13 @@ var Analyzer = &analysis.Analyzer{
 func run(pass *analysis.Pass) (any, error) {
 	pkgPath := pass.Pkg.Path()
 
-	inDAL := pathseg.Contains(pkgPath, "dal")
-	inEntityFilter := pathseg.Contains(pkgPath, "dal", "entity", "filter")
-	inDomain := pathseg.Contains(pkgPath, "domain")
-	inModel := pathseg.Contains(pkgPath, "domain", "model")
+	// Own-package layer classification is anchored to the module root: a
+	// package nested under a different layer (e.g. .../server/grpc/domain/...)
+	// is NOT the domain layer, so pathseg.HasLayer (not Contains) is used.
+	inDAL := pathseg.HasLayer(pkgPath, "dal")
+	inEntityFilter := pathseg.HasLayer(pkgPath, "dal", "entity", "filter")
+	inDomain := pathseg.HasLayer(pkgPath, "domain")
+	inModel := pathseg.HasLayer(pkgPath, "domain", "model")
 
 	// Neither the dal nor the domain layer — the rule does not apply.
 	dalViolating := inDAL && !inEntityFilter

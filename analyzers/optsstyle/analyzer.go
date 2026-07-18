@@ -49,8 +49,10 @@ type Settings struct {
 	// Leaf — layers matched by the package's trailing path segments: the
 	// package is the layer root, not a subpackage. Default: [["handler"]].
 	Leaf [][]string `json:"leaf"`
-	// Within — layers matched anywhere in the package path.
-	// Default: [["domain","service"], ["domain","usecase"]].
+	// Within — layers matched as a prefix of the package's layer path (the
+	// layer root and its subpackages), anchored to the module root: a segment
+	// nested below another layer does not match. Default:
+	// [["domain","service"], ["domain","usecase"]].
 	Within [][]string `json:"within"`
 }
 
@@ -97,7 +99,7 @@ func inScope(path string, leaf, within [][]string) bool {
 		}
 	}
 	for _, seq := range within {
-		if pathseg.Contains(path, seq...) {
+		if pathseg.HasLayer(path, seq...) {
 			return true
 		}
 	}

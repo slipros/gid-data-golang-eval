@@ -48,9 +48,10 @@ var Analyzer = &analysis.Analyzer{
 }
 
 func run(pass *analysis.Pass) (any, error) {
-	// composition root: package main or a path with the internal/app segments —
-	// creating a logger here is allowed.
-	if pass.Pkg.Name() == "main" || pathseg.Contains(pass.Pkg.Path(), "internal", "app") {
+	// composition root: package main or the app layer (internal/app, anchored to
+	// the module root) — creating a logger here is allowed. Anchoring keeps a
+	// nested "app" package below another layer out of the exemption.
+	if pass.Pkg.Name() == "main" || pathseg.HasLayer(pass.Pkg.Path(), "app") {
 		return nil, nil
 	}
 

@@ -12,5 +12,6 @@ func TestAnalyzer(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), buildsig.Analyzer,
 		"dalsvc/dal/repository/build",
 		"dalsvc/dal/repository",
-		"domainsvc/domain/service")
+		"domainsvc/domain/service",
+		"dalsvc/client/x/dal/repository/build")
 }

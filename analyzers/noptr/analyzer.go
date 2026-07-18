@@ -33,7 +33,7 @@ var Analyzer = &analysis.Analyzer{
 
 func run(pass *analysis.Pass) (any, error) {
 	pkgPath := pass.Pkg.Path()
-	inScope := pathseg.Contains(pkgPath, "domain", "model") || pathseg.Contains(pkgPath, "event", "dto")
+	inScope := pathseg.HasLayer(pkgPath, "domain", "model") || pathseg.HasLayer(pkgPath, "event", "dto")
 	for _, file := range pass.Files {
 		if ast.IsGenerated(file) {
 			continue

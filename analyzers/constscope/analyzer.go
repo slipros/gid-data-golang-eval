@@ -247,7 +247,7 @@ func reportIotaGroup(pass *analysis.Pass, g *constGroup, usage map[types.Object]
 
 func inAllowedScope(pkgPath string) bool {
 	for _, scope := range allowedScopes {
-		if pathseg.Contains(pkgPath, scope...) {
+		if pathseg.HasLayer(pkgPath, scope...) {
 			return true
 		}
 	}

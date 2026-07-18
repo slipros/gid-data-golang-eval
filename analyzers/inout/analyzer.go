@@ -24,11 +24,13 @@ import (
 
 const ruleID = "GID-111"
 
+// scopes — layers (anchored to the module root) whose exported methods carry
+// domain/model or dal/entity data. Handler packages are handled separately in
+// inScope: they are leaves, not a module-root layer.
 var scopes = [][]string{
 	{"dal", "repository"},
 	{"domain", "service"},
 	{"domain", "usecase"},
-	{"handler"},
 }
 
 // clientScope — the client layer tree. Unlike the scopes above, its
@@ -65,7 +67,7 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 
 func run(pass *analysis.Pass, s Settings) (any, error) {
 	pkgPath := pass.Pkg.Path()
-	isClient := pathseg.Contains(pkgPath, clientScope...)
+	isClient := pathseg.HasLayer(pkgPath, clientScope...)
 	if !isClient && !inScope(pkgPath) {
 		return nil, nil
 	}
@@ -131,7 +133,7 @@ func layerStructName(t types.Type) (string, bool) {
 	}
 	pkg := obj.Pkg()
 	for _, tree := range layerTypeTrees {
-		if pathseg.Contains(pkg.Path(), tree...) {
+		if pathseg.HasLayer(pkg.Path(), tree...) {
 			return pkg.Name() + "." + obj.Name(), true
 		}
 	}
@@ -143,8 +145,11 @@ func layerStructName(t types.Type) (string, bool) {
 // struct (the client's own request/response type, wherever it is declared)
 // counts as its input/output data. A struct from a foreign module
 // (a third-party or generated dependency, e.g. a protobuf stub) does not.
+// Same-module membership is decided by the module root (pathseg.ModuleRoot),
+// not by the first path segment — for real import paths every
+// github.com/<org>/<repo> package shares the segment "github.com".
 func clientStructName(pkgPath string) func(types.Type) (string, bool) {
-	modRoot := pathseg.Segments(pkgPath)[0]
+	modRoot := pathseg.ModuleRoot(pkgPath)
 	return func(t types.Type) (string, bool) {
 		named, ok := t.(*types.Named)
 		if !ok {
@@ -158,7 +163,7 @@ func clientStructName(pkgPath string) func(types.Type) (string, bool) {
 			return "", false
 		}
 		pkg := obj.Pkg()
-		if pathseg.Segments(pkg.Path())[0] != modRoot {
+		if pathseg.ModuleRoot(pkg.Path()) != modRoot {
 			return "", false
 		}
 		return pkg.Name() + "." + obj.Name(), true
@@ -166,8 +171,13 @@ func clientStructName(pkgPath string) func(types.Type) (string, bool) {
 }
 
 func inScope(pkgPath string) bool {
+	// handler packages are leaves (server/grpc/handler, server/http/handler),
+	// matched by the trailing segment rather than anchored to the module root.
+	if pathseg.EndsWith(pkgPath, "handler") {
+		return true
+	}
 	for _, scope := range scopes {
-		if pathseg.Contains(pkgPath, scope...) {
+		if pathseg.HasLayer(pkgPath, scope...) {
 			return true
 		}
 	}

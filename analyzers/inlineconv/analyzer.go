@@ -3,12 +3,13 @@
 //
 // Source: service.md "Conversion is always performed via the convert package".
 //
-// Scope: domain-layer packages (pathseg.Contains(pkgPath, "domain")), EXCEPT
-// packages with a convert segment (that is where conversion should live).
+// Scope: domain-layer packages (pathseg.HasLayer(pkgPath, "domain")), EXCEPT
+// leaf packages named convert (pathseg.EndsWith(pkgPath, "convert") — that is
+// where conversion should live).
 //
 // What is forbidden: a composite literal with ≥1 element whose named type
 // (struct or named slice) is declared in an entity-layer package
-// (pathseg.Contains(type's package, "dal", "entity") — including the
+// (pathseg.HasLayer(type's package, "dal", "entity") — including the
 // filter/enum subpackages). Inline-filling an entity outside a convert package
 // means conversion is smeared across the domain layer.
 //
@@ -51,8 +52,11 @@ var Analyzer = &analysis.Analyzer{
 func run(pass *analysis.Pass) (any, error) {
 	pkgPath := pass.Pkg.Path()
 
-	// Rule zone: the domain layer, but not convert packages (that is where conversion lives).
-	if !pathseg.Contains(pkgPath, "domain") || pathseg.Contains(pkgPath, "convert") {
+	// Rule zone: the domain layer (anchored to the module root — a package
+	// nested under a different layer, e.g. .../server/grpc/domain/..., is NOT
+	// the domain layer), but not convert packages (a leaf package, matched by
+	// its own name — that is where conversion lives).
+	if !pathseg.HasLayer(pkgPath, "domain") || pathseg.EndsWith(pkgPath, "convert") {
 		return nil, nil
 	}
 
@@ -106,7 +110,12 @@ func entityLitName(pass *analysis.Pass, lit *ast.CompositeLit) (string, bool) {
 	}
 	obj := named.Obj()
 	pkg := obj.Pkg()
-	if pkg == nil || !pathseg.Contains(pkg.Path(), "dal", "entity") {
+	// The entity layer is anchored to the module root: a type declared in a
+	// package nested under a different layer (e.g. .../server/api/dal/entity)
+	// is NOT the module's entity layer, so pathseg.HasLayer (not Contains) is
+	// used here — it also covers the filter/enum subpackages (a trailing
+	// suffix after the matched dal/entity prefix).
+	if pkg == nil || !pathseg.HasLayer(pkg.Path(), "dal", "entity") {
 		return "", false
 	}
 	return pkg.Name() + "." + obj.Name(), true

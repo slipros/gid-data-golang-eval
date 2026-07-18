@@ -149,7 +149,7 @@ type errSource int
 func runWrap(pass *analysis.Pass) (any, error) {
 	pkgPath := pass.Pkg.Path()
 	boundary := inBoundary(pkgPath)
-	domain := pathseg.Contains(pkgPath, "domain")
+	domain := pathseg.HasLayer(pkgPath, "domain")
 	for _, file := range pass.Files {
 		if ast.IsGenerated(file) {
 			continue
@@ -339,7 +339,7 @@ func checkNoServiceMessage(pass *analysis.Pass, fn *ast.FuncDecl) {
 
 func inServiceMessageScope(pkgPath string) bool {
 	for _, scope := range serviceMessageScopes {
-		if pathseg.Contains(pkgPath, scope...) {
+		if pathseg.HasLayer(pkgPath, scope...) {
 			return true
 		}
 	}
@@ -365,7 +365,7 @@ func recvTypeName(fn *ast.FuncDecl) string {
 
 func inBoundary(pkgPath string) bool {
 	for _, scope := range boundaryScopes {
-		if pathseg.Contains(pkgPath, scope...) {
+		if pathseg.HasLayer(pkgPath, scope...) {
 			return true
 		}
 	}

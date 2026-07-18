@@ -42,7 +42,7 @@ var Analyzer = &analysis.Analyzer{
 
 func run(pass *analysis.Pass) (any, error) {
 	// Scope: domain model layer only.
-	if !pathseg.Contains(pass.Pkg.Path(), "domain", "model") {
+	if !pathseg.HasLayer(pass.Pkg.Path(), "domain", "model") {
 		return nil, nil
 	}
 

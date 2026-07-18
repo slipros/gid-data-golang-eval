@@ -43,7 +43,7 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 }
 
 func run(pass *analysis.Pass, s Settings) (any, error) {
-	if !pathseg.Contains(pass.Pkg.Path(), "server", "http") {
+	if !pathseg.HasLayer(pass.Pkg.Path(), "server", "http") {
 		return nil, nil
 	}
 	for _, file := range pass.Files {

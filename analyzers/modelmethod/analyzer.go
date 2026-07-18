@@ -136,7 +136,7 @@ func singleModelParam(pass *analysis.Pass, fn *ast.FuncDecl) (*types.Named, bool
 	}
 	obj := named.Obj()
 	pkg := obj.Pkg()
-	if pkg == nil || !pathseg.Contains(pkg.Path(), "domain", "model") {
+	if pkg == nil || !pathseg.HasLayer(pkg.Path(), "domain", "model") {
 		return nil, false
 	}
 	return named, true

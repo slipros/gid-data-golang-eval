@@ -80,7 +80,7 @@ func resolveNames(s Settings) []string {
 
 func run(pass *analysis.Pass, banned map[string]struct{}, excluded []string) (any, error) {
 	// Layer root and subpackages: /domain/model, /domain/model/filter, ...
-	if !pathseg.Contains(pass.Pkg.Path(), "domain", "model") {
+	if !pathseg.HasLayer(pass.Pkg.Path(), "domain", "model") {
 		return nil, nil
 	}
 	for _, file := range pass.Files {

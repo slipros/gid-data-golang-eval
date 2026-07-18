@@ -53,11 +53,11 @@ var Analyzer = &analysis.Analyzer{
 
 func run(pass *analysis.Pass) (any, error) {
 	pkgPath := pass.Pkg.Path()
-	inModel := pathseg.Contains(pkgPath, "domain", "model")
-	inServiceOrUsecase := pathseg.Contains(pkgPath, "domain", "service") ||
-		pathseg.Contains(pkgPath, "domain", "usecase")
-	inTxMethodScope := pathseg.Contains(pkgPath, "dal", "repository") ||
-		pathseg.Contains(pkgPath, "domain", "service")
+	inModel := pathseg.HasLayer(pkgPath, "domain", "model")
+	inServiceOrUsecase := pathseg.HasLayer(pkgPath, "domain", "service") ||
+		pathseg.HasLayer(pkgPath, "domain", "usecase")
+	inTxMethodScope := pathseg.HasLayer(pkgPath, "dal", "repository") ||
+		pathseg.HasLayer(pkgPath, "domain", "service")
 
 	for _, file := range pass.Files {
 		if ast.IsGenerated(file) {

@@ -44,7 +44,7 @@ var Analyzer = &analysis.Analyzer{
 }
 
 func run(pass *analysis.Pass) (any, error) {
-	if pathseg.Contains(pass.Pkg.Path(), "domain", "model") {
+	if pathseg.HasLayer(pass.Pkg.Path(), "domain", "model") {
 		checkModelHelpers(pass)
 		return nil, nil
 	}

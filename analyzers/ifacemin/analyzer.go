@@ -478,12 +478,16 @@ func inTypeParams(parents map[ast.Node]ast.Node, e ast.Expr) bool {
 	return false
 }
 
+// inScope reports whether the package belongs to a layer where the rule
+// applies. The layer is anchored to the module root (pathseg.HasLayer): a
+// segment nested below another layer, e.g. .../dal/entity/event/…, is NOT
+// that layer.
 func inScope(pkgPath string) bool {
-	return pathseg.Contains(pkgPath, "domain", "service") ||
-		pathseg.Contains(pkgPath, "domain", "usecase") ||
-		pathseg.Contains(pkgPath, "dal", "repository") ||
-		pathseg.Contains(pkgPath, "server") ||
-		pathseg.Contains(pkgPath, "event")
+	return pathseg.HasLayer(pkgPath, "domain", "service") ||
+		pathseg.HasLayer(pkgPath, "domain", "usecase") ||
+		pathseg.HasLayer(pkgPath, "dal", "repository") ||
+		pathseg.HasLayer(pkgPath, "server") ||
+		pathseg.HasLayer(pkgPath, "event")
 }
 
 func isTestFile(pass *analysis.Pass, file *ast.File) bool {

@@ -10,5 +10,5 @@ import (
 
 func TestAnalyzer(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), enumplace.Analyzer,
-		"dalsvc/...", "domainsvc/...")
+		"dalsvc/...", "domainsvc/...", "nesteddal/...")
 }

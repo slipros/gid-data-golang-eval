@@ -23,9 +23,9 @@ var BasedAnalyzer = &analysis.Analyzer{
 
 func runBased(pass *analysis.Pass) (any, error) {
 	pkgPath := pass.Pkg.Path()
-	inScope := pathseg.Contains(pkgPath, "domain", "model") ||
-		pathseg.Contains(pkgPath, "dal", "entity") ||
-		pathseg.Contains(pkgPath, "event", "dto")
+	inScope := pathseg.HasLayer(pkgPath, "domain", "model") ||
+		pathseg.HasLayer(pkgPath, "dal", "entity") ||
+		pathseg.HasLayer(pkgPath, "event", "dto")
 	if !inScope {
 		return nil, nil
 	}

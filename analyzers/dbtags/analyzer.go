@@ -113,7 +113,7 @@ func checkStruct(pass *analysis.Pass, name string, st *ast.StructType, tags []st
 }
 
 func runModel(pass *analysis.Pass, tags []string) (any, error) {
-	if !pathseg.Contains(pass.Pkg.Path(), "domain") {
+	if !pathseg.HasLayer(pass.Pkg.Path(), "domain") {
 		return nil, nil
 	}
 	for _, file := range pass.Files {

@@ -70,7 +70,7 @@ type config struct {
 func newRun(cfg *config) func(*analysis.Pass) (any, error) {
 	return func(pass *analysis.Pass) (any, error) {
 		pkgPath := pass.Pkg.Path()
-		if !pathseg.Contains(pkgPath, cfg.tree...) || pathseg.Contains(pkgPath, cfg.allowed...) {
+		if !pathseg.HasLayer(pkgPath, cfg.tree...) || pathseg.HasLayer(pkgPath, cfg.allowed...) {
 			return nil, nil
 		}
 		for _, file := range pass.Files {
