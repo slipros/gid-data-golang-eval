@@ -6,7 +6,10 @@ Feature: GID-246 — a struct named *Adapter is needless indirection (approot)
   So that agents stop spawning pointless adapter wrappers (esp. in app/api/wiring)
      and the adaptation lives inline where the dependency is actually consumed
 
-  # One analyzer, linter gidapproot, LoadModeSyntax is enough (names/structure only).
+  # One analyzer, linter gidapproot. Matching is name/structure only (AST), but the
+  # linter is registered with LoadModeTypesInfo so pass.Pkg.Path() (the package
+  # import path, needed by settings.exclude-paths) is reliably populated even when
+  # the linter runs standalone.
   # The rule fires repository-wide — an adapter is a smell wherever it appears, not
   # only in the composition root. Legitimate infrastructure adapters are exempted by
   # directory (settings.exclude-paths) or by type name (settings.exclude).
