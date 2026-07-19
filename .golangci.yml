@@ -160,6 +160,7 @@ linters:
     - gidprotorequired # GID-232
     - gidenumcast      # GID-233
     - gidconvpure      # GID-235
+    - gidconvpolicy    # GID-247
     - gidserviceentity # GID-236
     - gidwithmessage   # GID-237
     - gidcliflags      # GID-238/239
@@ -801,6 +802,14 @@ linters:
         # settings:
         #   packages:
         #     - github.com/sirupsen/logrus
+      gidconvpolicy:
+        type: module
+        description: 'GID-247: a convert function must not branch on its input to select a raw constant value — that is business policy, not mapping (move the decision to /domain/model)'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # Converter functions exempt from the rule (a function name or Type.Method):
+        # settings:
+        #   exclude:
+        #     - asrFormatFromSource
       gidserviceentity:
         type: module
         description: 'GID-236: a service uses only the repository of its own entity; other entities are orchestrated in usecase'

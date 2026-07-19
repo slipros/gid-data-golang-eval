@@ -22,6 +22,7 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/constscope"
 	"github.com/slipros/gid-data-golang-eval/analyzers/constvarorder"
 	"github.com/slipros/gid-data-golang-eval/analyzers/convnaming"
+	"github.com/slipros/gid-data-golang-eval/analyzers/convpolicy"
 	"github.com/slipros/gid-data-golang-eval/analyzers/convpure"
 	"github.com/slipros/gid-data-golang-eval/analyzers/createupdate"
 	"github.com/slipros/gid-data-golang-eval/analyzers/ctornaming"
@@ -140,6 +141,7 @@ func init() {
 	register.Plugin("gidctor", newSingleAnalyzerPlugin(ctornaming.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidconvnaming", newSingleAnalyzerPlugin(convnaming.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidconvpure", newConfigurablePlugin(convpure.NewAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidconvpolicy", newConfigurablePlugin(convpolicy.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidnoptr", newSingleAnalyzerPlugin(noptr.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidsqlnull", newSingleAnalyzerPlugin(sqlnull.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidenumstring", newSingleAnalyzerPlugin(enumstring.Analyzer, register.LoadModeTypesInfo))
