@@ -2,9 +2,14 @@
 // of event-layer constructors (source: event.md).
 //
 //   - GID-216 (gideventctor): in the consumer layer the constructor must take
-//     a logger (*logrus.Logger or *logrus.Entry) — the consumer builds an Entry
-//     with broker/consumer fields; in the producer layer the constructor takes
-//     no logger — errors are propagated to the caller.
+//     a logger — the consumer enriches it with broker/consumer fields; in the
+//     producer layer the constructor takes no logger — errors are propagated to
+//     the caller.
+//
+// Which parameter types count as a logger is configurable via
+// settings.loggerTypes (<package>.<Type>) — the default set covers both the
+// logrus era (logrus.Logger, logrus.Entry) and slog (slog.Logger), so the rule
+// is not pinned to a single logging stack.
 //
 // Scope is determined by the import path: the package must be in the event
 // layer (anchored to the module root — pathseg.HasLayer), and its own name
@@ -25,11 +30,11 @@ import (
 	"go/ast"
 	"go/types"
 	"regexp"
+	"strings"
 
 	"golang.org/x/tools/go/analysis"
 
 	"github.com/slipros/gid-data-golang-eval/internal/exclude"
-	"github.com/slipros/gid-data-golang-eval/internal/lgr"
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 )
 
@@ -42,6 +47,11 @@ const (
 	scopeProducer
 )
 
+// defaultLoggerTypes — the logger parameter types accepted in a consumer
+// constructor, as <package>.<Type>. Covers the logrus era (Logger/Entry) and
+// slog so the rule is not tied to one logging stack.
+var defaultLoggerTypes = []string{"logrus.Logger", "logrus.Entry", "slog.Logger"}
+
 // ctorName — a constructor: an exported name of the form New + a capital letter.
 var ctorName = regexp.MustCompile(`^New[A-Z]`)
 
@@ -52,15 +62,28 @@ var Analyzer = NewAnalyzer(Settings{})
 type Settings struct {
 	// Exclude — names of excluded constructors (for example "NewOrderConsumer").
 	Exclude []string `json:"exclude"`
+	// LoggerTypes — the parameter types a consumer constructor may take as its
+	// logger, each as <package>.<Type> (e.g. "logrus.Logger", "slog.Logger").
+	// Empty → defaultLoggerTypes.
+	LoggerTypes []string `json:"loggerTypes"`
 }
 
 // NewAnalyzer builds the GID-216 analyzer from the linter settings (.golangci.yml).
 func NewAnalyzer(cfg Settings) *analysis.Analyzer {
+	loggerTypes := cfg.LoggerTypes
+	if len(loggerTypes) == 0 {
+		loggerTypes = defaultLoggerTypes
+	}
+	loggers := make(map[string]struct{}, len(loggerTypes))
+	for _, t := range loggerTypes {
+		loggers[t] = struct{}{}
+	}
 	return &analysis.Analyzer{
 		Name: "gideventctor",
-		Doc:  ruleID + ": consumer constructors take a logrus logger, producer constructors do not. Fix: add *logrus.Logger to consumer constructors, remove it from producers",
+		Doc: ruleID + ": consumer constructors take a logger (" + strings.Join(loggerTypes, ", ") +
+			"), producer constructors do not. Fix: add a logger to consumer constructors, remove it from producers",
 		Run: func(pass *analysis.Pass) (any, error) {
-			return run(pass, cfg)
+			return run(pass, cfg, loggers)
 		},
 	}
 }
@@ -90,7 +113,7 @@ func pkgScope(pkgPath string) scope {
 	}
 }
 
-func run(pass *analysis.Pass, cfg Settings) (any, error) {
+func run(pass *analysis.Pass, cfg Settings, loggers map[string]struct{}) (any, error) {
 	sc := pkgScope(pass.Pkg.Path())
 	if sc == scopeNone {
 		return nil, nil
@@ -121,21 +144,21 @@ func run(pass *analysis.Pass, cfg Settings) (any, error) {
 			if !returnsLocalStructPtr(pass.Pkg, sig) {
 				continue
 			}
-			check(pass, sc, fn, sig)
+			check(pass, sc, fn, sig, loggers)
 		}
 	}
 	return nil, nil
 }
 
-func check(pass *analysis.Pass, sc scope, fn *ast.FuncDecl, sig *types.Signature) {
-	has := hasLoggerParam(sig)
+func check(pass *analysis.Pass, sc scope, fn *ast.FuncDecl, sig *types.Signature, loggers map[string]struct{}) {
+	has := hasLoggerParam(sig, loggers)
 	switch sc {
 	case scopeConsumer:
 		if !has {
 			pass.Reportf(fn.Name.Pos(),
-				"%s: a consumer constructor must take *logrus.Logger and build an Entry with broker/consumer fields "+
-					"(see event.md). Fix: add a logger *logrus.Logger parameter and build the Entry with WithField "+
-					"in the constructor",
+				"%s: a consumer constructor must take a logger and enrich it with broker/consumer fields "+
+					"(see event.md). Fix: add a logger parameter (e.g. *slog.Logger) and attach the "+
+					"broker/consumer fields in the constructor",
 				ruleID)
 		}
 	case scopeProducer:
@@ -172,15 +195,39 @@ func returnsLocalStructPtr(pkg *types.Package, sig *types.Signature) bool {
 	return ok
 }
 
-// hasLoggerParam reports whether any of the parameters has a logrus type
-// (*logrus.Logger or *logrus.Entry).
-func hasLoggerParam(sig *types.Signature) bool {
+// hasLoggerParam reports whether any of the parameters has a logger type from
+// the configured allowlist (matched by <package>.<Type>).
+func hasLoggerParam(sig *types.Signature, loggers map[string]struct{}) bool {
 	params := sig.Params()
 	for i := 0; i < params.Len(); i++ {
 		param := params.At(i)
-		if lgr.IsType(param.Type()) {
+		key, ok := loggerKey(param.Type())
+		if !ok {
+			continue
+		}
+		if _, ok := loggers[key]; ok {
 			return true
 		}
 	}
 	return false
+}
+
+// loggerKey returns the <package>.<Type> identity of t (unwrapping a pointer or
+// alias), e.g. "logrus.Logger" for *logrus.Logger. ok is false for unnamed or
+// package-less types.
+func loggerKey(t types.Type) (string, bool) {
+	switch tt := t.(type) {
+	case *types.Pointer:
+		return loggerKey(tt.Elem())
+	case *types.Alias:
+		return loggerKey(types.Unalias(tt))
+	case *types.Named:
+		obj := tt.Obj()
+		pkg := obj.Pkg()
+		if pkg == nil {
+			return "", false
+		}
+		return pkg.Name() + "." + obj.Name(), true
+	}
+	return "", false
 }

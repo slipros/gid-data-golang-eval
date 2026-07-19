@@ -135,14 +135,13 @@ func commaOkIndexes(body *ast.BlockStmt) map[*ast.IndexExpr]struct{} {
 }
 
 // callsUnhandledValueError reports that the body contains a call to
-// gderror.NewUnhandledValueError.
+// NewUnhandledValueError. Matched by symbol name only — the import path of
+// the errors helper library is not pinned (the same constructor lives under
+// different module paths: gitlab.gid.team/.../helper.git/errors,
+// git.k8s.nomilk.space/go-library/ehelper, …).
 func callsUnhandledValueError(pass *analysis.Pass, body *ast.BlockStmt) bool {
-	const (
-		// gderrorPath — the import path of the internal errors library.
-		gderrorPath = "gitlab.gid.team/gid-data/tech/golang/libs/helper.git/errors"
-		// unhandledCtor — the constructor for handling a missing key.
-		unhandledCtor = "NewUnhandledValueError"
-	)
+	// unhandledCtor — the constructor for handling a missing key.
+	const unhandledCtor = "NewUnhandledValueError"
 	found := false
 	ast.Inspect(body, func(n ast.Node) bool {
 		call, ok := n.(*ast.CallExpr)
@@ -153,8 +152,7 @@ func callsUnhandledValueError(pass *analysis.Pass, body *ast.BlockStmt) bool {
 		if !ok || fn.Pkg() == nil {
 			return true
 		}
-		fnPkg := fn.Pkg()
-		if fnPkg.Path() == gderrorPath && fn.Name() == unhandledCtor {
+		if fn.Name() == unhandledCtor {
 			found = true
 			return false
 		}

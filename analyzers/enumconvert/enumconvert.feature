@@ -12,9 +12,10 @@ Feature: GID-143 — handling of a missing enum-conversion key (enumconvert)
   # Detection (by types): a map index expression m[key] where the key type is a
   #   named type with underlying string (enum per GID-123), and the value type is
   #   also a named type (enum→enum / enum→model type).
-  # gderror is recognized by the import path
-  #   gitlab.gid.team/gid-data/tech/golang/libs/helper.git/errors
-  #   and the constructor name NewUnhandledValueError (a stub in testdata).
+  # The missing-key handler is recognized by the constructor name
+  #   NewUnhandledValueError ALONE — the import path is not pinned, so a helper
+  #   library on any module path counts (gitlab.gid.team/.../helper.git/errors,
+  #   git.k8s.nomilk.space/go-library/ehelper, …).
   # Generated code (ast.IsGenerated) is skipped.
 
   # --- Class 1: positive (the violation is caught) ---
@@ -40,6 +41,13 @@ Feature: GID-143 — handling of a missing enum-conversion key (enumconvert)
     Given a convert package with "v, ok := statusMap[s]; if !ok { return \"\", gderror.NewUnhandledValueError(s) }"
     When the gidenumconvert analyzer checks the file
     Then no diagnostic is reported
+
+  Scenario: negative — the handler comes from a helper on a non-gitlab module path
+    Given a convert package importing "git.k8s.nomilk.space/go-library/ehelper" as gderror
+    And "v, ok := formatMap[f]; if !ok { return \"\", gderror.NewUnhandledValueError(f) }"
+    When the gidenumconvert analyzer checks the file
+    Then no diagnostic is reported
+    # Matched by symbol name, not by import path.
 
   # --- Class 3: boundary (looks like a violation but is allowed) ---
 

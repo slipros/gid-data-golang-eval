@@ -743,10 +743,14 @@ linters:
         original-url: github.com/slipros/gid-data-golang-eval
       gideventctor:
         type: module
-        description: 'GID-216: kafka consumer takes *logrus.Logger, producer does not'
+        description: 'GID-216: an event consumer constructor takes a logger (default logrus.Logger/logrus.Entry/slog.Logger), producer does not'
         original-url: github.com/slipros/gid-data-golang-eval
-        # Exclusions (besides //nolint:gideventctor) — constructor names:
+        # loggerTypes — which parameter types count as a logger, as <package>.<Type>
+        # (empty → logrus.Logger, logrus.Entry, slog.Logger). Exclusions (besides
+        # //nolint:gideventctor) — constructor names:
         # settings:
+        #   loggerTypes:
+        #     - 'slog.Logger'
         #   exclude:
         #     - 'NewAuditTrail'
       gidbansymbol:

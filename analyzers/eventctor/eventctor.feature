@@ -3,16 +3,32 @@
 
 Feature: GID-216 — dependencies of event-layer constructors
   As an event-layer developer
-  I want consumer constructors to take a logrus logger,
+  I want consumer constructors to take a logger,
   and producer constructors not to
-  So that the consumer builds an Entry with broker/consumer fields, and the producer
+  So that the consumer enriches the logger with broker/consumer fields, and the producer
   propagates errors to the calling code
+  # Which parameter types count as a logger is configurable via settings.loggerTypes
+  # (<package>.<Type>); the default set covers logrus.Logger, logrus.Entry and slog.Logger,
+  # so the rule is not pinned to a single logging stack.
 
   Scenario: a consumer constructor without a logger — violation (positive)
     Given a package with the segments event and consumer
     And the constructor "func NewOrderConsumer(svc Service) *OrderConsumer"
     When the analyzer checks the file
-    Then a "GID-216" diagnostic is reported saying that a consumer takes *logrus.Logger
+    Then a "GID-216" diagnostic is reported saying that a consumer must take a logger
+
+  Scenario: a consumer constructor with *slog.Logger — ok, slog is in the default allowlist (negative)
+    Given a package with the segments event and consumer
+    And the constructor "func NewShipmentConsumer(log *slog.Logger) *ShipmentConsumer"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+
+  Scenario: settings.loggerTypes = ["mylog.Logger"] — the allowlist is authoritative (non-applicability)
+    Given a package with the segments event and consumer
+    And the constructor "func NewOrderConsumer(log *mylog.Logger) *OrderConsumer"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+    But a consumer taking *slog.Logger (outside the custom list) is reported
 
   Scenario: a producer constructor with *logrus.Logger — violation (positive)
     Given a package with the segments event and producer

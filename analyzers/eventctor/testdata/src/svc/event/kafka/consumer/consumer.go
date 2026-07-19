@@ -2,8 +2,10 @@
 package consumer
 
 import (
-	"github.com/sirupsen/logrus"
+	"log/slog"
 	"registry"
+
+	"github.com/sirupsen/logrus"
 )
 
 type Service interface{ Do() }
@@ -14,7 +16,7 @@ type OrderConsumer struct {
 	svc Service
 }
 
-func NewOrderConsumer(svc Service) *OrderConsumer { // want `GID-216: a consumer constructor must take \*logrus\.Logger and build an Entry with broker/consumer fields \(see event\.md\)\. Fix: add a logger \*logrus\.Logger parameter and build the Entry with WithField in the constructor`
+func NewOrderConsumer(svc Service) *OrderConsumer { // want `GID-216: a consumer constructor must take a logger and enrich it with broker/consumer fields \(see event\.md\)\. Fix: add a logger parameter \(e\.g\. \*slog\.Logger\) and attach the broker/consumer fields in the constructor`
 	return &OrderConsumer{svc: svc}
 }
 
@@ -36,6 +38,17 @@ type RefundConsumer struct {
 
 func NewRefundConsumer(log *logrus.Entry) *RefundConsumer {
 	return &RefundConsumer{log: log}
+}
+
+// --- Negative: a consumer with *slog.Logger — the default allowlist covers
+// slog, so a slog-stack consumer is accepted without a logrus dependency ---
+
+type ShipmentConsumer struct {
+	log *slog.Logger
+}
+
+func NewShipmentConsumer(log *slog.Logger) *ShipmentConsumer {
+	return &ShipmentConsumer{log: log.With("consumer", "shipment")}
 }
 
 // --- Boundary: a schema function returns a foreign package type — not a constructor ---

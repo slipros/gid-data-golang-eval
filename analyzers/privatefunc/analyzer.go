@@ -61,10 +61,13 @@ func run(pass *analysis.Pass) (any, error) {
 }
 
 // privateFuncs — private package-level functions (violation candidates).
+// Functions declared in _test.go are excluded: shared test-builder helpers are
+// package-level by design (they cannot be entity methods) — GID-133 is about
+// production code.
 func privateFuncs(pass *analysis.Pass) []*ast.FuncDecl {
 	var out []*ast.FuncDecl
 	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
+		if ast.IsGenerated(file) || isTestFile(pass, file) {
 			continue
 		}
 		for _, decl := range file.Decls {
@@ -158,6 +161,12 @@ func packageStructs(pass *analysis.Pass) map[string]struct{} {
 		}
 	}
 	return out
+}
+
+// isTestFile reports whether the file is a _test.go file.
+func isTestFile(pass *analysis.Pass, file *ast.File) bool {
+	tokenFile := pass.Fset.File(file.Pos())
+	return strings.HasSuffix(tokenFile.Name(), "_test.go")
 }
 
 func inScope(pkgPath string) bool {

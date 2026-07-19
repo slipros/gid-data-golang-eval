@@ -26,6 +26,11 @@ const (
 // converterName: <Dst><Type>From<Src> — words before and after From.
 var converterName = regexp.MustCompile(`^[A-Z][A-Za-z0-9]*From[A-Z][A-Za-z0-9]*$`)
 
+// testEntryPoint: a go-test framework entry point (TestXxx, BenchmarkXxx,
+// ExampleXxx, FuzzXxx). Its name is mandated by `go test` — it is never a
+// converter and must not be judged by the converter-naming rule.
+var testEntryPoint = regexp.MustCompile(`^(Test|Benchmark|Example|Fuzz)([A-Z].*)?$`)
+
 // scopes — the layers in which converters must live in convert/.
 var scopes = [][]string{
 	{"dal"},
@@ -50,6 +55,11 @@ func run(pass *analysis.Pass) (any, error) {
 		for _, decl := range file.Decls {
 			fn, ok := decl.(*ast.FuncDecl)
 			if !ok || fn.Recv != nil || !fn.Name.IsExported() {
+				continue
+			}
+			// A go-test entry point (Test/Benchmark/Example/Fuzz) is not a
+			// converter; its name is fixed by the framework.
+			if testEntryPoint.MatchString(fn.Name.Name) {
 				continue
 			}
 			if inConvert {
