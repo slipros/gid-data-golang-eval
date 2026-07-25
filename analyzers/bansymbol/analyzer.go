@@ -26,12 +26,30 @@ import (
 
 const ruleID = "GID-217"
 
-// defaultSymbols — built-in list: ban on gdpostgres.TQuery.
+// defaultSymbols — built-in list: gdpostgres.TQuery and the logrus logger
+// interfaces. The latter cannot carry a context: FieldLogger/StdLogger/
+// Ext1FieldLogger have no WithContext method, so a dependency typed by them
+// makes GID-155 (a log call carries ctx) impossible to satisfy.
 var defaultSymbols = []Symbol{
 	{
 		Pkg:  "gitlab.gid.team/gid-data/tech/golang/libs/postgres.git",
 		Name: "TQuery",
 		Msg:  "gdpostgres.TQuery is banned. Fix: use conn methods directly: Select, ScanRow, NamedStruct or Transaction (repo.md)",
+	},
+	{
+		Pkg:  "github.com/sirupsen/logrus",
+		Name: "FieldLogger",
+		Msg:  "logrus.FieldLogger has no WithContext — a log call cannot carry the context (GID-155). Fix: type the dependency as *logrus.Entry (or *slog.Logger)",
+	},
+	{
+		Pkg:  "github.com/sirupsen/logrus",
+		Name: "StdLogger",
+		Msg:  "logrus.StdLogger has no WithContext and no fields — a log call cannot carry the context (GID-155). Fix: type the dependency as *logrus.Entry (or *slog.Logger)",
+	},
+	{
+		Pkg:  "github.com/sirupsen/logrus",
+		Name: "Ext1FieldLogger",
+		Msg:  "logrus.Ext1FieldLogger has no WithContext — a log call cannot carry the context (GID-155). Fix: type the dependency as *logrus.Entry (or *slog.Logger)",
 	},
 }
 
