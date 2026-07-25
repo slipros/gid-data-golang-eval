@@ -1,9 +1,18 @@
-// Package logconstruct implements rule GID-154: if an entity holds a logger,
-// its constructor must name the entity on that logger — so the logs always
-// show which entity writes them. The rule is not pinned to one stack: logrus
-// names it with WithField(<entity>, <name>), slog with
-// With("<entity>", <name>) or With(slog.String(...)); either shape satisfies
-// the rule.
+// Package logconstruct implements rule GID-154: a constructor that gets hold
+// of a logger must name the entity on it — so the logs always show which
+// entity writes them.
+//
+// Two shapes trigger the requirement, and either one is enough:
+//
+//   - the constructed entity has a logger field (New<Entity> matched against a
+//     struct of the same name);
+//   - a New* constructor takes a logger as a parameter — whatever it stores it
+//     in (an entity of a differently spelled name, a closure, another
+//     constructor), the logger it passes on must already carry the entity name.
+//
+// The rule is not pinned to one stack: logrus names the entity with
+// WithField(<entity>, <name>), slog with With("<entity>", <name>) or
+// With(slog.String(...)); either shape satisfies it.
 package logconstruct
 
 import (
@@ -33,9 +42,6 @@ var Analyzer = &analysis.Analyzer{
 
 func run(pass *analysis.Pass) (any, error) {
 	withLogger := structsWithLogger(pass)
-	if len(withLogger) == 0 {
-		return nil, nil
-	}
 	for _, file := range pass.Files {
 		if ast.IsGenerated(file) {
 			continue
@@ -45,22 +51,50 @@ func run(pass *analysis.Pass) (any, error) {
 			if !ok || fn.Recv != nil || fn.Body == nil {
 				continue
 			}
-			entity, ok := constructedEntity(fn.Name.Name, withLogger)
-			if !ok {
-				continue
-			}
-			if !callsWithField(pass, fn.Body) {
-				pass.Reportf(fn.Name.Pos(),
-					"%s: entity %q has a logger. Fix: constructor %q must name the entity on it — "+
-						"logger.WithField(<entity>, <name>) (logrus) or logger.With(\"<entity>\", <name>) (slog)",
-					ruleID, entity, fn.Name.Name)
-			}
+			checkConstructor(pass, fn, withLogger)
 		}
 	}
 	return nil, nil
 }
 
-// structsWithLogger collects the names of package structs that hold a logrus field.
+// checkConstructor reports a New* constructor that gets hold of a logger —
+// through the entity's field or through its own parameter — without naming the
+// entity on it.
+func checkConstructor(pass *analysis.Pass, fn *ast.FuncDecl, withLogger map[string]struct{}) {
+	entity, viaField := constructedEntity(fn.Name.Name, withLogger)
+	viaParam := takesLogger(pass, fn.Type)
+	if !viaField && !viaParam {
+		return
+	}
+	if callsWithField(pass, fn.Body) {
+		return
+	}
+	if !viaField {
+		entity, _ = cutNew(fn.Name.Name)
+	}
+	pass.Reportf(fn.Name.Pos(),
+		"%s: entity %q has a logger. Fix: constructor %q must name the entity on it — "+
+			"logger.WithField(<entity>, <name>) (logrus) or logger.With(\"<entity>\", <name>) (slog)",
+		ruleID, entity, fn.Name.Name)
+}
+
+// takesLogger reports whether the constructor accepts a logger parameter — the
+// second shape that triggers the rule: whatever the logger is stored in, it
+// must leave the constructor already carrying the entity name.
+func takesLogger(pass *analysis.Pass, fnType *ast.FuncType) bool {
+	if fnType.Params == nil {
+		return false
+	}
+	for _, param := range fnType.Params.List {
+		if lgr.IsType(pass.TypesInfo.TypeOf(param.Type)) {
+			return true
+		}
+	}
+	return false
+}
+
+// structsWithLogger collects the names of package structs that hold a logger
+// field, of either stack.
 func structsWithLogger(pass *analysis.Pass) map[string]struct{} {
 	out := map[string]struct{}{}
 	for _, file := range pass.Files {

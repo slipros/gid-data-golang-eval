@@ -68,6 +68,7 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/logconstruct"
 	"github.com/slipros/gid-data-golang-eval/analyzers/logctx"
 	"github.com/slipros/gid-data-golang-eval/analyzers/loggernew"
+	"github.com/slipros/gid-data-golang-eval/analyzers/loggerplace"
 	"github.com/slipros/gid-data-golang-eval/analyzers/mapcap"
 	"github.com/slipros/gid-data-golang-eval/analyzers/metricstruct"
 	"github.com/slipros/gid-data-golang-eval/analyzers/modelmethod"
@@ -145,6 +146,7 @@ func init() {
 	register.Plugin("gidconvpure", newConfigurablePlugin(convpure.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidstorageplace", newConfigurablePlugin(storageplace.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidtestpackage", newConfigurablePlugin(testpackage.NewAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidloggerplace", newConfigurablePlugin(loggerplace.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidconvpolicy", newConfigurablePlugin(convpolicy.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidnoptr", newSingleAnalyzerPlugin(noptr.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidsqlnull", newSingleAnalyzerPlugin(sqlnull.Analyzer, register.LoadModeTypesInfo))

@@ -42,3 +42,29 @@ type Plain struct {
 func NewPlain(name string) *Plain {
 	return &Plain{name: name}
 }
+
+// --- Boundary: the constructor takes a logger but stores it in an entity
+// whose name does not match the constructor — the requirement still holds ---
+
+type reporter struct {
+	logger *slog.Logger
+}
+
+func NewReporter(logger *slog.Logger) *reporter { // want `GID-154: entity "Reporter" has a logger\. Fix: constructor "NewReporter" must name the entity on it`
+	return &reporter{logger: logger}
+}
+
+// Negative: the same shape, with the entity named on the logger.
+func NewReporterNamed(logger *slog.Logger) *reporter {
+	return &reporter{logger: logger.With(slog.String("reporter", "daily"))}
+}
+
+// Boundary: a constructor that passes the logger on to another constructor
+// must still name its own entity first.
+type wrapper struct {
+	inner *reporter
+}
+
+func NewWrapper(logger *slog.Logger) *wrapper {
+	return &wrapper{inner: NewReporterNamed(logger.With(slog.String("wrapper", "outer")))}
+}

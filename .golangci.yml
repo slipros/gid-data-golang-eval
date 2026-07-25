@@ -162,6 +162,7 @@ linters:
     - gidconvpure      # GID-235
     - gidstorageplace  # GID-249
     - gidtestpackage   # GID-250
+    - gidloggerplace   # GID-251
     - gidconvpolicy    # GID-247
     - gidserviceentity # GID-236
     - gidwithmessage   # GID-237
@@ -809,6 +810,15 @@ linters:
         # settings:
         #   packages:
         #     - github.com/sirupsen/logrus
+      gidloggerplace:
+        type: module
+        description: 'GID-251: the logger is not a field of an options struct — it is a separate constructor parameter after opts'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # Type-name suffixes that mark an options struct (replaces the default Options/Config/Settings):
+        # settings:
+        #   suffixes:
+        #     - 'Options'
+        #     - 'Params'
       gidtestpackage:
         type: module
         description: 'GID-250: a test lives in the same package as the code under test — package <pkg>, not <pkg>_test'
