@@ -87,7 +87,7 @@ linters:
     - gidservicesingle # GID-148
     - gidlayerimports  # GID-132/170/172
     - gidservicemodel  # GID-151
-    - gidparamorder    # GID-110/113/153
+    - gidparamorder    # GID-110/113/153/252
     - gidoptsstyle     # GID-152
     - gidlogconstruct  # GID-154
     - gidlogctx        # GID-155
@@ -378,7 +378,7 @@ linters:
         original-url: github.com/slipros/gid-data-golang-eval
       gidparamorder:
         type: module
-        description: 'GID-110/113/153: parameter order: ctx, opts, logger'
+        description: 'GID-110/113/153/252: parameter order: ctx, opts, logger, metrics, then the rest; in a New* constructor the prefix precedes the entity dependencies'
         original-url: github.com/slipros/gid-data-golang-eval
       gidoptsstyle:
         type: module
