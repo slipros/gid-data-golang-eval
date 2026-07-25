@@ -41,3 +41,23 @@ type Plain struct {
 func NewPlain(retries int) *Plain {
 	return &Plain{retries: retries}
 }
+
+// --- Positive: a CamelCase entity name in the logrus shapes ---
+
+type snapshotStore struct {
+	logger *logrus.Entry
+}
+
+func NewSnapshotStore(logger *logrus.Entry) *snapshotStore {
+	return &snapshotStore{logger: logger.WithField("service", "SnapshotStore")} // want `GID-154: the entity name "SnapshotStore" is not lower snake_case\. Fix: spell it as the log fields do`
+}
+
+func NewSnapshotStoreFields(logger *logrus.Entry) *snapshotStore {
+	return &snapshotStore{logger: logger.WithFields(logrus.Fields{"service": "snapshotStore"})} // want `GID-154: the entity name "snapshotStore" is not lower snake_case\. Fix: spell it as the log fields do`
+}
+
+// --- Negative: lower snake_case in both shapes ---
+
+func NewSnapshotStoreGood(logger *logrus.Entry) *logrus.Entry {
+	return logger.WithField("service", "snapshot_store")
+}

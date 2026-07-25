@@ -68,3 +68,23 @@ type wrapper struct {
 func NewWrapper(logger *slog.Logger) *wrapper {
 	return &wrapper{inner: NewReporterNamed(logger.With(slog.String("wrapper", "outer")))}
 }
+
+// --- Positive: the entity name is not lower snake_case ---
+
+type deviceAccess struct {
+	logger *slog.Logger
+}
+
+func NewDeviceAccessCamel(logger *slog.Logger) *deviceAccess {
+	return &deviceAccess{logger: logger.With("service", "DeviceAccess")} // want `GID-154: the entity name "DeviceAccess" is not lower snake_case\. Fix: spell it as the log fields do`
+}
+
+func NewDeviceAccessMixed(logger *slog.Logger) *deviceAccess {
+	return &deviceAccess{logger: logger.With(slog.String("service", "deviceAccess"))} // want `GID-154: the entity name "deviceAccess" is not lower snake_case\. Fix: spell it as the log fields do`
+}
+
+// --- Negative: lower snake_case ---
+
+func NewDeviceAccess(logger *slog.Logger) *deviceAccess {
+	return &deviceAccess{logger: logger.With(slog.String("service", "device_access"))}
+}

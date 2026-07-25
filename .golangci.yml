@@ -386,7 +386,7 @@ linters:
         original-url: github.com/slipros/gid-data-golang-eval
       gidlogconstruct:
         type: module
-        description: 'GID-154: an entity constructor with a logger names the entity on it — WithField (logrus) or With (slog)'
+        description: 'GID-154: a constructor that gets a logger names the entity on it — key = the layer (client/service/usecase/repository/…), value = the entity name in lower snake_case; the composition root is exempt'
         original-url: github.com/slipros/gid-data-golang-eval
       gidlogctx:
         type: module
