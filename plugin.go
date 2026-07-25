@@ -96,6 +96,7 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/sqlnull"
 	"github.com/slipros/gid-data-golang-eval/analyzers/storageplace"
 	"github.com/slipros/gid-data-golang-eval/analyzers/subtestname"
+	"github.com/slipros/gid-data-golang-eval/analyzers/testpackage"
 	"github.com/slipros/gid-data-golang-eval/analyzers/upwardimport"
 	"github.com/slipros/gid-data-golang-eval/analyzers/utilpkg"
 	"github.com/slipros/gid-data-golang-eval/analyzers/validatorlib"
@@ -143,6 +144,7 @@ func init() {
 	register.Plugin("gidconvnaming", newSingleAnalyzerPlugin(convnaming.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidconvpure", newConfigurablePlugin(convpure.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidstorageplace", newConfigurablePlugin(storageplace.NewAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidtestpackage", newConfigurablePlugin(testpackage.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidconvpolicy", newConfigurablePlugin(convpolicy.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidnoptr", newSingleAnalyzerPlugin(noptr.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidsqlnull", newSingleAnalyzerPlugin(sqlnull.Analyzer, register.LoadModeTypesInfo))

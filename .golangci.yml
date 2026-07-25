@@ -161,6 +161,7 @@ linters:
     - gidenumcast      # GID-233
     - gidconvpure      # GID-235
     - gidstorageplace  # GID-249
+    - gidtestpackage   # GID-250
     - gidconvpolicy    # GID-247
     - gidserviceentity # GID-236
     - gidwithmessage   # GID-237
@@ -808,6 +809,14 @@ linters:
         # settings:
         #   packages:
         #     - github.com/sirupsen/logrus
+      gidtestpackage:
+        type: module
+        description: 'GID-250: a test lives in the same package as the code under test — package <pkg>, not <pkg>_test'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # Directories keeping a deliberate black-box suite:
+        # settings:
+        #   exclude-paths:
+        #     - 'test/blackbox'
       gidstorageplace:
         type: module
         description: 'GID-249: a storage driver (SQL/key-value/NoSQL) is imported only by /dal/** and the composition root /app/** — a store is reached through a repository, a client is for an external API'
