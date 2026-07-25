@@ -827,7 +827,7 @@ linters:
         #     - 'Legacy'                  # the whole service struct
       gidwithmessage:
         type: module
-        description: 'GID-237: errors.WithMessage is banned in /domain/service — WithStack after conversion; message context belongs to usecase'
+        description: 'GID-237: errors.WithMessage is banned in /domain/service — return the incoming error as is, WithStack only after conversion; message context belongs to usecase'
         original-url: github.com/slipros/gid-data-golang-eval
         # Exclusions ("Method" | "Type.Method"):
         # settings:

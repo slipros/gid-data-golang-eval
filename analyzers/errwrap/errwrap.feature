@@ -248,21 +248,33 @@ Feature: GID-176 / GID-177 / GID-237 — error handling by layer (errwrap)
   # ============================================================
   # GID-237 (gidwithmessage) — new (2026-07-04, service.md)
   # ============================================================
-  # In /domain/service, errors.WithMessage/WithMessagef is banned: a service
-  # converts the error and wraps it with errors.WithStack; adding a message to
-  # an incoming error belongs to /domain/usecase.
+  # In /domain/service, errors.WithMessage/WithMessagef is banned: adding a
+  # message to an incoming error belongs to /domain/usecase. The rule bans
+  # WithMessage only — it does not demand a wrapper in its place. The default
+  # fix is "return err": an incoming same-module error already carries the
+  # stack collected where the external call happened, and errors.WithStack on
+  # top of it only layers a second, redundant stack (pkg/errors.WithStack
+  # always appends a new one). WithStack is for an error with no stack of its
+  # own yet — a static error (GID-177) or one the service just converted to
+  # its own model error.
 
   # --- Class 1: positive ---
 
   Scenario: positive — errors.WithMessage in a service
     Given a package in "/domain/service" with "err := s.call(); return errors.WithMessage(err, \"ctx\")"
     When the gidwithmessage analyzer checks the file
-    Then the diagnostic "GID-237: errors.WithMessage is not used in a service — convert the error and wrap with errors.WithStack; WithMessage belongs to usecase" is reported
+    Then the diagnostic "GID-237: errors.WithMessage is not used in a service. Fix: return the incoming error as is (return err) — its stack is already collected upstream, errors.WithStack would only layer a second one; wrap with errors.WithStack only an error the service converted itself; adding message context belongs to usecase" is reported
 
   # --- Class 2: negative ---
 
-  Scenario: negative — errors.WithStack / errors.Wrap are fine in a service
-    Given a package in "/domain/service" with "err := s.call(); return errors.WithStack(err)" (and likewise errors.Wrap)
+  Scenario: negative — an incoming error passed through as is
+    Given a package in "/domain/service" with "err := s.call(); if err != nil { return err }"
+    When the gidwithmessage analyzer checks the file
+    Then no diagnostic is reported
+    # The canonical fix: the stack is already collected upstream, nothing to add.
+
+  Scenario: negative — errors.WithStack of a converted error / errors.Wrap
+    Given a package in "/domain/service" with "err = ErrConverted; return errors.WithStack(err)" (and likewise errors.Wrap)
     When the gidwithmessage analyzer checks the file
     Then no diagnostic is reported
 

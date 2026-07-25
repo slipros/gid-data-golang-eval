@@ -35,9 +35,14 @@
 //     The var declarations themselves are not touched (they are not returns).
 //
 //   - GID-237 (gidwithmessage): in /domain/service, errors.WithMessage and
-//     errors.WithMessagef are banned — a service converts the error and wraps
-//     it with errors.WithStack; adding a message to an incoming error belongs
-//     to /domain/usecase.
+//     errors.WithMessagef are banned — adding a message to an incoming error
+//     belongs to /domain/usecase. The rule bans WithMessage only; it does not
+//     demand a wrapper in its place. An incoming same-module error already
+//     carries its stack (collected where the external call happened) and is
+//     returned as is — errors.WithStack on top of it only layers a second,
+//     redundant stack. WithStack is for an error that has no stack of its own
+//     yet: a static error (GID-177) or one the service just converted to its
+//     own model error.
 //
 // pkg/errors is detected by the import path github.com/pkg/errors.
 // Generated code (ast.IsGenerated) is skipped.
@@ -133,8 +138,9 @@ func NewStaticAnalyzer(s Settings) *analysis.Analyzer {
 func NewServiceMessageAnalyzer(s Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name: "gidwithmessage",
-		Doc: ruleIDServiceMessage + ": errors.WithMessage is not used in a service. Fix: convert the error " +
-			"to a model error and wrap with errors.WithStack; adding message context belongs to usecase",
+		Doc: ruleIDServiceMessage + ": errors.WithMessage is not used in a service. Fix: return the incoming " +
+			"error as is; wrap with errors.WithStack only an error the service converted itself; " +
+			"adding message context belongs to usecase",
 		Run: func(pass *analysis.Pass) (any, error) {
 			return runServiceMessage(pass, s)
 		},
@@ -329,8 +335,10 @@ func checkNoServiceMessage(pass *analysis.Pass, fn *ast.FuncDecl) {
 		name := pkgErrorsCallName(pass, call)
 		if name == "WithMessage" || name == "WithMessagef" {
 			pass.Reportf(call.Pos(),
-				"%s: errors.WithMessage is not used in a service. Fix: convert the error to a model error and wrap "+
-					"with errors.WithStack; adding message context belongs to usecase",
+				"%s: errors.WithMessage is not used in a service. Fix: return the incoming error as is "+
+					"(return err) — its stack is already collected upstream, errors.WithStack would only layer "+
+					"a second one; wrap with errors.WithStack only an error the service converted itself "+
+					"(err = model.ErrX; return errors.WithStack(err)); adding message context belongs to usecase",
 				ruleIDServiceMessage)
 		}
 		return true
