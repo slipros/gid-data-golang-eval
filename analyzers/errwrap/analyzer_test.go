@@ -27,6 +27,13 @@ func TestStaticAnalyzer(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), a, "staticsvc/...")
 }
 
+func TestRedundantStackAnalyzer(t *testing.T) {
+	a := errwrap.NewRedundantStackAnalyzer(errwrap.Settings{
+		Exclude: []string{"Service.excludedMethod"},
+	})
+	analysistest.Run(t, analysistest.TestData(), a, "stacksvc/...")
+}
+
 func TestServiceMessageAnalyzer(t *testing.T) {
 	a := errwrap.NewServiceMessageAnalyzer(errwrap.Settings{
 		Exclude: []string{"Service.excludedMethod"},

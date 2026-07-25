@@ -44,6 +44,19 @@
 //     yet: a static error (GID-177) or one the service just converted to its
 //     own model error.
 //
+//   - GID-248 (gidwithstack): errors.WithStack of an error that already carries
+//     a stack is banned — pkg/errors.WithStack appends a new *withStack
+//     unconditionally, so a second stack is layered on and "%+v" prints two
+//     traces. An error counts as already stacked when it is a local variable
+//     whose EVERY assignment is a call inside the same module (a method or
+//     function of this service, an interface-method call outside the boundary
+//     layers, a pkg/errors constructor), or such a call used directly as the
+//     argument. It is returned as is. Silent when the origin is unknown or the
+//     value may have no stack: a reassignment (err = ...) marks the variable as
+//     replaced, a static error is GID-177's business, an external call and an
+//     interface call inside boundaryScopes are GID-176's, and a parameter or a
+//     struct field has an origin this analyzer cannot see.
+//
 // pkg/errors is detected by the import path github.com/pkg/errors.
 // Generated code (ast.IsGenerated) is skipped.
 package errwrap
@@ -65,6 +78,7 @@ const (
 	ruleIDWrap           = "GID-176"
 	ruleIDStatic         = "GID-177"
 	ruleIDServiceMessage = "GID-237"
+	ruleIDRedundantStack = "GID-248"
 
 	pkgErrorsPath = "github.com/pkg/errors"
 )
@@ -103,6 +117,9 @@ var StaticAnalyzer = NewStaticAnalyzer(Settings{})
 
 // ServiceMessageAnalyzer — GID-237 with default settings (no exclusions).
 var ServiceMessageAnalyzer = NewServiceMessageAnalyzer(Settings{})
+
+// RedundantStackAnalyzer — GID-248 with default settings (no exclusions).
+var RedundantStackAnalyzer = NewRedundantStackAnalyzer(Settings{})
 
 // Settings — linter settings from .golangci.yml.
 type Settings struct {
@@ -143,6 +160,19 @@ func NewServiceMessageAnalyzer(s Settings) *analysis.Analyzer {
 			"adding message context belongs to usecase",
 		Run: func(pass *analysis.Pass) (any, error) {
 			return runServiceMessage(pass, s)
+		},
+	}
+}
+
+// NewRedundantStackAnalyzer builds the GID-248 analyzer.
+func NewRedundantStackAnalyzer(s Settings) *analysis.Analyzer {
+	return &analysis.Analyzer{
+		Name: "gidwithstack",
+		Doc: ruleIDRedundantStack + ": errors.WithStack of an error that already carries a stack layers a second " +
+			"one. Fix: return the error as is; errors.WithStack is for an error without a stack — a static one " +
+			"or one you just converted",
+		Run: func(pass *analysis.Pass) (any, error) {
+			return runRedundantStack(pass, s)
 		},
 	}
 }
@@ -343,6 +373,129 @@ func checkNoServiceMessage(pass *analysis.Pass, fn *ast.FuncDecl) {
 		}
 		return true
 	})
+}
+
+// ===== GID-248 =====
+
+func runRedundantStack(pass *analysis.Pass, s Settings) (any, error) {
+	boundary := inBoundary(pass.Pkg.Path())
+	for _, file := range pass.Files {
+		if ast.IsGenerated(file) {
+			continue
+		}
+		for _, decl := range file.Decls {
+			fn, ok := decl.(*ast.FuncDecl)
+			if !ok || fn.Body == nil {
+				continue
+			}
+			if exclude.Match(s.Exclude, recvTypeName(fn), fn.Name.Name) {
+				continue
+			}
+			checkRedundantStack(pass, fn, classifyStackedErrors(pass, fn, boundary), boundary)
+		}
+	}
+	return nil, nil
+}
+
+func checkRedundantStack(pass *analysis.Pass, fn *ast.FuncDecl, stacked map[types.Object]bool, boundary bool) {
+	ast.Inspect(fn.Body, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok || pkgErrorsCallName(pass, call) != "WithStack" || len(call.Args) == 0 {
+			return true
+		}
+		arg := call.Args[0]
+		// A static error (model.ErrX, &BigError{}) — WithStack is required (GID-177).
+		if isStaticError(pass, arg) {
+			return true
+		}
+		if !hasOwnStack(pass, arg, stacked, boundary) {
+			return true
+		}
+		pass.Reportf(call.Pos(),
+			"%s: errors.WithStack of an error that already carries a stack layers a second one. "+
+				"Fix: return the error as is (return err); errors.WithStack is for an error without a stack — "+
+				"a static error or one you just converted (err = model.ErrX; return errors.WithStack(err))",
+			ruleIDRedundantStack)
+		return true
+	})
+}
+
+// hasOwnStack reports whether expr is known to already carry a stack: a
+// same-module call used directly as the argument, or a local variable every
+// assignment of which is such a call (see classifyStackedErrors).
+func hasOwnStack(pass *analysis.Pass, expr ast.Expr, stacked map[types.Object]bool, boundary bool) bool {
+	if call, ok := expr.(*ast.CallExpr); ok {
+		// The pkg/errors wrapper nested right here (errors.WithStack(errors.Wrap(err, ...)))
+		// is judged the same way as any same-module call: the inner call already stacked.
+		return isStackedCall(pass, call, boundary)
+	}
+	return stacked[objectOfErrExpr(pass, expr)]
+}
+
+// classifyStackedErrors collects the function's local error variables that are
+// known to already carry a stack: EVERY assignment to the variable is a call
+// that stacks on its own (isStackedCall). A variable assigned anything else —
+// a reassignment of a converted error, a channel receive, a map or type-assert
+// result — is recorded as false and never reported: its value may legitimately
+// have no stack.
+func classifyStackedErrors(pass *analysis.Pass, fn *ast.FuncDecl, boundary bool) map[types.Object]bool {
+	out := map[types.Object]bool{}
+	mark := func(obj types.Object, stacked bool) {
+		if obj == nil || !isErrorType(obj.Type()) {
+			return
+		}
+		if prev, seen := out[obj]; seen && !prev {
+			return
+		}
+		out[obj] = stacked
+	}
+	ast.Inspect(fn.Body, func(n ast.Node) bool {
+		assign, ok := n.(*ast.AssignStmt)
+		if !ok {
+			return true
+		}
+		// A reassignment (err = ...) replaces the error — the new value may have no stack.
+		// Otherwise the source must be exactly one call that stacks on its own.
+		stacked := false
+		if assign.Tok == token.DEFINE && len(assign.Rhs) == 1 {
+			call, isCall := assign.Rhs[0].(*ast.CallExpr)
+			stacked = isCall && isStackedCall(pass, call, boundary)
+		}
+		for _, lhs := range assign.Lhs {
+			id, isIdent := lhs.(*ast.Ident)
+			if !isIdent || id.Name == "_" {
+				continue
+			}
+			mark(objectOf(pass, id), stacked)
+		}
+		return true
+	})
+	return out
+}
+
+// isStackedCall reports whether the call's error result already carries a
+// stack: a pkg/errors constructor (New/Wrap/WithStack/... always stack), or a
+// call to a function/method declared inside the current module — which, by
+// GID-176, wrapped at its own origin. An external call and an interface call
+// inside boundaryScopes are excluded: an error from those needs errors.Wrap
+// (GID-176 reports it), and this rule does not duplicate that diagnostic.
+func isStackedCall(pass *analysis.Pass, call *ast.CallExpr, boundary bool) bool {
+	fn := typeutil.Callee(pass.TypesInfo, call)
+	f, ok := fn.(*types.Func)
+	if !ok || f.Pkg() == nil {
+		return false
+	}
+	calleePkg := f.Pkg()
+	if calleePkg.Path() == pkgErrorsPath {
+		return true
+	}
+	if isExternalCall(pass, call) {
+		return false
+	}
+	if boundary && isInterfaceMethodCall(pass, call) {
+		return false
+	}
+	return sameModule(pass.Pkg.Path(), calleePkg.Path())
 }
 
 func inServiceMessageScope(pkgPath string) bool {

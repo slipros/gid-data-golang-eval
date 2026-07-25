@@ -163,6 +163,7 @@ linters:
     - gidconvpolicy    # GID-247
     - gidserviceentity # GID-236
     - gidwithmessage   # GID-237
+    - gidwithstack     # GID-248
     - gidcliflags      # GID-238/239
     - gidmodulealias   # GID-240
     - giderrname       # GID-234
@@ -833,6 +834,14 @@ linters:
         # settings:
         #   exclude:
         #     - 'Legacy.Enrich'
+      gidwithstack:
+        type: module
+        description: 'GID-248: errors.WithStack of a same-module error that already carries a stack layers a second one — return it as is; WithStack is for a static or a just-converted error'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # Exclusions ("Function" | "Type.Method"):
+        # settings:
+        #   exclude:
+        #     - 'Legacy.Restack'
       gidcliflags:
         type: module
         description: 'GID-238/239: cli flag Name is kebab-case, env vars are UPPER_SNAKE_CASE; a flag needs Required or a default Value'

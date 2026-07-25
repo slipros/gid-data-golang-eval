@@ -1,17 +1,19 @@
 # language: en
 
-Feature: GID-176 / GID-177 / GID-237 — error handling by layer (errwrap)
+Feature: GID-176 / GID-177 / GID-237 / GID-248 — error handling by layer (errwrap)
   As a developer
   I want every external call's error to collect a stack and context (Wrap), wherever it is made,
   a same-module non-static error inside the application to be enriched without a second stack (WithMessage),
   static errors to always carry a stack when returned (WithStack),
+  a same-module error that was not replaced to never get a second stack (no WithStack),
   and a service to never add a message to an incoming error (that belongs to usecase)
   So that the error trace is complete and the stack is collected exactly once — at the external call
 
-  # Three analyzers in one errwrap package (like errplace), LoadModeTypesInfo:
-  #   - WrapAnalyzer          → linter giderrwrap   (GID-176)
-  #   - StaticAnalyzer        → linter gidstaticerr (GID-177)
+  # Four analyzers in one errwrap package (like errplace), LoadModeTypesInfo:
+  #   - WrapAnalyzer           → linter giderrwrap    (GID-176)
+  #   - StaticAnalyzer         → linter gidstaticerr  (GID-177)
   #   - ServiceMessageAnalyzer → linter gidwithmessage (GID-237)
+  #   - RedundantStackAnalyzer → linter gidwithstack  (GID-248)
   # pkg/errors is recognized by the import path github.com/pkg/errors (a stub in testdata).
   # Generated code (ast.IsGenerated) is skipped.
   # The layer is matched by path segments via internal/pathseg.
@@ -302,10 +304,111 @@ Feature: GID-176 / GID-177 / GID-237 — error handling by layer (errwrap)
     When the gidwithmessage analyzer checks the file
     Then no diagnostic is reported
 
+  # ============================================================
+  # GID-248 (gidwithstack) — new (2026-07-25, owner decision)
+  # ============================================================
+  # errors.WithStack is for an error that has no stack yet. pkg/errors.WithStack
+  # appends a new *withStack unconditionally, so calling it on an error that
+  # already carries a stack layers a second one and "%+v" prints two traces.
+  # An error is considered to already carry a stack when it is a local variable
+  # whose EVERY assignment is a call inside the same module: a method/function
+  # of this service, an interface-method call outside the boundary layers
+  # (the implementation lives in this module and wraps at its own origin), or a
+  # pkg/errors constructor (New/Errorf/Wrap/WithStack/WithMessage). Such an
+  # error is returned as is. Fires in EVERY layer.
+  #
+  # Deliberately silent when the origin is unknown or the error may legitimately
+  # lack a stack:
+  #   - a reassignment "err = …" anywhere in the function body marks the
+  #     variable as REPLACED (a converted error may well have no stack);
+  #   - a static error (GID-177 demands WithStack there);
+  #   - a direct call into another module / stdlib, and an interface call inside
+  #     /client/**, /dal/repository, /event/** — GID-176's territory (it demands
+  #     errors.Wrap, a stricter requirement than this rule);
+  #   - a function parameter, a struct field, a channel receive, a range value —
+  #     the origin is unknown (an error-mapper may legitimately stack a driver
+  #     error it received as a parameter).
+
+  # --- Class 1: positive ---
+
+  Scenario: positive — WithStack of an error from a same-module method call
+    Given a package with "raw, err := d.generateRawSecret(); return errors.WithStack(err)"
+    When the gidwithstack analyzer checks the file
+    Then the diagnostic "GID-248: errors.WithStack of an error that already carries a stack layers a second one. Fix: return the error as is (return err); errors.WithStack is for an error without a stack — a static error or one you just converted (err = model.ErrX; return errors.WithStack(err))" is reported
+
+  Scenario: positive — WithStack of an interface-call error outside the boundary layers
+    Given a package in "/domain/service" with "err := s.repo.Get(ctx); return errors.WithStack(err)"
+    When the gidwithstack analyzer checks the file
+    Then the diagnostic "GID-248: …" is reported
+    # The repository implementation lives in this module and wraps at its own origin.
+
+  Scenario: positive — WithStack of a pkg/errors constructor result
+    Given a package with "err := errors.New(\"boom\"); return errors.WithStack(err)"
+    When the gidwithstack analyzer checks the file
+    Then the diagnostic "GID-248: …" is reported
+
+  # --- Class 2: negative ---
+
+  Scenario: negative — the error was replaced before WithStack
+    Given a package with "err := s.call(); if err != nil { err = model.ErrNotFound; return errors.WithStack(err) }"
+    When the gidwithstack analyzer checks the file
+    Then no diagnostic is reported
+    # Any reassignment marks the variable as replaced — the new value may lack a stack.
+
+  Scenario: negative — WithStack of a static error
+    Given a package with "return errors.WithStack(model.ErrNotFound)" (and likewise &BigError{})
+    When the gidwithstack analyzer checks the file
+    Then no diagnostic is reported
+    # That is exactly what GID-177 demands.
+
+  Scenario: negative — WithStack of a function parameter
+    Given a package with "func mapErr(err error) error { return errors.WithStack(err) }"
+    When the gidwithstack analyzer checks the file
+    Then no diagnostic is reported
+    # The origin is unknown: an error-mapper legitimately stacks a driver error.
+
+  Scenario: negative — the error is returned as is
+    Given a package with "err := s.call(); if err != nil { return err }"
+    When the gidwithstack analyzer checks the file
+    Then no diagnostic is reported
+
+  # --- Class 3: boundary ---
+
+  Scenario: boundary — a variable with two assignments, one of them unknown
+    Given a package with "err := s.call(); if cond { err = <-errCh }; return errors.WithStack(err)"
+    When the gidwithstack analyzer checks the file
+    Then no diagnostic is reported
+    # Reported only when EVERY assignment is a same-module call.
+
+  Scenario: boundary — WithStack of a call expression, not a variable
+    Given a package with "return errors.WithStack(s.call())"
+    When the gidwithstack analyzer checks the file
+    Then the diagnostic "GID-248: …" is reported
+    # A direct same-module call as the argument is the same case, with no variable in between.
+
+  # --- Class 4: non-applicability ---
+
+  Scenario: non-applicability — WithStack of an external-call error
+    Given a package with "err := json.Unmarshal(b, &v); return errors.WithStack(err)"
+    When the gidwithstack analyzer checks the file
+    Then no diagnostic is reported
+    # GID-176 reports it: an external error needs errors.Wrap, a stricter requirement.
+
+  Scenario: non-applicability — WithStack of an interface-call error in /dal/repository
+    Given a package in "/dal/repository" with "err := r.conn.Select(ctx); return errors.WithStack(err)"
+    When the gidwithstack analyzer checks the file
+    Then no diagnostic is reported
+    # A boundary layer — GID-176's territory.
+
+  Scenario: non-applicability — settings.exclude exempts a specific method
+    Given settings.exclude contains "Service.excludedMethod" and that method returns "errors.WithStack(err)"
+    When the gidwithstack analyzer checks the file
+    Then no diagnostic is reported
+
 # --- Checklist when adding a new rule ---
-#  [x] ID and description are recorded in the registry (RULES.md, GID-176/177/237)
-#  [x] Layer chosen: go/analysis (package errwrap: giderrwrap + gidstaticerr + gidwithmessage)
-#  [x] Messages are defined ("GID-176: …" / "GID-177: …" / "GID-237: …")
+#  [x] ID and description are recorded in the registry (RULES.md, GID-176/177/237/248)
+#  [x] Layer chosen: go/analysis (package errwrap: giderrwrap + gidstaticerr + gidwithmessage + gidwithstack)
+#  [x] Messages are defined ("GID-176: …" / "GID-177: …" / "GID-237: …" / "GID-248: …")
 #  [x] Case classes covered: positive, negative, boundary, non-applicability — for each analyzer
 #  [x] testdata with // want for analysistest
 #  [ ] Rule enabled in .golangci.yml

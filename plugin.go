@@ -156,6 +156,7 @@ func init() {
 	register.Plugin("giderrwrap", newConfigurablePlugin(errwrap.NewWrapAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidstaticerr", newConfigurablePlugin(errwrap.NewStaticAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidwithmessage", newConfigurablePlugin(errwrap.NewServiceMessageAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidwithstack", newConfigurablePlugin(errwrap.NewRedundantStackAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidsentinelwrap", newConfigurablePlugin(sentinelwrap.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidscanrow", newConfigurablePlugin(scanrow.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidapproot", newConfigurablePlugin(approot.NewAnalyzer, register.LoadModeTypesInfo))
