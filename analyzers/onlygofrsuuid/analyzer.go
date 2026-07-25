@@ -8,6 +8,8 @@ import (
 	"strconv"
 
 	"golang.org/x/tools/go/analysis"
+
+	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 )
 
 const (
@@ -15,13 +17,14 @@ const (
 	allowedPkg = "github.com/gofrs/uuid"
 )
 
-// deniedPkgs — known alternative uuid libraries.
-var deniedPkgs = map[string]struct{}{
-	"github.com/google/uuid":       {},
-	"github.com/satori/go.uuid":    {},
-	"github.com/pborman/uuid":      {},
-	"github.com/hashicorp/go-uuid": {},
-	"github.com/twinj/uuid":        {},
+// deniedPkgs — known alternative uuid libraries. Each is matched at any major
+// version (github.com/google/uuid/v2 counts) through pathseg.SameLibrary.
+var deniedPkgs = []string{
+	"github.com/google/uuid",
+	"github.com/satori/go.uuid",
+	"github.com/pborman/uuid",
+	"github.com/hashicorp/go-uuid",
+	"github.com/twinj/uuid",
 }
 
 // Analyzer — rule GID-137: only github.com/gofrs/uuid is allowed for UUIDs.
@@ -41,12 +44,23 @@ func run(pass *analysis.Pass) (any, error) {
 			if err != nil {
 				continue
 			}
-			if _, denied := deniedPkgs[path]; denied {
+			if denied, ok := deniedLibrary(path); ok {
 				pass.Reportf(imp.Pos(),
-					"%s: importing %q is forbidden. Fix: use %s for UUID",
-					ruleID, path, allowedPkg)
+					"%s: importing %q is forbidden (%s). Fix: use %s for UUID",
+					ruleID, path, denied, allowedPkg)
 			}
 		}
 	}
 	return nil, nil
+}
+
+// deniedLibrary reports whether path is one of the alternative uuid libraries
+// (at any major version), returning the library it matched.
+func deniedLibrary(path string) (string, bool) {
+	for _, denied := range deniedPkgs {
+		if pathseg.SameLibrary(path, denied) {
+			return denied, true
+		}
+	}
+	return "", false
 }

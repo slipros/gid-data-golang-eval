@@ -117,6 +117,28 @@ func PkgModuleRoot(path string) (string, bool) {
 	return prefix + pkgSeg + module, true
 }
 
+// SameLibrary reports whether importPath is library (an import path without a
+// version suffix) at any major version: "github.com/gofrs/uuid" matches both
+// itself and "github.com/gofrs/uuid/v5". A rule that pins a library by its
+// import path must go through this — a service on v5 is on the same library,
+// and comparing the bare path silently makes such a rule a no-op.
+// A subpackage ("github.com/gofrs/uuid/namespace") is not the library itself.
+func SameLibrary(importPath, library string) bool {
+	if importPath == library {
+		return true
+	}
+	rest, ok := strings.CutPrefix(importPath, library+"/v")
+	if !ok || rest == "" {
+		return false
+	}
+	for _, r := range rest {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
+
 // nonEmpty drops empty segments (from leading/trailing/duplicate slashes).
 func nonEmpty(segs []string) []string {
 	out := segs[:0]

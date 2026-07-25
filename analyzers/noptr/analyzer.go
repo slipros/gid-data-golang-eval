@@ -121,7 +121,7 @@ func isUUID(t types.Type) bool {
 	}
 	pkg := obj.Pkg()
 	path := pkg.Path()
-	return path == uuidPkg || pathseg.Contains(path, "gofrs", "uuid")
+	return pathseg.SameLibrary(path, uuidPkg) || pathseg.Contains(path, "gofrs", "uuid")
 }
 
 func isTime(t types.Type) bool {

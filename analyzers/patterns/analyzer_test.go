@@ -20,6 +20,13 @@ func TestUUIDVersion(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), patterns.UUIDVersionAnalyzer, "uuidversion")
 }
 
+// TestUUIDVersionMajorVersion — the same rule on the versioned import path
+// (github.com/gofrs/uuid/v5): a major-version suffix is the same library, and
+// comparing the bare path would silently make the rule a no-op there.
+func TestUUIDVersionMajorVersion(t *testing.T) {
+	analysistest.Run(t, analysistest.TestData(), patterns.UUIDVersionAnalyzer, "uuidversionv5")
+}
+
 func TestNewDeref(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), patterns.NewDerefAnalyzer, "newderef")
 }

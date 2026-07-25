@@ -24,8 +24,12 @@ import (
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/types/typeutil"
+
+	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 )
 
+// gofrsUUID — the UUID library pinned by GID-137; matched at any major
+// version (v5 and up) through pathseg.SameLibrary.
 const gofrsUUID = "github.com/gofrs/uuid"
 
 // TimeNowAnalyzer — GID-001.
@@ -188,7 +192,7 @@ func runUUIDVersion(pass *analysis.Pass) (any, error) {
 	blessed := map[token.Pos]struct{}{}
 	inspectCalls(pass, func(call *ast.CallExpr) {
 		pkg, name := calleePkgPath(pass, call)
-		if pkg != gofrsUUID {
+		if !pathseg.SameLibrary(pkg, gofrsUUID) {
 			return
 		}
 		switch name {
@@ -325,7 +329,8 @@ func uuidEmptyLit(pass *analysis.Pass, e ast.Expr) bool {
 	return isGofrsUUID(pass.TypesInfo.TypeOf(cl))
 }
 
-// isGofrsUUID reports whether t is github.com/gofrs/uuid.UUID.
+// isGofrsUUID reports whether t is the UUID type of github.com/gofrs/uuid at
+// any major version (v5 included — see pathseg.SameLibrary).
 func isGofrsUUID(t types.Type) bool {
 	named, ok := t.(*types.Named)
 	if !ok {
@@ -333,7 +338,7 @@ func isGofrsUUID(t types.Type) bool {
 	}
 	obj := named.Obj()
 	pkg := obj.Pkg()
-	return obj.Name() == "UUID" && pkg != nil && pkg.Path() == gofrsUUID
+	return obj.Name() == "UUID" && pkg != nil && pathseg.SameLibrary(pkg.Path(), gofrsUUID)
 }
 
 // render prints an AST expression back to source text.
