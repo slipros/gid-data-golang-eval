@@ -1,13 +1,11 @@
-package chanbuf_test
+package chanbuf
 
 import (
 	"testing"
 
 	"golang.org/x/tools/go/analysis/analysistest"
-
-	"github.com/slipros/gid-data-golang-eval/analyzers/chanbuf"
 )
 
 func TestAnalyzer(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), chanbuf.Analyzer, "chanbuf", "nomake")
+	analysistest.Run(t, analysistest.TestData(), Analyzer, "chanbuf", "nomake")
 }

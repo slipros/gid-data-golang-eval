@@ -1,15 +1,13 @@
-package loggernew_test
+package loggernew
 
 import (
 	"testing"
 
 	"golang.org/x/tools/go/analysis/analysistest"
-
-	"github.com/slipros/gid-data-golang-eval/analyzers/loggernew"
 )
 
 func TestAnalyzer(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), loggernew.Analyzer,
+	analysistest.Run(t, analysistest.TestData(), Analyzer,
 		"svc/domain/service",
 		"svc/dal/repository",
 		"svc/cmd/app",

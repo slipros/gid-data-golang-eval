@@ -1,11 +1,9 @@
-package storageplace_test
+package storageplace
 
 import (
 	"testing"
 
 	"golang.org/x/tools/go/analysis/analysistest"
-
-	"github.com/slipros/gid-data-golang-eval/analyzers/storageplace"
 )
 
 // TestAnalyzer runs the default driver list and the default allowed layers on
@@ -18,7 +16,7 @@ import (
 //     driver prefix, a _test.go file outside dal;
 //   - non-applicability: generated code.
 func TestAnalyzer(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), storageplace.Analyzer, "svc/...")
+	analysistest.Run(t, analysistest.TestData(), Analyzer, "svc/...")
 }
 
 // TestAnalyzerSettings — the four settings on testdata/src/custom/...:
@@ -28,7 +26,7 @@ func TestAnalyzer(t *testing.T) {
 // the driver list (a driver subpackage the built-in observability list does
 // not know), settings.exclude-paths skips a package entirely.
 func TestAnalyzerSettings(t *testing.T) {
-	a := storageplace.NewAnalyzer(storageplace.Settings{
+	a := NewAnalyzer(Settings{
 		Packages:        []string{"git.example.com/go-library/eredis"},
 		Allow:           []string{"job"},
 		ExcludePackages: []string{"github.com/redis/go-redis/pkg/instrumentation"},

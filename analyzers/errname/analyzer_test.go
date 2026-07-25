@@ -1,19 +1,17 @@
-package errname_test
+package errname
 
 import (
 	"testing"
 
 	"golang.org/x/tools/go/analysis/analysistest"
-
-	"github.com/slipros/gid-data-golang-eval/analyzers/errname"
 )
 
 func TestAnalyzer(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), errname.Analyzer, "svc/...")
+	analysistest.Run(t, analysistest.TestData(), Analyzer, "svc/...")
 }
 
 func TestAnalyzerCustomSettings(t *testing.T) {
-	a := errname.NewAnalyzer(errname.Settings{
+	a := NewAnalyzer(Settings{
 		Names:   []string{"ErrOops", "ErrLegacy"},
 		Exclude: []string{"ErrLegacy"},
 	})

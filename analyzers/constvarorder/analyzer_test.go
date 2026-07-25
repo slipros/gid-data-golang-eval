@@ -1,13 +1,11 @@
-package constvarorder_test
+package constvarorder
 
 import (
 	"testing"
 
 	"golang.org/x/tools/go/analysis/analysistest"
-
-	"github.com/slipros/gid-data-golang-eval/analyzers/constvarorder"
 )
 
 func TestAnalyzer(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), constvarorder.Analyzer, "constvarorder")
+	analysistest.Run(t, analysistest.TestData(), Analyzer, "constvarorder")
 }

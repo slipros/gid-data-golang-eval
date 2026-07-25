@@ -1,14 +1,12 @@
-package enumplace_test
+package enumplace
 
 import (
 	"testing"
 
 	"golang.org/x/tools/go/analysis/analysistest"
-
-	"github.com/slipros/gid-data-golang-eval/analyzers/enumplace"
 )
 
 func TestAnalyzer(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), enumplace.Analyzer,
+	analysistest.Run(t, analysistest.TestData(), Analyzer,
 		"dalsvc/...", "domainsvc/...", "nesteddal/...")
 }

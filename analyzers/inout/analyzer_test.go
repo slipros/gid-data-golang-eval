@@ -1,20 +1,18 @@
-package inout_test
+package inout
 
 import (
 	"testing"
 
 	"golang.org/x/tools/go/analysis/analysistest"
-
-	"github.com/slipros/gid-data-golang-eval/analyzers/inout"
 )
 
 func TestAnalyzer(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), inout.Analyzer, "svc/...")
+	analysistest.Run(t, analysistest.TestData(), Analyzer, "svc/...")
 }
 
 // TestExclude — methods from settings.exclude are not reported.
 func TestExclude(t *testing.T) {
-	a := inout.NewAnalyzer(inout.Settings{
+	a := NewAnalyzer(Settings{
 		Exclude: []string{"Snapshot.SnapshotPtr"},
 	})
 	analysistest.Run(t, analysistest.TestData(), a, "excluded/...")

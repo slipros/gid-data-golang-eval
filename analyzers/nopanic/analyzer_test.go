@@ -1,13 +1,11 @@
-package nopanic_test
+package nopanic
 
 import (
 	"testing"
 
 	"golang.org/x/tools/go/analysis/analysistest"
-
-	"github.com/slipros/gid-data-golang-eval/analyzers/nopanic"
 )
 
 func TestAnalyzer(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), nopanic.Analyzer, "nopanic", "mainpkg")
+	analysistest.Run(t, analysistest.TestData(), Analyzer, "nopanic", "mainpkg")
 }

@@ -1,13 +1,11 @@
-package fmtconst_test
+package fmtconst
 
 import (
 	"testing"
 
 	"golang.org/x/tools/go/analysis/analysistest"
-
-	"github.com/slipros/gid-data-golang-eval/analyzers/fmtconst"
 )
 
 func TestAnalyzer(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), fmtconst.Analyzer, "fmtconst", "nofmt")
+	analysistest.Run(t, analysistest.TestData(), Analyzer, "fmtconst", "nofmt")
 }

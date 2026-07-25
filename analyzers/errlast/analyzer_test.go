@@ -1,13 +1,11 @@
-package errlast_test
+package errlast
 
 import (
 	"testing"
 
 	"golang.org/x/tools/go/analysis/analysistest"
-
-	"github.com/slipros/gid-data-golang-eval/analyzers/errlast"
 )
 
 func TestAnalyzer(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), errlast.Analyzer, "errlast")
+	analysistest.Run(t, analysistest.TestData(), Analyzer, "errlast")
 }

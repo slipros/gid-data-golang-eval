@@ -1,11 +1,9 @@
-package convpure_test
+package convpure
 
 import (
 	"testing"
 
 	"golang.org/x/tools/go/analysis/analysistest"
-
-	"github.com/slipros/gid-data-golang-eval/analyzers/convpure"
 )
 
 // TestAnalyzer runs the default rule set (default settings.packages) on
@@ -17,14 +15,14 @@ import (
 //     "convert/util" ends with "util", not "convert";
 //   - non-applicability: an ordinary (non-convert) package.
 func TestAnalyzer(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), convpure.Analyzer, "svc/...")
+	analysistest.Run(t, analysistest.TestData(), Analyzer, "svc/...")
 }
 
 // TestAnalyzerSettings — settings.packages replaces the default third-party
 // ban list (testdata/src/custom/...): the custom in-house library is
 // flagged, the default logrus is not.
 func TestAnalyzerSettings(t *testing.T) {
-	a := convpure.NewAnalyzer(convpure.Settings{
+	a := NewAnalyzer(Settings{
 		Packages: []string{"example.com/inhouse/somelib"},
 	})
 	analysistest.Run(t, analysistest.TestData(), a, "custom/...")

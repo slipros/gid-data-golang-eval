@@ -1,19 +1,17 @@
-package modelmethod_test
+package modelmethod
 
 import (
 	"testing"
 
 	"golang.org/x/tools/go/analysis/analysistest"
-
-	"github.com/slipros/gid-data-golang-eval/analyzers/modelmethod"
 )
 
 func TestAnalyzer(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), modelmethod.Analyzer, "svc/...", "dalsvc/...")
+	analysistest.Run(t, analysistest.TestData(), Analyzer, "svc/...", "dalsvc/...")
 }
 
 func TestAnalyzerExclude(t *testing.T) {
-	a := modelmethod.NewAnalyzer(modelmethod.Settings{
+	a := NewAnalyzer(Settings{
 		Exclude: []string{"legacyTitle", "Service.legacyRender"},
 	})
 	analysistest.Run(t, analysistest.TestData(), a, "exsvc/...")

@@ -1,13 +1,11 @@
-package initclean_test
+package initclean
 
 import (
 	"testing"
 
 	"golang.org/x/tools/go/analysis/analysistest"
-
-	"github.com/slipros/gid-data-golang-eval/analyzers/initclean"
 )
 
 func TestAnalyzer(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), initclean.Analyzer, "bad", "good", "noinit")
+	analysistest.Run(t, analysistest.TestData(), Analyzer, "bad", "good", "noinit")
 }

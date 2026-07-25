@@ -1,21 +1,19 @@
-package errplace_test
+package errplace
 
 import (
 	"testing"
 
 	"golang.org/x/tools/go/analysis/analysistest"
-
-	"github.com/slipros/gid-data-golang-eval/analyzers/errplace"
 )
 
 func TestDomainAnalyzer(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), errplace.DomainAnalyzer, "domainsvc/...")
+	analysistest.Run(t, analysistest.TestData(), DomainAnalyzer, "domainsvc/...")
 }
 
 func TestDALAnalyzer(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), errplace.DALAnalyzer, "dalsvc/...")
+	analysistest.Run(t, analysistest.TestData(), DALAnalyzer, "dalsvc/...")
 }
 
 func TestFileAnalyzer(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), errplace.FileAnalyzer, "errfile/...")
+	analysistest.Run(t, analysistest.TestData(), FileAnalyzer, "errfile/...")
 }

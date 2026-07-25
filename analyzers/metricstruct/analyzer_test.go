@@ -1,15 +1,13 @@
-package metricstruct_test
+package metricstruct
 
 import (
 	"testing"
 
 	"golang.org/x/tools/go/analysis/analysistest"
-
-	"github.com/slipros/gid-data-golang-eval/analyzers/metricstruct"
 )
 
 func TestAnalyzer(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), metricstruct.Analyzer,
+	analysistest.Run(t, analysistest.TestData(), Analyzer,
 		"svc/internal/metric",           // ok: prometheus.go + groups + Register wiring
 		"svc/internal/ptrreg/metric",    // ok: pointer-receiver Register
 		"missing/internal/metric",       // want: no Prometheus (file picked by name)

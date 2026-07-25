@@ -1,11 +1,9 @@
-package layerimports_test
+package layerimports
 
 import (
 	"testing"
 
 	"golang.org/x/tools/go/analysis/analysistest"
-
-	"github.com/slipros/gid-data-golang-eval/analyzers/layerimports"
 )
 
 // TestAnalyzer runs the built-in matrix on testdata/src/svc/...:
@@ -19,7 +17,7 @@ import (
 //   - GID-228: domain/usecase does not import client;
 //   - GID-229: client is isolated from the service layers.
 func TestAnalyzer(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), layerimports.Analyzer, "svc/...")
+	analysistest.Run(t, analysistest.TestData(), Analyzer, "svc/...")
 }
 
 // TestAnalyzerPkgModuleLayout — the pkg/<module> application-module layout
@@ -29,15 +27,15 @@ func TestAnalyzer(t *testing.T) {
 // repo/internal/** (a different module by this rule) stays legal and
 // unflagged (testdata/src/repo/...).
 func TestAnalyzerPkgModuleLayout(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), layerimports.Analyzer, "repo/...")
+	analysistest.Run(t, analysistest.TestData(), Analyzer, "repo/...")
 }
 
 // TestAnalyzerSettings — settings.disable turns off a built-in rule,
 // settings.rules adds a custom one (testdata/src/custom/...).
 func TestAnalyzerSettings(t *testing.T) {
-	a := layerimports.NewAnalyzer(layerimports.Settings{
+	a := NewAnalyzer(Settings{
 		Disable: []string{"GID-224"},
-		Rules: []layerimports.RuleSetting{{
+		Rules: []RuleSetting{{
 			ID:     "SVC-1",
 			Scope:  "domain/service",
 			Banned: []string{"legacy"},

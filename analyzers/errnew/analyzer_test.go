@@ -1,19 +1,17 @@
-package errnew_test
+package errnew
 
 import (
 	"testing"
 
 	"golang.org/x/tools/go/analysis/analysistest"
-
-	"github.com/slipros/gid-data-golang-eval/analyzers/errnew"
 )
 
 // TestAnalyzer covers positive, negative and boundary cases.
 func TestAnalyzer(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), errnew.Analyzer, "svc/...")
+	analysistest.Run(t, analysistest.TestData(), Analyzer, "svc/...")
 }
 
 // TestInapplicable — a package without github.com/pkg/errors is not reported.
 func TestInapplicable(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), errnew.Analyzer, "nopkgerrors/...")
+	analysistest.Run(t, analysistest.TestData(), Analyzer, "nopkgerrors/...")
 }

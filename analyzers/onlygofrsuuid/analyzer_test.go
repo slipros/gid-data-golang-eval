@@ -1,13 +1,11 @@
-package onlygofrsuuid_test
+package onlygofrsuuid
 
 import (
 	"testing"
 
 	"golang.org/x/tools/go/analysis/analysistest"
-
-	"github.com/slipros/gid-data-golang-eval/analyzers/onlygofrsuuid"
 )
 
 func TestAnalyzer(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), onlygofrsuuid.Analyzer, "onlygofrsuuid")
+	analysistest.Run(t, analysistest.TestData(), Analyzer, "onlygofrsuuid")
 }

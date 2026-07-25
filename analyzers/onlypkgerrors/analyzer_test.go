@@ -1,13 +1,11 @@
-package onlypkgerrors_test
+package onlypkgerrors
 
 import (
 	"testing"
 
 	"golang.org/x/tools/go/analysis/analysistest"
-
-	"github.com/slipros/gid-data-golang-eval/analyzers/onlypkgerrors"
 )
 
 func TestAnalyzer(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), onlypkgerrors.Analyzer, "onlypkgerrors")
+	analysistest.Run(t, analysistest.TestData(), Analyzer, "onlypkgerrors")
 }

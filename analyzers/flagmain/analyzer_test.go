@@ -1,15 +1,13 @@
-package flagmain_test
+package flagmain
 
 import (
 	"testing"
 
 	"golang.org/x/tools/go/analysis/analysistest"
-
-	"github.com/slipros/gid-data-golang-eval/analyzers/flagmain"
 )
 
 func TestAnalyzer(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), flagmain.Analyzer,
+	analysistest.Run(t, analysistest.TestData(), Analyzer,
 		"libflag",     // positive: flag.String in a library package
 		"libparse",    // positive: flag.Parse in a library
 		"mainbad",     // positive: flag names not in snake_case (maxRetries, max-retries)

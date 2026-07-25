@@ -1,13 +1,11 @@
-package bytesinloop_test
+package bytesinloop
 
 import (
 	"testing"
 
 	"golang.org/x/tools/go/analysis/analysistest"
-
-	"github.com/slipros/gid-data-golang-eval/analyzers/bytesinloop"
 )
 
 func TestAnalyzer(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), bytesinloop.Analyzer, "bytesinloop", "noloop")
+	analysistest.Run(t, analysistest.TestData(), Analyzer, "bytesinloop", "noloop")
 }

@@ -1,19 +1,17 @@
-package approot_test
+package approot
 
 import (
 	"testing"
 
 	"golang.org/x/tools/go/analysis/analysistest"
-
-	"github.com/slipros/gid-data-golang-eval/analyzers/approot"
 )
 
 func TestAnalyzer(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), approot.Analyzer, "approotsvc/...")
+	analysistest.Run(t, analysistest.TestData(), Analyzer, "approotsvc/...")
 }
 
 func TestAnalyzerExclude(t *testing.T) {
-	a := approot.NewAnalyzer(approot.Settings{
+	a := NewAnalyzer(Settings{
 		Exclude:      []string{"LegacyAdapter"},
 		ExcludePaths: []string{"legacy"},
 	})

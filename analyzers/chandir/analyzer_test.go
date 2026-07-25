@@ -1,13 +1,11 @@
-package chandir_test
+package chandir
 
 import (
 	"testing"
 
 	"golang.org/x/tools/go/analysis/analysistest"
-
-	"github.com/slipros/gid-data-golang-eval/analyzers/chandir"
 )
 
 func TestAnalyzer(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), chandir.Analyzer, "chandir", "nochan")
+	analysistest.Run(t, analysistest.TestData(), Analyzer, "chandir", "nochan")
 }

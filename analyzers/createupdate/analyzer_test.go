@@ -1,20 +1,18 @@
-package createupdate_test
+package createupdate
 
 import (
 	"testing"
 
 	"golang.org/x/tools/go/analysis/analysistest"
-
-	"github.com/slipros/gid-data-golang-eval/analyzers/createupdate"
 )
 
 func TestAnalyzer(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), createupdate.Analyzer, "svc/...")
+	analysistest.Run(t, analysistest.TestData(), Analyzer, "svc/...")
 }
 
 // TestExclude — methods from settings.exclude are not reported.
 func TestExclude(t *testing.T) {
-	a := createupdate.NewAnalyzer(createupdate.Settings{
+	a := NewAnalyzer(Settings{
 		Exclude: []string{"Job.CreateJob", "UpdateSession"},
 	})
 	analysistest.Run(t, analysistest.TestData(), a, "excluded/...")
