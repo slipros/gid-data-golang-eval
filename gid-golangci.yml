@@ -162,6 +162,7 @@ linters:
     - gidprotorequired # GID-232
     - gidenumcast      # GID-233
     - gidconvpure      # GID-235
+    - gidstorageplace  # GID-249
     - gidserviceentity # GID-236
     - gidwithmessage   # GID-237
     - gidwithstack     # GID-248
@@ -824,6 +825,20 @@ linters:
         # settings:
         #   packages:
         #     - github.com/sirupsen/logrus
+      gidstorageplace:
+        type: module
+        description: 'GID-249: a storage driver (SQL/key-value/NoSQL) is imported only by /dal/** and the composition root /app/** — a store is reached through a repository, a client is for an external API'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # All four settings are additive — the built-in driver list stays intact:
+        # settings:
+        #   packages:                 # extra drivers (an in-house redis wrapper)
+        #     - 'git.example.com/go-library/eredis'
+        #   allow:                    # extra layers allowed to reach a driver
+        #     - 'job'
+        #   exclude-packages:         # imports that must not count as a driver
+        #     - 'git.example.com/go-library/eredis/pkg/instrumentation'
+        #   exclude-paths:            # packages skipped entirely
+        #     - 'internal/legacy/cache'
       gidserviceentity:
         type: module
         description: 'GID-236: a service uses only the repository of its own entity; other entities are orchestrated in usecase'
