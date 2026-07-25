@@ -12,7 +12,7 @@ Feature: GID-196 — call chains formatted one call per line
   # - the threshold is configured by settings.min-calls, default 2 (same as GID-156);
   # - "including the first" — the first call must not be on the line of the base expression;
   # - type conversions (model.Status(v)) do not count as links;
-  # - logrus chains are the domain of GID-156 (gidlogchain), skipped;
+  # - logger chains, logrus or slog, are the domain of GID-156 (gidlogchain), skipped;
   # - *_test.go and generated code are not checked;
   # - exclusions: //nolint:gidchainperline.
 
@@ -74,7 +74,7 @@ Feature: GID-196 — call chains formatted one call per line
     Given the expression "l.WithField(a, 1).Info(x)"
     When the analyzer checks the file
     Then no GID-196 diagnostic is reported
-    # multi-line formatting of logrus is the domain of GID-156
+    # multi-line formatting of a logger chain is the domain of GID-156
 
   Scenario: non-applicability — *_test.go
     Given an inline chain in a "*_test.go" file

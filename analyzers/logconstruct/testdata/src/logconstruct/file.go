@@ -9,7 +9,7 @@ type Snapshot struct {
 	logger *logrus.Entry
 }
 
-func NewSnapshot(logger *logrus.Entry) *Snapshot { // want `GID-154: entity "Snapshot" has a logger\. Fix: constructor "NewSnapshot" must call logger\.WithField\(<entity>, <name>\)`
+func NewSnapshot(logger *logrus.Entry) *Snapshot { // want `GID-154: entity "Snapshot" has a logger\. Fix: constructor "NewSnapshot" must name the entity on it`
 	return &Snapshot{logger: logger}
 }
 

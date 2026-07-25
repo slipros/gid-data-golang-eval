@@ -2,11 +2,13 @@
 
 Feature: GID-214 — the logger is created once in the composition root
   As a developer
-  I want logrus.New()/StandardLogger() to be called only in the composition root
-  So that there is a single configured logger and the layers receive a ready *logrus.Entry via the constructor
-  Source: libs.md (logrus: do not create new instances, pass the existing one along)
+  I want the global logger to be created or grabbed only in the composition root
+  So that there is a single configured logger and the layers receive a ready one via the constructor
+  Source: libs.md (do not create new logger instances, pass the existing one along)
   Scope: all packages EXCEPT package main and composition-root packages (the path contains internal/app)
-  logrus is resolved by import path via types; _test.go and generated files are skipped.
+  The rule is stack-agnostic: logrus.New()/StandardLogger() and slog.New()/Default()/SetDefault()
+  are banned alike. The package is resolved by import path via types; _test.go and generated
+  files are skipped.
 
   # --- Positive class: the violation is caught ---
 
@@ -20,6 +22,17 @@ Feature: GID-214 — the logger is created once in the composition root
     When the analyzer checks the file
     Then a "GID-214" diagnostic is reported with the text "only in the composition root"
 
+  Scenario: slog.New() in /domain/service — violation
+    Given "slog.New(slog.NewTextHandler(...))" is called in /domain/service
+    When the analyzer checks the file
+    Then a "GID-214" diagnostic is reported with the text "only in the composition root"
+
+  Scenario: slog.Default()/slog.SetDefault() outside the composition root — violation
+    Given "slog.Default()" or "slog.SetDefault(...)" is called in /domain/service
+    When the analyzer checks the file
+    Then a "GID-214" diagnostic is reported with the text "only in the composition root"
+    # slog.Default() is the same smell as logrus.StandardLogger().
+
   # --- Negative class: clean code passes ---
 
   Scenario: logrus.New() in package main — ok
@@ -29,6 +42,11 @@ Feature: GID-214 — the logger is created once in the composition root
 
   Scenario: logrus.New() in internal/app — ok
     Given "logrus.New()" is called in a package whose path contains internal/app
+    When the analyzer checks the file
+    Then no diagnostic is reported
+
+  Scenario: a ready *slog.Logger arrives through the constructor — ok
+    Given a constructor in /domain/service takes "logger *slog.Logger" and calls "logger.With(...)"
     When the analyzer checks the file
     Then no diagnostic is reported
 
@@ -58,7 +76,7 @@ Feature: GID-214 — the logger is created once in the composition root
 
 # --- Checklist when adding a new rule ---
 #  [x] ID and description are recorded in the registry (RULES.md, GID-214)
-#  [x] Layer chosen: go/analysis (LoadModeTypesInfo — logrus resolved by import path)
+#  [x] Layer chosen: go/analysis (LoadModeTypesInfo — logrus/slog resolved by import path)
 #  [x] Severity and message are defined ("GID-214: ...")
 #  [x] Case classes covered: positive, negative, boundary, non-applicability
 #  [x] testdata with // want for analysistest

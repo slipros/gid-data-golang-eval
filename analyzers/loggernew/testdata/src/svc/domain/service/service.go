@@ -11,7 +11,7 @@ type Svc struct {
 
 // Positive case: creating a logger in the service is forbidden.
 func New() *Svc {
-	l := logrus.New() // want `GID-214: logrus.New\(\) may be called only in the composition root \(main, internal/app\)\. Fix: pass a ready \*logrus\.Entry through the constructor`
+	l := logrus.New() // want `GID-214: logrus.New\(\) may be called only in the composition root \(main, internal/app\)\. Fix: pass a ready logger \(\*logrus\.Entry, \*slog\.Logger\) through the constructor`
 	_ = l
 	return &Svc{}
 }

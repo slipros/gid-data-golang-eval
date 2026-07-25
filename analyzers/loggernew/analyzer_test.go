@@ -16,5 +16,6 @@ func TestAnalyzer(t *testing.T) {
 		"svc/internal/app",
 		"svc/domain/usecase",
 		"svc/domain/handler",
+		"svc/domain/slogsvc",
 	)
 }

@@ -33,18 +33,30 @@ import (
 
 const ruleID = "GID-214"
 
-// bannedFuncs — package-level logrus functions that create/return the global
-// logger instance.
-var bannedFuncs = map[string]struct{}{
-	"New":            {},
-	"StandardLogger": {},
+// bannedFuncs — package-level functions that create or hand out the global
+// logger instance, per stack: logrus.New/StandardLogger and, for the stdlib
+// stack, slog.New/Default/SetDefault. The two lists are separate because
+// slog.Default() is the same smell as logrus.StandardLogger(), while the
+// names do not overlap.
+var bannedFuncs = map[string]map[string]struct{}{
+	"github.com/sirupsen/logrus": {
+		"New":            {},
+		"StandardLogger": {},
+	},
+	"log/slog": {
+		"New":        {},
+		"Default":    {},
+		"SetDefault": {},
+	},
 }
 
-// Analyzer — rule GID-214: logrus.New()/StandardLogger() — only in the composition root (main, internal/app).
+// Analyzer — rule GID-214: creating or grabbing the global logger (logrus.New/StandardLogger, slog.New/Default/SetDefault) — only in the composition root (main, internal/app).
 var Analyzer = &analysis.Analyzer{
 	Name: "gidloggernew",
-	Doc:  ruleID + ": logrus.New()/StandardLogger() are called only in the composition root (main, internal/app). Fix: pass a ready *logrus.Entry through the constructor",
-	Run:  run,
+	Doc: ruleID + ": the logger is created only in the composition root (main, internal/app) — " +
+		"logrus.New()/StandardLogger() and slog.New()/Default()/SetDefault() are banned elsewhere. " +
+		"Fix: pass a ready logger (*logrus.Entry, *slog.Logger) through the constructor",
+	Run: run,
 }
 
 func run(pass *analysis.Pass) (any, error) {
@@ -64,11 +76,11 @@ func run(pass *analysis.Pass) (any, error) {
 			if !ok {
 				return true
 			}
-			if name, ok := bannedLogrusCall(pass, call); ok {
+			if pkgName, name, ok := bannedLoggerCall(pass, call); ok {
 				pass.Reportf(call.Pos(),
-					"%s: logrus.%s() may be called only in the composition root (main, internal/app). "+
-						"Fix: pass a ready *logrus.Entry through the constructor",
-					ruleID, name)
+					"%s: %s.%s() may be called only in the composition root (main, internal/app). "+
+						"Fix: pass a ready logger (*logrus.Entry, *slog.Logger) through the constructor",
+					ruleID, pkgName, name)
 			}
 			return true
 		})
@@ -76,33 +88,36 @@ func run(pass *analysis.Pass) (any, error) {
 	return nil, nil
 }
 
-// bannedLogrusCall reports whether call is a call to the package-level function
-// logrus.New()/logrus.StandardLogger(). Resolution is by types: the package name
-// is taken from the object's import path, not from the selector text.
-func bannedLogrusCall(pass *analysis.Pass, call *ast.CallExpr) (string, bool) {
-	sel, ok := call.Fun.(*ast.SelectorExpr)
-	if !ok {
-		return "", false
+// bannedLoggerCall reports whether call creates or grabs the global logger of
+// either stack, returning the package name and the function name. Resolution
+// is by types: the package is taken from the object's import path, not from
+// the selector text.
+func bannedLoggerCall(pass *analysis.Pass, call *ast.CallExpr) (pkgName, name string, ok bool) {
+	sel, isSel := call.Fun.(*ast.SelectorExpr)
+	if !isSel {
+		return "", "", false
 	}
-	if _, ok := bannedFuncs[sel.Sel.Name]; !ok {
-		return "", false
-	}
-	fn, ok := pass.TypesInfo.ObjectOf(sel.Sel).(*types.Func)
-	if !ok {
-		return "", false
+	fn, isFunc := pass.TypesInfo.ObjectOf(sel.Sel).(*types.Func)
+	if !isFunc {
+		return "", "", false
 	}
 	// package-level function: no receiver (the WithField method is not flagged).
-	sig, ok := fn.Type().(*types.Signature)
-	if !ok || sig.Recv() != nil {
-		return "", false
+	sig, isSig := fn.Type().(*types.Signature)
+	if !isSig || sig.Recv() != nil {
+		return "", "", false
 	}
-	// logrusPkgPath — the import path of the logrus package.
-	const logrusPkgPath = "github.com/sirupsen/logrus"
 	pkg := fn.Pkg()
-	if pkg == nil || pkg.Path() != logrusPkgPath {
-		return "", false
+	if pkg == nil {
+		return "", "", false
 	}
-	return sel.Sel.Name, true
+	banned, known := bannedFuncs[pkg.Path()]
+	if !known {
+		return "", "", false
+	}
+	if _, isBanned := banned[sel.Sel.Name]; !isBanned {
+		return "", "", false
+	}
+	return pkg.Name(), sel.Sel.Name, true
 }
 
 func isTestFile(pass *analysis.Pass, file *ast.File) bool {

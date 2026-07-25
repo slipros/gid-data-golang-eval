@@ -1,5 +1,17 @@
-// Package lgr — recognition of logrus types and calls
-// (github.com/sirupsen/logrus) for logger rules.
+// Package lgr — recognition of logger types and calls for the logger rules
+// (GID-153/154/155/156/196/214). Two stacks are recognized, and the rules are
+// written against whichever one the service uses:
+//
+//   - logrus (github.com/sirupsen/logrus): *logrus.Entry, *logrus.Logger,
+//     logrus.FieldLogger; a chain of With* methods ending in a terminal call
+//     (Info/Error/...);
+//   - slog (log/slog): *slog.Logger; With/WithGroup instead of WithField, and
+//     the context travels in the terminal call itself (InfoContext(ctx, ...))
+//     rather than through WithContext.
+//
+// Kind tells the caller which stack a call belongs to, so that a rule can
+// demand the right shape (WithContext for logrus, a *Context method for slog)
+// without pinning the service to one library.
 package lgr
 
 import (
@@ -10,71 +22,146 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
-// terminalMethods — logrus methods that emit a message to the log.
-var terminalMethods = map[string]struct{}{
+// Level method names shared by both stacks — spelled once so the two terminal
+// sets below stay in sync.
+//
+//nolint:gidconstscope // GID-194: lgr is the shared logger vocabulary of the analyzers, not model/entity
+const (
+	// KindNone — not a logger.
+	KindNone Kind = iota
+	// KindLogrus — github.com/sirupsen/logrus.
+	KindLogrus
+	// KindSlog — the stdlib log/slog.
+	KindSlog
+
+	debugName = "Debug"
+	infoName  = "Info"
+	warnName  = "Warn"
+	errorName = "Error"
+	logName   = "Log"
+)
+
+// logrusTerminals — logrus methods that emit a message to the log.
+var logrusTerminals = map[string]struct{}{
 	"Trace": {}, "Tracef": {}, "Traceln": {},
-	"Debug": {}, "Debugf": {}, "Debugln": {},
-	"Info": {}, "Infof": {}, "Infoln": {},
+	debugName: {}, "Debugf": {}, "Debugln": {},
+	infoName: {}, "Infof": {}, "Infoln": {},
 	"Print": {}, "Printf": {}, "Println": {},
-	"Warn": {}, "Warnf": {}, "Warnln": {},
+	warnName: {}, "Warnf": {}, "Warnln": {},
 	"Warning": {}, "Warningf": {}, "Warningln": {},
-	"Error": {}, "Errorf": {}, "Errorln": {},
+	errorName: {}, "Errorf": {}, "Errorln": {},
 	"Fatal": {}, "Fatalf": {}, "Fatalln": {},
 	"Panic": {}, "Panicf": {}, "Panicln": {},
-	"Log": {}, "Logf": {}, "Logln": {},
+	logName: {}, "Logf": {}, "Logln": {},
 }
 
-// IsType reports whether the type belongs to the logrus package
-// (*logrus.Entry, *logrus.Logger, logrus.FieldLogger, etc.).
-func IsType(t types.Type) bool {
-	// pkgPath — the logrus package path.
-	const pkgPath = "github.com/sirupsen/logrus"
+// slogTerminals — slog.Logger methods that emit a record. The *Context
+// variants carry the context in the call itself — slog has no WithContext.
+var slogTerminals = map[string]struct{}{
+	debugName: {}, "DebugContext": {},
+	infoName: {}, "InfoContext": {},
+	warnName: {}, "WarnContext": {},
+	errorName: {}, "ErrorContext": {},
+	logName: {}, "LogAttrs": {},
+}
+
+// Kind — the logger stack a type or a call belongs to.
+type Kind int
+
+// TypeKind reports which logger stack the type belongs to (KindNone if none).
+func TypeKind(t types.Type) Kind {
 	switch tt := t.(type) {
 	case *types.Pointer:
-		return IsType(tt.Elem())
+		return TypeKind(tt.Elem())
 	case *types.Alias:
-		return IsType(types.Unalias(tt))
+		return TypeKind(types.Unalias(tt))
 	case *types.Named:
 		obj := tt.Obj()
 		pkg := obj.Pkg()
-		return pkg != nil && pkg.Path() == pkgPath
+		if pkg == nil {
+			return KindNone
+		}
+		const (
+			logrusPath = "github.com/sirupsen/logrus"
+			slogPath   = "log/slog"
+		)
+		switch pkg.Path() {
+		case logrusPath:
+			return KindLogrus
+		case slogPath:
+			return KindSlog
+		}
+	}
+	return KindNone
+}
+
+// IsType reports whether the type is a logger of either stack.
+func IsType(t types.Type) bool {
+	return TypeKind(t) != KindNone
+}
+
+// MethodKind reports which stack the selector's receiver belongs to
+// (KindNone when the selector is not a logger method call).
+func MethodKind(pass *analysis.Pass, sel *ast.SelectorExpr) Kind {
+	fn, ok := pass.TypesInfo.ObjectOf(sel.Sel).(*types.Func)
+	if !ok {
+		return KindNone
+	}
+	sig, ok := fn.Type().(*types.Signature)
+	if !ok {
+		return KindNone
+	}
+	recv := sig.Recv()
+	if recv == nil {
+		return KindNone
+	}
+	return TypeKind(recv.Type())
+}
+
+// IsMethodSel reports whether the selector is a call to a logger method.
+func IsMethodSel(pass *analysis.Pass, sel *ast.SelectorExpr) bool {
+	return MethodKind(pass, sel) != KindNone
+}
+
+// IsTerminal reports whether the call emits a message to the log, and returns
+// the method name.
+func IsTerminal(pass *analysis.Pass, call *ast.CallExpr) (string, bool) {
+	name, _, ok := Terminal(pass, call)
+	return name, ok
+}
+
+// Terminal is IsTerminal plus the stack the call belongs to — a rule that
+// demands a stack-specific shape (WithContext vs InfoContext) needs both.
+func Terminal(pass *analysis.Pass, call *ast.CallExpr) (name string, kind Kind, ok bool) {
+	sel, isSel := call.Fun.(*ast.SelectorExpr)
+	if !isSel {
+		return "", KindNone, false
+	}
+	kind = MethodKind(pass, sel)
+	if !isTerminalName(sel.Sel.Name, kind) {
+		return "", KindNone, false
+	}
+	return sel.Sel.Name, kind, true
+}
+
+func isTerminalName(name string, kind Kind) bool {
+	switch kind {
+	case KindLogrus:
+		_, ok := logrusTerminals[name]
+		return ok
+	case KindSlog:
+		_, ok := slogTerminals[name]
+		return ok
+	case KindNone:
+		return false
 	}
 	return false
 }
 
-// IsMethodSel reports whether the selector is a call to a method of a logrus type.
-func IsMethodSel(pass *analysis.Pass, sel *ast.SelectorExpr) bool {
-	fn, ok := pass.TypesInfo.ObjectOf(sel.Sel).(*types.Func)
-	if !ok {
-		return false
-	}
-	sig, ok := fn.Type().(*types.Signature)
-	if !ok || sig.Recv() == nil {
-		return false
-	}
-	recv := sig.Recv()
-	return IsType(recv.Type())
-}
-
-// IsTerminal reports whether the call is a terminal logrus call
-// (Info/Error/...), and returns the method name.
-func IsTerminal(pass *analysis.Pass, call *ast.CallExpr) (string, bool) {
-	sel, ok := call.Fun.(*ast.SelectorExpr)
-	if !ok {
-		return "", false
-	}
-	if _, ok := terminalMethods[sel.Sel.Name]; !ok {
-		return "", false
-	}
-	if !IsMethodSel(pass, sel) {
-		return "", false
-	}
-	return sel.Sel.Name, true
-}
-
-// Chain collects the chain of logrus calls from the terminal call inward:
-// the terminal plus all consecutive With* methods. Returns the selectors
-// (from the terminal toward the start) and the base expression on which the chain begins.
+// Chain collects the chain of logger calls from the terminal call inward: the
+// terminal plus all consecutive enrichment methods (logrus With*, slog
+// With/WithGroup). Returns the selectors (from the terminal toward the start)
+// and the base expression the chain begins on.
 func Chain(pass *analysis.Pass, call *ast.CallExpr) (sels []*ast.SelectorExpr, base ast.Expr) {
 	cur := ast.Expr(call)
 	for {

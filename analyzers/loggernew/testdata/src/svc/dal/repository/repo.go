@@ -12,6 +12,6 @@ type Repo struct {
 // Positive case: StandardLogger() is also forbidden outside the composition root.
 func New() *Repo {
 	return &Repo{
-		logger: logrus.StandardLogger(), // want `GID-214: logrus.StandardLogger\(\) may be called only in the composition root \(main, internal/app\)\. Fix: pass a ready \*logrus\.Entry through the constructor`
+		logger: logrus.StandardLogger(), // want `GID-214: logrus.StandardLogger\(\) may be called only in the composition root \(main, internal/app\)\. Fix: pass a ready logger \(\*logrus\.Entry, \*slog\.Logger\) through the constructor`
 	}
 }

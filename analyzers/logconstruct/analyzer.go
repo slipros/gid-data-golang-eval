@@ -1,6 +1,9 @@
-// Package logconstruct implements rule GID-154: if an entity holds a
-// logger (logrus), its constructor must call WithField(<entity>, <name>) —
-// so the logs always show which entity writes them.
+// Package logconstruct implements rule GID-154: if an entity holds a logger,
+// its constructor must name the entity on that logger — so the logs always
+// show which entity writes them. The rule is not pinned to one stack: logrus
+// names it with WithField(<entity>, <name>), slog with
+// With("<entity>", <name>) or With(slog.String(...)); either shape satisfies
+// the rule.
 package logconstruct
 
 import (
@@ -13,11 +16,19 @@ import (
 
 const ruleID = "GID-154"
 
-// Analyzer — rule GID-154: an entity constructor with a logger must call WithField. Fix: call logger.WithField(<entity>, <name>).
+// enrichMethods — the calls that attach the entity name to a logger:
+// WithField for logrus, With for slog (WithGroup nests a group, which names
+// the entity just as well).
+var enrichMethods = map[string]struct{}{
+	"WithField": {}, "WithFields": {}, "With": {}, "WithGroup": {},
+}
+
+// Analyzer — rule GID-154: an entity constructor with a logger must name the entity on it. Fix: call logger.WithField(<entity>, <name>) (logrus) or logger.With("<entity>", <name>) (slog).
 var Analyzer = &analysis.Analyzer{
 	Name: "gidlogconstruct",
-	Doc:  ruleID + ": an entity constructor with a logger must call WithField. Fix: call logger.WithField(<entity>, <name>)",
-	Run:  run,
+	Doc: ruleID + ": an entity constructor with a logger must name the entity on it. " +
+		"Fix: call logger.WithField(<entity>, <name>) (logrus) or logger.With(\"<entity>\", <name>) (slog)",
+	Run: run,
 }
 
 func run(pass *analysis.Pass) (any, error) {
@@ -40,7 +51,8 @@ func run(pass *analysis.Pass) (any, error) {
 			}
 			if !callsWithField(pass, fn.Body) {
 				pass.Reportf(fn.Name.Pos(),
-					"%s: entity %q has a logger. Fix: constructor %q must call logger.WithField(<entity>, <name>)",
+					"%s: entity %q has a logger. Fix: constructor %q must name the entity on it — "+
+						"logger.WithField(<entity>, <name>) (logrus) or logger.With(\"<entity>\", <name>) (slog)",
 					ruleID, entity, fn.Name.Name)
 			}
 		}
@@ -97,7 +109,8 @@ func cutNew(name string) (string, bool) {
 	return name[3:], true
 }
 
-// callsWithField looks in the body for a WithField call on a logrus type.
+// callsWithField looks in the body for a call that names the entity on a
+// logger of either stack.
 func callsWithField(pass *analysis.Pass, body *ast.BlockStmt) bool {
 	found := false
 	ast.Inspect(body, func(n ast.Node) bool {
@@ -109,7 +122,10 @@ func callsWithField(pass *analysis.Pass, body *ast.BlockStmt) bool {
 			return true
 		}
 		sel, ok := call.Fun.(*ast.SelectorExpr)
-		if !ok || sel.Sel.Name != "WithField" {
+		if !ok {
+			return true
+		}
+		if _, isEnrich := enrichMethods[sel.Sel.Name]; !isEnrich {
 			return true
 		}
 		if lgr.IsMethodSel(pass, sel) {

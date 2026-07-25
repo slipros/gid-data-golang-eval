@@ -382,15 +382,15 @@ linters:
         original-url: github.com/slipros/gid-data-golang-eval
       gidlogconstruct:
         type: module
-        description: 'GID-154: entity constructor with a logger calls WithField'
+        description: 'GID-154: an entity constructor with a logger names the entity on it — WithField (logrus) or With (slog)'
         original-url: github.com/slipros/gid-data-golang-eval
       gidlogctx:
         type: module
-        description: 'GID-155: log with WithContext (when ctx) and WithError (Error level)'
+        description: 'GID-155: a log carries the context (WithContext or the slog *Context variant) and, at Error level, the error (WithError or an error attribute)'
         original-url: github.com/slipros/gid-data-golang-eval
       gidlogchain:
         type: module
-        description: 'GID-156: logrus chain: one call per line'
+        description: 'GID-156: a logger chain (logrus or slog): one call per line'
         original-url: github.com/slipros/gid-data-golang-eval
       gidconstvarorder:
         type: module
@@ -417,7 +417,7 @@ linters:
         type: module
         description: 'GID-196: call chain: one call per line, including the first'
         original-url: github.com/slipros/gid-data-golang-eval
-        # Chain length threshold (default 2; logrus is gidlogchain territory):
+        # Chain length threshold (default 2; logger chains are gidlogchain territory):
         # settings:
         #   min-calls: 3
       gidifacemin:
@@ -758,7 +758,7 @@ linters:
         #     - 'SharedRules'
       gidloggernew:
         type: module
-        description: 'GID-214: logrus.New()/StandardLogger() only in the composition root (main, internal/app)'
+        description: 'GID-214: creating or grabbing the global logger — logrus.New()/StandardLogger(), slog.New()/Default()/SetDefault() — only in the composition root (main, internal/app)'
         original-url: github.com/slipros/gid-data-golang-eval
       gidinlineconv:
         type: module

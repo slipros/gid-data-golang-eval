@@ -4,7 +4,8 @@
 //   - GID-110: context.Context is always the first parameter;
 //   - GID-113: opts (a type with the Options suffix) comes first after ctx
 //     (or first if there is no ctx);
-//   - GID-153: logger (logrus) goes after opts when opts exist.
+//   - GID-153: the logger (logrus or slog — see internal/lgr) goes after opts
+//     when opts exist.
 package paramorder
 
 import (

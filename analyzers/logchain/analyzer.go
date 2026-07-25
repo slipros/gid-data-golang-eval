@@ -1,4 +1,5 @@
-// Package logchain implements rule GID-156: a chain of logrus calls
+// Package logchain implements rule GID-156: a chain of logger calls (logrus
+// or slog — see internal/lgr)
 // is not written inline — each call on its own line, including the first:
 //
 //	c.logger.
@@ -20,10 +21,10 @@ import (
 
 const ruleID = "GID-156"
 
-// Analyzer — rule GID-156: a logrus chain of >=2 calls — one call per line.
+// Analyzer — rule GID-156: a logger chain of >=2 calls — one call per line.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidlogchain",
-	Doc:  ruleID + ": a logrus chain puts each call on its own line, including the first. Fix: break each call onto a new line",
+	Doc:  ruleID + ": a logger chain puts each call on its own line, including the first. Fix: break each call onto a new line",
 	Run:  run,
 }
 
@@ -58,7 +59,7 @@ func checkChain(pass *analysis.Pass, call *ast.CallExpr) {
 		line := pass.Fset.Position(sels[i].Sel.Pos()).Line
 		if line <= prevLine {
 			pass.Reportf(sels[i].Sel.Pos(),
-				"%s: a logrus chain must put one call per line, including the first. Fix: break each call onto a new line", ruleID)
+				"%s: a logger chain must put one call per line, including the first. Fix: break each call onto a new line", ruleID)
 			return
 		}
 		prevLine = line
