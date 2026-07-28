@@ -92,6 +92,7 @@ linters:
     - gidlogconstruct  # GID-154
     - gidlogctx        # GID-155
     - gidlogchain      # GID-156
+    - gidlogfields     # GID-253
     - gidconstvarorder # GID-130
     - gidconstscope    # GID-194
     - gidmodelmethod   # GID-195
@@ -395,6 +396,10 @@ linters:
       gidlogchain:
         type: module
         description: 'GID-156: a logger chain (logrus or slog): one call per line'
+        original-url: github.com/slipros/gid-data-golang-eval
+      gidlogfields:
+        type: module
+        description: 'GID-253: a logger chain sets its fields in one WithFields(logrus.Fields{...}) call — repeated WithField is banned'
         original-url: github.com/slipros/gid-data-golang-eval
       gidconstvarorder:
         type: module

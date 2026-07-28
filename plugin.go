@@ -67,6 +67,7 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/logchain"
 	"github.com/slipros/gid-data-golang-eval/analyzers/logconstruct"
 	"github.com/slipros/gid-data-golang-eval/analyzers/logctx"
+	"github.com/slipros/gid-data-golang-eval/analyzers/logfields"
 	"github.com/slipros/gid-data-golang-eval/analyzers/loggernew"
 	"github.com/slipros/gid-data-golang-eval/analyzers/loggerplace"
 	"github.com/slipros/gid-data-golang-eval/analyzers/mapcap"
@@ -123,6 +124,7 @@ func init() {
 	register.Plugin("gidlogconstruct", newSingleAnalyzerPlugin(logconstruct.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidlogctx", newSingleAnalyzerPlugin(logctx.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidlogchain", newSingleAnalyzerPlugin(logchain.Analyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidlogfields", newSingleAnalyzerPlugin(logfields.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidconstvarorder", newSingleAnalyzerPlugin(constvarorder.Analyzer, register.LoadModeSyntax))
 	register.Plugin("gidconstscope", newConfigurablePlugin(constscope.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidmodelmethod", newConfigurablePlugin(modelmethod.NewAnalyzer, register.LoadModeTypesInfo))
