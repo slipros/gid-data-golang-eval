@@ -16,6 +16,7 @@ import (
 
 	"golang.org/x/tools/go/analysis"
 
+	"github.com/slipros/gid-data-golang-eval/internal/modlayout"
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 )
 
@@ -58,6 +59,11 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 }
 
 func run(pass *analysis.Pass, tree map[string][]string) (any, error) {
+	// The tree describes a service; a library lays its packages out freely.
+	if !modlayout.IsServiceModule(pass) {
+		return nil, nil
+	}
+
 	pkgPath := pass.Pkg.Path()
 	segs := pathseg.Segments(pkgPath)
 

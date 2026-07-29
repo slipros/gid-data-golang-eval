@@ -11,6 +11,7 @@ import (
 
 	"golang.org/x/tools/go/analysis"
 
+	"github.com/slipros/gid-data-golang-eval/internal/modlayout"
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 )
 
@@ -25,6 +26,12 @@ var Analyzer = &analysis.Analyzer{
 
 func run(pass *analysis.Pass) (any, error) {
 	if pathseg.HasLayer(pass.Pkg.Path(), "app") {
+		return nil, nil
+	}
+	// In a library a bare New is the Go idiom (pool.New, sql.Open): the package
+	// name qualifies it, and there is no layer packing several entities into one
+	// package for it to clash with.
+	if !modlayout.IsServiceModule(pass) {
 		return nil, nil
 	}
 	for _, file := range pass.Files {

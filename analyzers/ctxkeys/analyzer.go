@@ -22,6 +22,7 @@ import (
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/types/typeutil"
 
+	"github.com/slipros/gid-data-golang-eval/internal/modlayout"
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 )
 
@@ -44,6 +45,13 @@ var Analyzer = &analysis.Analyzer{
 }
 
 func run(pass *analysis.Pass) (any, error) {
+	// A library keeps its context helpers next to the API they serve: it has no
+	// /domain/model to hold them, and no business layers to protect from a
+	// middleware dependency.
+	if !modlayout.IsServiceModule(pass) {
+		return nil, nil
+	}
+
 	if pathseg.HasLayer(pass.Pkg.Path(), "domain", "model") {
 		checkModelHelpers(pass)
 		return nil, nil

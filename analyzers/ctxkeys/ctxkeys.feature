@@ -21,6 +21,11 @@ Feature: GID-165/166/167 — context keys and helpers live in the model (gidctxk
   # suggested snake_case spelling is computed and shown in the diagnostic.
   # Generated code (ast.IsGenerated) is skipped.
 
+  # Scope: only a module laid out as a service — internal/modlayout walks up to
+  # the package's go.mod and looks for a layer directory (domain, dal, server,
+  # app, usecase, repository) at the module root or under internal/. A flat
+  # library module is skipped.
+
   # --- Class 1: positive ---
 
   Scenario: positive — WithValue in an http middleware
@@ -120,6 +125,13 @@ Feature: GID-165/166/167 — context keys and helpers live in the model (gidctxk
     Given a file carrying the "Code generated … DO NOT EDIT." header
     When the gidctxkeys analyzer checks the file
     Then no diagnostic is reported
+
+  Scenario: non-applicability — a library module
+    Given "context.WithValue(ctx, txKey, tx)" in the root package of libs/postgres
+    When the gidctxkeys analyzer checks the file
+    Then no diagnostic is reported
+    # A library keeps its context helpers next to the API they serve
+    # (postgres.ContextWithTx): there is no /domain/model to move them into.
 
 # --- Checklist when adding a new rule ---
 #  [x] ID and description are recorded in the registry (RULES.md, GID-165, GID-166, GID-167)

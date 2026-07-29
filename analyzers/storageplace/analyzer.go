@@ -41,6 +41,7 @@ import (
 
 	"golang.org/x/tools/go/analysis"
 
+	"github.com/slipros/gid-data-golang-eval/internal/modlayout"
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 )
 
@@ -160,6 +161,11 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 func run(pass *analysis.Pass, drivers []string, allowed [][]string, excludePaths, excludePackages []string) (any, error) {
 	pkgPath := pass.Pkg.Path()
 	if inAllowedLayer(pkgPath, allowed) || excludedPath(pkgPath, excludePaths) {
+		return nil, nil
+	}
+	// A library module has no repository layer to move the driver into: a
+	// libs/trino or libs/postgres wrapper IS the storage access layer.
+	if !modlayout.IsServiceModule(pass) {
 		return nil, nil
 	}
 	for _, file := range pass.Files {

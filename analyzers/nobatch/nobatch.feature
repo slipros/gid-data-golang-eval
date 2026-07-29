@@ -15,6 +15,11 @@ Feature: GID-102 — the word Batch is not used in method names (gidnobatch)
   # naming section of the styleguide.
   # Generated code (ast.IsGenerated) is skipped.
 
+  # Scope: only a module laid out as a service — internal/modlayout walks up to
+  # the package's go.mod and looks for a layer directory (domain, dal, server,
+  # app, usecase, repository) at the module root or under internal/. A flat
+  # library module is skipped.
+
   # --- Class 1: positive ---
 
   Scenario: positive — Batch in the middle of the name
@@ -70,6 +75,13 @@ Feature: GID-102 — the word Batch is not used in method names (gidnobatch)
     Given a file carrying the "Code generated … DO NOT EDIT." header
     When the gidnobatch analyzer checks the file
     Then no diagnostic is reported
+
+  Scenario: non-applicability — a library module wrapping a driver
+    Given "func (q *Query) Batch(ctx context.Context) error" in libs/postgres
+    When the gidnobatch analyzer checks the file
+    Then no diagnostic is reported
+    # There Batch is the driver's own term (pgx.Batch, SendBatch), not the
+    # CreateBatchJobs smell the rule targets.
 
 # --- Checklist when adding a new rule ---
 #  [x] ID and description are recorded in the registry (RULES.md, GID-102)

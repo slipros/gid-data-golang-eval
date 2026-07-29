@@ -42,6 +42,7 @@ import (
 	"golang.org/x/tools/go/analysis"
 
 	"github.com/slipros/gid-data-golang-eval/internal/exclude"
+	"github.com/slipros/gid-data-golang-eval/internal/modlayout"
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 )
 
@@ -74,6 +75,11 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 
 func run(pass *analysis.Pass, s Settings) (any, error) {
 	if excludedPath(pass.Pkg.Path(), s.ExcludePaths) {
+		return nil, nil
+	}
+	// A library has no layers and no convert subpackage to move the mapping
+	// into: the rule points at a place that does not exist there.
+	if !modlayout.IsServiceModule(pass) {
 		return nil, nil
 	}
 

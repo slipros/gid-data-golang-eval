@@ -15,6 +15,11 @@ Feature: GID-249 — a data store is reached through the repository layer (gidst
   #   exclude-paths    — packages skipped entirely ("internal/legacy/cache").
   # Generated code (ast.IsGenerated) and _test.go are skipped.
 
+  # Scope: only a module laid out as a service — internal/modlayout walks up to
+  # the package's go.mod and looks for a layer directory (domain, dal, server,
+  # app, usecase, repository) at the module root or under internal/. A flat
+  # library module has no layer to point at, so the rule stays silent there.
+
   # --- Class 1: positive ---
 
   Scenario: positive — a key-value driver in /client
@@ -113,6 +118,13 @@ Feature: GID-249 — a data store is reached through the repository layer (gidst
     Given a generated file in "/client/gen" importing "github.com/jackc/pgx/v5"
     When the gidstorageplace analyzer checks the file
     Then no diagnostic is reported
+
+  Scenario: non-applicability — a library module wrapping the driver
+    Given "database/sql" imported by the root package of libs/trino, a module with no layer directories
+    When the gidstorageplace analyzer checks the file
+    Then no diagnostic is reported
+    # A libs/trino or libs/postgres wrapper IS the storage access layer: there
+    # is no /dal/repository in that module to move the code into.
 
 # --- Checklist when adding a new rule ---
 #  [x] ID and description are recorded in the registry (RULES.md, GID-249)

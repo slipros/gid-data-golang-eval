@@ -14,6 +14,11 @@ Feature: GID-104 — a constructor is named New<Entity>, not bare New (gidctor)
   # by the service template the application's own New() lives there.
   # Generated code (ast.IsGenerated) is skipped.
 
+  # Scope: only a module laid out as a service — internal/modlayout walks up to
+  # the package's go.mod and looks for a layer directory (domain, dal, server,
+  # app, usecase, repository) at the module root or under internal/. A flat
+  # library module has no layer to point at, so the rule stays silent there.
+
   # --- Class 1: positive ---
 
   Scenario: positive — bare New in a service package
@@ -65,6 +70,13 @@ Feature: GID-104 — a constructor is named New<Entity>, not bare New (gidctor)
     Given a file carrying the "Code generated … DO NOT EDIT." header
     When the gidctor analyzer checks the file
     Then no diagnostic is reported
+
+  Scenario: non-applicability — a bare New in a library module
+    Given "func New() *Pool" in a module with no layer directories
+    When the gidctor analyzer checks the file
+    Then no diagnostic is reported
+    # pool.New() is the Go idiom: the package name qualifies the constructor,
+    # and no layer packs several entities into one package for it to clash with.
 
 # --- Checklist when adding a new rule ---
 #  [x] ID and description are recorded in the registry (RULES.md, GID-104)

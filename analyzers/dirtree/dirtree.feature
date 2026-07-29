@@ -22,6 +22,11 @@ Feature: GID-158 — a folder holds only the subfolders the tree allows (giddirt
   # non-generated file of the package.
   # GID-224 rides along: schedule is a transport leaf of the tree.
 
+  # Scope: only a module laid out as a service — internal/modlayout walks up to
+  # the package's go.mod and looks for a layer directory (domain, dal, server,
+  # app, usecase, repository) at the module root or under internal/. A flat
+  # library module has no layer to point at, so the rule stays silent there.
+
   # --- Class 1: positive ---
 
   Scenario: positive — an unknown folder in internal/
@@ -86,6 +91,12 @@ Feature: GID-158 — a folder holds only the subfolders the tree allows (giddirt
     Given every file of the package carrying the "Code generated … DO NOT EDIT." header
     When the giddirtree analyzer checks the package
     Then no diagnostic is reported
+
+  Scenario: non-applicability — a library module
+    Given the package "gitlab.gid.team/.../libs/trino.git/internal/pool" in a module with no layer directories
+    When the giddirtree analyzer checks the package
+    Then no diagnostic is reported
+    # The tree describes a service; a library lays its packages out freely.
 
 # --- Checklist when adding a new rule ---
 #  [x] ID and description are recorded in the registry (RULES.md, GID-158/GID-224)

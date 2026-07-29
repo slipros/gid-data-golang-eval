@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"golang.org/x/tools/go/analysis"
+
+	"github.com/slipros/gid-data-golang-eval/internal/modlayout"
 )
 
 const ruleID = "GID-102"
@@ -21,6 +23,12 @@ var Analyzer = &analysis.Analyzer{
 }
 
 func run(pass *analysis.Pass) (any, error) {
+	// In a library wrapping a driver, Batch is the driver's own term (pgx.Batch,
+	// SendBatch), not the CreateBatchJobs smell the rule targets.
+	if !modlayout.IsServiceModule(pass) {
+		return nil, nil
+	}
+
 	for _, file := range pass.Files {
 		if ast.IsGenerated(file) {
 			continue
