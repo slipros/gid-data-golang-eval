@@ -26,19 +26,19 @@ type Interceptor struct{}
 
 // --- Positive: the logger sits after a dependency ---
 
-func NewInterceptor(opts InterceptorOptions, checker BanChecker, logger *slog.Logger) *Interceptor { // want `GID-252: the logger comes before the entity's own dependencies\. Fix: order the parameters ctx, opts, logger, metrics, then the rest`
+func NewInterceptor(opts InterceptorOptions, checker BanChecker, logger *slog.Logger) *Interceptor { // want `GID-252: the logger comes after the entity's own dependencies\. Fix: order the parameters ctx, opts, logger, metrics, then the rest`
 	return &Interceptor{}
 }
 
 // --- Positive: metrics after a dependency ---
 
-func NewCollector(checker BanChecker, metrics *InterceptorMetrics) *Interceptor { // want `GID-252: metrics come before the entity's own dependencies\. Fix: order the parameters ctx, opts, logger, metrics, then the rest`
+func NewCollector(checker BanChecker, metrics *InterceptorMetrics) *Interceptor { // want `GID-252: metrics come after the entity's own dependencies\. Fix: order the parameters ctx, opts, logger, metrics, then the rest`
 	return &Interceptor{}
 }
 
 // --- Positive: metrics before the logger ---
 
-func NewSwapped(metrics *InterceptorMetrics, logger *slog.Logger) *Interceptor { // want `GID-252: metrics come after the logger\. Fix: order the parameters ctx, opts, logger, metrics, then the rest`
+func NewSwapped(metrics *InterceptorMetrics, logger *slog.Logger) *Interceptor { // want `GID-252: metrics come before the logger\. Fix: order the parameters ctx, opts, logger, metrics, then the rest`
 	return &Interceptor{}
 }
 

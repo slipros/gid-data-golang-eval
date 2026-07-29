@@ -138,17 +138,17 @@ func checkConstructorOrder(pass *analysis.Pass, params []param) {
 	}
 	if firstOther >= 0 && loggerIdx > firstOther {
 		pass.Reportf(params[loggerIdx].pos.Pos(),
-			"GID-252: the logger comes before the entity's own dependencies. "+
+			"GID-252: the logger comes after the entity's own dependencies. "+
 				"Fix: order the parameters ctx, opts, logger, metrics, then the rest")
 	}
 	if firstOther >= 0 && metricsIdx > firstOther {
 		pass.Reportf(params[metricsIdx].pos.Pos(),
-			"GID-252: metrics come before the entity's own dependencies. "+
+			"GID-252: metrics come after the entity's own dependencies. "+
 				"Fix: order the parameters ctx, opts, logger, metrics, then the rest")
 	}
 	if loggerIdx >= 0 && metricsIdx >= 0 && metricsIdx < loggerIdx {
 		pass.Reportf(params[metricsIdx].pos.Pos(),
-			"GID-252: metrics come after the logger. "+
+			"GID-252: metrics come before the logger. "+
 				"Fix: order the parameters ctx, opts, logger, metrics, then the rest")
 	}
 }
