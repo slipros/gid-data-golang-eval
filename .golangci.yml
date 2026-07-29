@@ -463,7 +463,7 @@ linters:
         original-url: github.com/slipros/gid-data-golang-eval
       gidentitygroup:
         type: module
-        description: 'GID-157: entity code is one block: type, constructor, methods'
+        description: 'GID-157: entity code is one block: type, constructor, methods — no free function splits it'
         original-url: github.com/slipros/gid-data-golang-eval
       giddirtree:
         type: module
