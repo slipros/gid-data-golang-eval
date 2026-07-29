@@ -60,6 +60,7 @@ func TestBelongsTo(t *testing.T) {
 		{name: "an analysistest fixture inside another module", pkg: svcPkgPath, module: "github.com/slipros/gid-data-golang-eval", want: false},
 		{name: "a shared prefix that is not a path prefix", pkg: "example.com/svc-two/dal", module: svcModule, want: false},
 		{name: "an unknown module path", pkg: svcPkgPath, module: "", want: true},
+		{name: "no type information, so no package path", pkg: "", module: svcModule, want: true},
 	}
 
 	for _, tt := range tests { //nolint:gidallptr // the plugin does not depend on the internal gdhelper library

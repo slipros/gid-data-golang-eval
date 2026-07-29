@@ -21,7 +21,9 @@ Feature: GID-157 — an entity's code is a single contiguous block (gidentitygro
   # runs only in a module laid out as a service (internal/modlayout): a library
   # client with one big type spreads its methods over topic files (domain.go,
   # lineage.go) the way go-github does. Contiguity inside a file always holds.
-  # Order inside the block: type -> New<Entity> -> methods.
+  # Order inside the block: type -> every constructor of the entity -> methods.
+  # The first method closes the constructor section, so a constructor found
+  # below a method is reported on itself.
   # Contiguity: the block spans from the entity's first declaration to its last;
   # any declaration owned by nobody (a receiverless function, a non-struct type)
   # inside that span splits it. Either edge is fine — above the first type or
@@ -46,7 +48,9 @@ Feature: GID-157 — an entity's code is a single contiguous block (gidentitygro
     Given "func (s *Snapshot) Early()" declared above "type Snapshot struct" and above "NewSnapshot"
     When the gidentitygroup analyzer checks the file
     Then the diagnostic "GID-157: method \"Early\" must be placed below the \"Snapshot\" type declaration" is reported
-    And the diagnostic "GID-157: method \"Early\" must be placed below the NewSnapshot constructor" is reported
+    And the diagnostic "GID-157: constructor \"NewSnapshot\" sits below the methods of \"Snapshot\". Fix: keep every constructor of an entity together under its type declaration, above the methods" is reported
+    # The constructor is reported on itself: it is the declaration that has to
+    # move up, above the methods.
 
   Scenario: positive — the methods of two entities are interleaved
     Given "type Snapshot struct" with its methods, then "type Job struct" with "Run", then "func (s *Snapshot) Render()"
@@ -102,12 +106,17 @@ Feature: GID-157 — an entity's code is a single contiguous block (gidentitygro
     Then no diagnostic is reported
     # The returned type makes it the entity's code; the name is not consulted.
 
-  Scenario: boundary — a second constructor after the methods
+  Scenario: positive — a second constructor below the methods
     Given "func NewWorkerByTask(t Task) (*Worker, error)" declared below the methods of "Worker"
     When the gidentitygroup analyzer checks the file
+    Then the diagnostic "GID-157: constructor \"NewWorkerByTask\" sits below the methods of \"Worker\". …" is reported
+    # An entity may have many constructors — NewX, newDefaultX, NewXByY — and
+    # they all belong together under the type declaration, above the methods.
+
+  Scenario: negative — several constructors under the type declaration
+    Given "type Worker struct", then "NewWorker", "newDefaultWorker", "NewWorkerByTask", then the methods
+    When the gidentitygroup analyzer checks the file
     Then no diagnostic is reported
-    # Methods must follow the FIRST constructor; the extra ones legitimately sit
-    # further down the block.
 
   Scenario: boundary — a constructor returning an interface
     Given "func NewWithARGS(logger Logger, args ...any) Logger" next to "type WithARGS struct"

@@ -50,7 +50,7 @@ func IsServiceModule(pass *analysis.Pass) bool {
 	}
 
 	root, modPath, ok := moduleRoot(dir)
-	if !ok || !belongsTo(pass.Pkg.Path(), modPath) {
+	if !ok || !belongsTo(pkgPath(pass), modPath) {
 		// No go.mod above the package, or the go.mod found belongs to another
 		// module than the package under analysis (a GOPATH-style analysistest
 		// fixture sitting inside this repository). Nothing reliable to read.
@@ -67,6 +67,17 @@ func IsServiceModule(pass *analysis.Pass) bool {
 	cache.Store(root, verdict)
 
 	return verdict
+}
+
+// pkgPath — the import path of the package under analysis, empty when the
+// analyzer runs without type information (a syntax-only load mode leaves
+// pass.Pkg nil, and reading it would panic).
+func pkgPath(pass *analysis.Pass) string {
+	if pass.Pkg == nil {
+		return ""
+	}
+
+	return pass.Pkg.Path()
 }
 
 // packageDir — the directory holding the package's first file.
@@ -130,8 +141,8 @@ func modulePath(goMod string) (string, bool) {
 
 // belongsTo reports whether the package under analysis is part of the module.
 func belongsTo(pkgPath, modPath string) bool {
-	if modPath == "" {
-		return true // the module path is unknown — do not second-guess the root
+	if modPath == "" || pkgPath == "" {
+		return true // nothing to compare — do not second-guess the root found
 	}
 
 	return pkgPath == modPath || strings.HasPrefix(pkgPath, modPath+"/")

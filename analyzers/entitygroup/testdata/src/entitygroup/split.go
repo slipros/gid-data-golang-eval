@@ -20,3 +20,9 @@ func sessionKey(id string) string { // want `GID-157: "sessionKey" splits the "S
 type sessionState string // want `GID-157: "sessionState" splits the "Session" entity block\. Fix: move it above the first type or below the entity's last method`
 
 func (s *Session) Key() string { return sessionKey(s.id) }
+
+// Positive: a second constructor below the methods — every constructor of an
+// entity belongs under its type declaration.
+func NewSessionFromID(id string) (*Session, error) { // want `GID-157: constructor "NewSessionFromID" sits below the methods of "Session"\. Fix: keep every constructor of an entity together under its type declaration, above the methods`
+	return &Session{id: id}, nil
+}

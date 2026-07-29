@@ -81,18 +81,18 @@ func checkFile(pass *analysis.Pass, file *ast.File, typeFile map[string]*ast.Fil
 	owned := ownedDecls(file, typeFile)
 
 	typeIdx := map[string]int{}
-	ctorIdx := map[string]int{}
+	methodIdx := map[string]int{}
 	//nolint:gidallptr // the plugin does not depend on the internal gdhelper library
 	for i, d := range owned {
 		switch d.kind {
 		case kindType:
 			typeIdx[d.entity] = i
-		case kindCtor:
-			// The first constructor is the one methods must follow: an entity
-			// may have several (NewX, newDefaultX, NewXByY), and the extra ones
-			// legitimately sit further down the block.
-			if _, seen := ctorIdx[d.entity]; !seen {
-				ctorIdx[d.entity] = i
+		case kindMethod:
+			// The first method closes the constructor section: an entity may have
+			// several constructors (NewX, newDefaultX, NewXByY) and they all sit
+			// together under the type declaration, above the methods.
+			if _, seen := methodIdx[d.entity]; !seen {
+				methodIdx[d.entity] = i
 			}
 		}
 	}
@@ -111,15 +111,18 @@ func checkFile(pass *analysis.Pass, file *ast.File, typeFile map[string]*ast.Fil
 			if hasType && i < ti {
 				pass.Reportf(d.name.Pos(),
 					"%s: constructor %q must be placed right below the %q type declaration", ruleID, d.name.Name, d.entity)
+
+				continue
+			}
+			if mi, hasMethod := methodIdx[d.entity]; hasMethod && i > mi {
+				pass.Reportf(d.name.Pos(),
+					"%s: constructor %q sits below the methods of %q. Fix: keep every constructor of an entity together "+
+						"under its type declaration, above the methods", ruleID, d.name.Name, d.entity)
 			}
 		case kindMethod:
 			if hasType && i < ti {
 				pass.Reportf(d.name.Pos(),
 					"%s: method %q must be placed below the %q type declaration", ruleID, d.name.Name, d.entity)
-			}
-			if ci, hasCtor := ctorIdx[d.entity]; hasCtor && i < ci {
-				pass.Reportf(d.name.Pos(),
-					"%s: method %q must be placed below the New%s constructor", ruleID, d.name.Name, d.entity)
 			}
 		}
 	}

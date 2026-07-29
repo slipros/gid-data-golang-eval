@@ -22,8 +22,9 @@ func (q *Queue) Len() int { return len(q.tasks) }
 // Not applicable: free helpers below the last method of the last entity.
 func drain(q *Queue) { q.tasks = nil }
 
-// Boundary: an unexported factory and a second constructor are the entity's own
-// code — recognised by the returned type, so they do not split the block.
+// Boundary: every constructor of an entity — the exported one, an unexported
+// factory, a second constructor — sits under the type declaration, above the
+// methods; none of them splits the block.
 
 type Worker struct {
 	name string
@@ -31,11 +32,11 @@ type Worker struct {
 
 func NewWorker(name string) *Worker { return &Worker{name: name} }
 
-func (w *Worker) Name() string { return w.name }
-
 func newDefaultWorker() *Worker { return &Worker{name: "default"} }
 
 func NewWorkerByTask(t Task) (*Worker, error) { return &Worker{name: t.name}, nil }
+
+func (w *Worker) Name() string { return w.name }
 
 func (w *Worker) Rename(name string) { w.name = name }
 

@@ -108,7 +108,7 @@ import (
 //nolint:gochecknoinits // golangci-lint Module Plugin System contract — registration only via init
 func init() {
 	register.Plugin("gidnogetprefix", newSingleAnalyzerPlugin(nogetprefix.Analyzer, register.LoadModeSyntax))
-	register.Plugin("gidnobatch", newSingleAnalyzerPlugin(nobatch.Analyzer, register.LoadModeSyntax))
+	register.Plugin("gidnobatch", newSingleAnalyzerPlugin(nobatch.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidonlygofrsuuid", newSingleAnalyzerPlugin(onlygofrsuuid.Analyzer, register.LoadModeSyntax))
 	register.Plugin("gidallptr", newSingleAnalyzerPlugin(allptr.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidflatlayout", newSingleAnalyzerPlugin(flatlayout.Analyzer, register.LoadModeTypesInfo))
@@ -133,7 +133,7 @@ func init() {
 	register.Plugin("gidinout", newConfigurablePlugin(inout.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidcreateupdate", newConfigurablePlugin(createupdate.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidprivatefunc", newSingleAnalyzerPlugin(privatefunc.Analyzer, register.LoadModeTypesInfo))
-	register.Plugin("gidentitygroup", newSingleAnalyzerPlugin(entitygroup.Analyzer, register.LoadModeSyntax))
+	register.Plugin("gidentitygroup", newSingleAnalyzerPlugin(entitygroup.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("giddirtree", newConfigurablePlugin(dirtree.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidcacheplace", newConfigurablePlugin(cacheplace.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidgrpcinservice", newConfigurablePlugin(grpcinservice.NewAnalyzer, register.LoadModeTypesInfo))
