@@ -27,17 +27,22 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
-// serviceDirs — the directories whose presence marks a service layout. Any one
-// of them is enough: a service always has at least a composition root and one
-// business layer, while a library has none of them.
-var serviceDirs = []string{"domain", "dal", "server", "app", "usecase", "repository"}
-
+// The marker of a service layout is the composition root internal/app: by the
+// service template every gid.team service has one, and no library does — a
+// library that publishes an app/ package (libs/helper) puts it at the root, not
+// under internal/. The fallback marker is the pair domain + dal — a service
+// owns both a business layer and a data layer, while a library holding one of
+// them (libs/grpc has internal/domain, libs/http has server/) never holds both.
+//
+// Single directories are deliberately NOT markers: server/, client/ or domain/
+// on their own are ordinary package names in a transport library.
 // cache — module root -> verdict, so the directory walk runs once per module.
 var cache sync.Map
 
 // IsServiceModule reports whether the package under analysis belongs to a
-// module laid out as a service. A library module — flat, with no layer
-// directories — gets false, and the layer rules skip it.
+// module laid out as a service: one holding a composition root (app/), or both
+// a business and a data layer (domain/ + dal/). A library module gets false,
+// and the layer rules skip it.
 func IsServiceModule(pass *analysis.Pass) bool {
 	dir := packageDir(pass)
 	if dir == "" {
@@ -136,13 +141,25 @@ func belongsTo(pkgPath, modPath string) bool {
 // either at the top level or under internal/, the two layouts the styleguide
 // describes.
 func hasServiceDirs(root string) bool {
-	for _, layer := range serviceDirs {
-		if isDir(filepath.Join(root, layer)) || isDir(filepath.Join(root, "internal", layer)) {
-			return true
-		}
+	const (
+		rootApp    = "app"
+		rootDomain = "domain"
+		rootDAL    = "dal"
+	)
+
+	// The composition root counts only under internal/: a library may well
+	// publish an app/ package of its own (libs/helper does).
+	if isDir(filepath.Join(root, "internal", rootApp)) {
+		return true
 	}
 
-	return false
+	return hasLayerDir(root, rootDomain) && hasLayerDir(root, rootDAL)
+}
+
+// hasLayerDir reports whether the layer directory sits at the module root or
+// under its internal/.
+func hasLayerDir(root, layer string) bool {
+	return isDir(filepath.Join(root, layer)) || isDir(filepath.Join(root, "internal", layer))
 }
 
 func isDir(path string) bool {

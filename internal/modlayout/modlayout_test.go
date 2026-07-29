@@ -9,6 +9,9 @@ import (
 const (
 	svcModule  = "example.com/svc"
 	svcPkgPath = "svc/domain/service"
+
+	dirDomain = "internal/domain"
+	dirLogger = "pkg/logger"
 )
 
 func TestHasServiceDirs(t *testing.T) {
@@ -17,11 +20,15 @@ func TestHasServiceDirs(t *testing.T) {
 		dirs []string
 		want bool
 	}{
-		{name: "service under internal", dirs: []string{"internal/domain/service", "internal/app/api"}, want: true},
+		{name: "service under internal", dirs: []string{dirDomain + "/service", "internal/app/api"}, want: true},
 		{name: "service at the top level", dirs: []string{"domain/model", "dal/repository"}, want: true},
 		{name: "only the composition root", dirs: []string{"internal/app"}, want: true},
-		{name: "flat library", dirs: []string{"pkg/logger", "pkg/prometheus", "example"}, want: false},
+		{name: "domain and dal without an app", dirs: []string{dirDomain, "internal/dal"}, want: true},
+		{name: "flat library", dirs: []string{dirLogger, "pkg/prometheus", "example"}, want: false},
 		{name: "library with an internal of its own", dirs: []string{"internal/pool", "internal/retry"}, want: false},
+		{name: "transport library with a server and a client", dirs: []string{"server/middleware", "client/serde", dirLogger}, want: false},
+		{name: "library with a domain but no dal", dirs: []string{dirDomain, "client/interceptor"}, want: false},
+		{name: "library publishing its own app package", dirs: []string{"app", "errors", "mapper"}, want: false},
 		{name: "empty module", want: false},
 	}
 
