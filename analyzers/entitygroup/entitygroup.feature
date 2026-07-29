@@ -10,10 +10,17 @@ Feature: GID-157 — an entity's code is a single contiguous block (gidentitygro
   # An entity is a struct type; the declaration file of every struct in the
   # package is collected first (structFiles), so a method or constructor placed
   # in a foreign file is caught across files.
-  # Ownership of a declaration: a method — by its receiver type; a function
-  # New<Entity> — by the entity, but only when a struct with that name is
-  # declared in the package (a New* function without a matching struct is a
-  # free function, not a constructor).
+  # Ownership of a declaration: a method — by its receiver type; a constructor —
+  # by what it builds, not by a name template: a receiverless function named
+  # New<Entity> for a struct of the package, or one whose first result is T/*T
+  # for such a struct. An unexported factory (newPoolStatsCollector), a second
+  # constructor (NewLoggerByEntry) and one returning an interface the entity
+  # implements (NewWithARGS() Logger) are all the entity's own code.
+  # _test.go files are not judged at all.
+  # The cross-file half — a method or constructor away from its type's file —
+  # runs only in a module laid out as a service (internal/modlayout): a library
+  # client with one big type spreads its methods over topic files (domain.go,
+  # lineage.go) the way go-github does. Contiguity inside a file always holds.
   # Order inside the block: type -> New<Entity> -> methods.
   # Contiguity: the block spans from the entity's first declaration to its last;
   # any declaration owned by nobody (a receiverless function, a non-struct type)
@@ -84,10 +91,30 @@ Feature: GID-157 — an entity's code is a single contiguous block (gidentitygro
     Then no diagnostic is reported
     # Deliberate: the place of const and var in a file is GID-130's rule.
 
-  Scenario: boundary — a New* function without a matching struct
+  Scenario: boundary — a New* function that builds nothing of the package
     Given "func NewID() string" in a package where no "type ID struct" is declared
     When the gidentitygroup analyzer checks the file
     Then it is treated as a free function, not as a constructor
+
+  Scenario: boundary — an unexported factory between the entity's methods
+    Given "func newDefaultWorker() *Worker" declared between two methods of "Worker"
+    When the gidentitygroup analyzer checks the file
+    Then no diagnostic is reported
+    # The returned type makes it the entity's code; the name is not consulted.
+
+  Scenario: boundary — a second constructor after the methods
+    Given "func NewWorkerByTask(t Task) (*Worker, error)" declared below the methods of "Worker"
+    When the gidentitygroup analyzer checks the file
+    Then no diagnostic is reported
+    # Methods must follow the FIRST constructor; the extra ones legitimately sit
+    # further down the block.
+
+  Scenario: boundary — a constructor returning an interface
+    Given "func NewWithARGS(logger Logger, args ...any) Logger" next to "type WithARGS struct"
+    When the gidentitygroup analyzer checks the file
+    Then no diagnostic is reported
+    # The New<Entity> name names the entity even when the result is an interface
+    # the entity implements.
 
   Scenario: boundary — a single entity with no free declarations at all
     Given a file holding only "type Queue struct" and its methods
@@ -107,12 +134,26 @@ Feature: GID-157 — an entity's code is a single contiguous block (gidentitygro
     When the gidentitygroup analyzer checks the file
     Then no diagnostic is reported
 
+  Scenario: non-applicability — a _test.go file
+    Given "func newBareUpload(id string) *Upload" and a free helper declared in upload_test.go
+    When the gidentitygroup analyzer checks the file
+    Then no diagnostic is reported
+    # Tests live in the same package (GID-250), but a table, its fixtures and a
+    # builder returning the entity under test are the test's own composition.
+
   Scenario: non-applicability — a method on a non-struct type
     Given "type ContextKey string" and "func (k ContextKey) String()" declared in the package
     When the gidentitygroup analyzer checks the file
     Then no "belongs to entity" diagnostic is reported
     # Only structs are entities, so no declaration file is known for the
     # receiver and the file check has nothing to compare.
+
+  Scenario: non-applicability — the cross-file check in a library module
+    Given "func (c *Client) GetTableLineage(...)" in lineage.go while "type Client struct" sits in client.go, in a module with no layer directories
+    When the gidentitygroup analyzer checks the package
+    Then no "belongs to entity" diagnostic is reported
+    # Splitting one client type across topic files is the library idiom; what
+    # still applies there is the contiguity of the block inside each file.
 
 # --- Checklist when adding a new rule ---
 #  [x] ID and description are recorded in the registry (RULES.md, GID-157)

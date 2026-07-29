@@ -56,6 +56,31 @@ type ifaceDecl struct {
 	methods  []*methodCand
 }
 
+func newIfaceDecl(pass *analysis.Pass, s Settings, ts *ast.TypeSpec, it *ast.InterfaceType) *ifaceDecl {
+	tn, ok := pass.TypesInfo.Defs[ts.Name].(*types.TypeName)
+	if !ok {
+		return nil
+	}
+	d := &ifaceDecl{name: ts.Name.Name, typeName: tn}
+	for _, field := range it.Methods.List {
+		if len(field.Names) == 0 {
+			continue // an embedded interface
+		}
+		for _, name := range field.Names {
+			if exclude.Match(s.Exclude, d.name, name.Name) {
+				continue
+			}
+			if obj := pass.TypesInfo.Defs[name]; obj != nil {
+				d.methods = append(d.methods, &methodCand{ident: name, obj: obj})
+			}
+		}
+	}
+	if len(d.methods) == 0 {
+		return nil
+	}
+	return d
+}
+
 type methodCand struct {
 	ident *ast.Ident
 	obj   types.Object
@@ -117,31 +142,6 @@ func collectIfaces(pass *analysis.Pass, s Settings) []*ifaceDecl {
 		}
 	}
 	return out
-}
-
-func newIfaceDecl(pass *analysis.Pass, s Settings, ts *ast.TypeSpec, it *ast.InterfaceType) *ifaceDecl {
-	tn, ok := pass.TypesInfo.Defs[ts.Name].(*types.TypeName)
-	if !ok {
-		return nil
-	}
-	d := &ifaceDecl{name: ts.Name.Name, typeName: tn}
-	for _, field := range it.Methods.List {
-		if len(field.Names) == 0 {
-			continue // an embedded interface
-		}
-		for _, name := range field.Names {
-			if exclude.Match(s.Exclude, d.name, name.Name) {
-				continue
-			}
-			if obj := pass.TypesInfo.Defs[name]; obj != nil {
-				d.methods = append(d.methods, &methodCand{ident: name, obj: obj})
-			}
-		}
-	}
-	if len(d.methods) == 0 {
-		return nil
-	}
-	return d
 }
 
 // collectUsedMethods — which methods of the checked interfaces are referenced

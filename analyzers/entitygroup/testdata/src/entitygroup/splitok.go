@@ -21,3 +21,31 @@ func (q *Queue) Len() int { return len(q.tasks) }
 
 // Not applicable: free helpers below the last method of the last entity.
 func drain(q *Queue) { q.tasks = nil }
+
+// Boundary: an unexported factory and a second constructor are the entity's own
+// code — recognised by the returned type, so they do not split the block.
+
+type Worker struct {
+	name string
+}
+
+func NewWorker(name string) *Worker { return &Worker{name: name} }
+
+func (w *Worker) Name() string { return w.name }
+
+func newDefaultWorker() *Worker { return &Worker{name: "default"} }
+
+func NewWorkerByTask(t Task) (*Worker, error) { return &Worker{name: t.name}, nil }
+
+func (w *Worker) Rename(name string) { w.name = name }
+
+// Boundary: a bare New — the library idiom — is a constructor too, its entity
+// read from the result type.
+
+type Pool struct {
+	size int
+}
+
+func New(size int) *Pool { return &Pool{size: size} }
+
+func (p *Pool) Size() int { return p.size }

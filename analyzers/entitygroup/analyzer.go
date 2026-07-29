@@ -1,9 +1,19 @@
 // Package entitygroup implements rule GID-157: an entity's code is a single
 // block. All of an entity's functions live in the file of its declaration, in
-// the order type -> the New<Entity> constructor -> methods. Functions of
-// different entities are not mixed into one pile, and no foreign declaration
-// (a free function, an unrelated type) splits the block: free helpers go either
-// above the first type or below the entity's last method — never in between.
+// the order type -> constructor -> methods. Functions of different entities are
+// not mixed into one pile, and no foreign declaration (a free function, an
+// unrelated type) splits the block: free helpers go either above the first type
+// or below the entity's last method — never in between.
+//
+// A constructor is recognised by what it builds, not by a name template: a
+// receiverless function is the entity's code when it is named New<Entity>, or
+// when its first result is T or *T for a struct T of the package. So an
+// unexported factory (newPoolStatsCollector), a second constructor of one
+// entity (NewLoggerByEntry) and one returning an interface the entity
+// implements (NewWithARGS() Logger) belong to the block instead of splitting it.
+//
+// A _test.go file is not judged at all: its composition — a table, its
+// fixtures, a builder returning the entity under test — is the test's own.
 package entitygroup
 
 import (
@@ -11,6 +21,8 @@ import (
 	"strings"
 
 	"golang.org/x/tools/go/analysis"
+
+	"github.com/slipros/gid-data-golang-eval/internal/modlayout"
 )
 
 const ruleID = "GID-157"
@@ -41,16 +53,31 @@ type declKind int
 
 func run(pass *analysis.Pass) (any, error) {
 	typeFile := structFiles(pass)
+	// In a library the cross-file half of the rule does not apply: a client with
+	// one big type spreads its methods over topic files (domain.go, lineage.go)
+	// the way go-github does, and that is the idiom, not a mess. What still
+	// holds there is the contiguity of a block inside its own file.
+	crossFile := modlayout.IsServiceModule(pass)
 	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
+		if ast.IsGenerated(file) || isTestFile(pass, file) {
 			continue
 		}
-		checkFile(pass, file, typeFile)
+		checkFile(pass, file, typeFile, crossFile)
 	}
 	return nil, nil
 }
 
-func checkFile(pass *analysis.Pass, file *ast.File, typeFile map[string]*ast.File) {
+// isTestFile reports whether the file is a _test.go file. Tests live in the
+// same package (GID-250), but their composition is their own: a table, its
+// fixtures and a builder returning the entity under test belong to the test
+// file, not to the file where the entity is declared.
+func isTestFile(pass *analysis.Pass, file *ast.File) bool {
+	tokenFile := pass.Fset.File(file.Pos())
+
+	return tokenFile != nil && strings.HasSuffix(tokenFile.Name(), "_test.go")
+}
+
+func checkFile(pass *analysis.Pass, file *ast.File, typeFile map[string]*ast.File, crossFile bool) {
 	owned := ownedDecls(file, typeFile)
 
 	typeIdx := map[string]int{}
@@ -61,22 +88,18 @@ func checkFile(pass *analysis.Pass, file *ast.File, typeFile map[string]*ast.Fil
 		case kindType:
 			typeIdx[d.entity] = i
 		case kindCtor:
-			ctorIdx[d.entity] = i
+			// The first constructor is the one methods must follow: an entity
+			// may have several (NewX, newDefaultX, NewXByY), and the extra ones
+			// legitimately sit further down the block.
+			if _, seen := ctorIdx[d.entity]; !seen {
+				ctorIdx[d.entity] = i
+			}
 		}
 	}
 
 	// Methods and the constructor live in the entity's declaration file.
-	//nolint:gidallptr // the plugin does not depend on the internal gdhelper library
-	for _, d := range owned {
-		if d.kind == kindType || d.kind == kindForeign {
-			continue
-		}
-		declFile, ok := typeFile[d.entity]
-		if ok && declFile != file {
-			pass.Reportf(d.name.Pos(),
-				"%s: %q belongs to entity %q. Fix: keep the entity's code in the file where it is declared",
-				ruleID, d.name.Name, d.entity)
-		}
+	if crossFile {
+		reportForeignFile(pass, file, owned, typeFile)
 	}
 
 	// The order inside a file: type -> constructor -> methods.
@@ -119,6 +142,24 @@ func checkFile(pass *analysis.Pass, file *ast.File, typeFile map[string]*ast.Fil
 	}
 
 	reportSplits(pass, owned)
+}
+
+// reportForeignFile — a method or a constructor declared away from the file
+// holding its type. Service-only: a library client spreads the methods of one
+// type over topic files by design.
+func reportForeignFile(pass *analysis.Pass, file *ast.File, owned []ownedDecl, typeFile map[string]*ast.File) {
+	//nolint:gidallptr // the plugin does not depend on the internal gdhelper library
+	for _, d := range owned {
+		if d.kind == kindType || d.kind == kindForeign {
+			continue
+		}
+		declFile, ok := typeFile[d.entity]
+		if ok && declFile != file {
+			pass.Reportf(d.name.Pos(),
+				"%s: %q belongs to entity %q. Fix: keep the entity's code in the file where it is declared",
+				ruleID, d.name.Name, d.entity)
+		}
+	}
 }
 
 // reportSplits — a free function or an unrelated type sitting between an
@@ -192,16 +233,65 @@ func ownedDecls(file *ast.File, typeFile map[string]*ast.File) []ownedDecl {
 				}
 				continue
 			}
-			if entity, ok := strings.CutPrefix(d.Name.Name, "New"); ok && entity != "" {
-				if _, declared := typeFile[entity]; declared {
-					out = append(out, ownedDecl{entity: entity, kind: kindCtor, name: d.Name})
-					continue
-				}
+			if entity, ok := ctorEntity(d, typeFile); ok {
+				out = append(out, ownedDecl{entity: entity, kind: kindCtor, name: d.Name})
+				continue
 			}
 			out = append(out, ownedDecl{kind: kindForeign, name: d.Name})
 		}
 	}
 	return out
+}
+
+// ctorEntity — the entity a receiverless function constructs. Only a New*/new*
+// function qualifies — that is how a constructor is named in Go, and the prefix
+// keeps an ordinary helper returning the type (pairOf() *namingPair) out: such a
+// helper sits wherever it is convenient and must not stretch the entity's block
+// across the whole file.
+//
+// The entity is taken from the name (New<Entity>, which also covers a
+// constructor returning an interface the entity implements — NewWithARGS()
+// Logger) or, failing that, from the first result: T or *T for a struct of the
+// package. So newPoolStatsCollector and NewLoggerByEntry are the entity's code.
+func ctorEntity(fn *ast.FuncDecl, typeFile map[string]*ast.File) (string, bool) {
+	name, isCtor := ctorName(fn.Name.Name)
+	if !isCtor {
+		return "", false
+	}
+
+	if _, declared := typeFile[name]; declared {
+		return name, true
+	}
+
+	if fn.Type.Results == nil || len(fn.Type.Results.List) == 0 {
+		return "", false
+	}
+	t := fn.Type.Results.List[0].Type
+	if star, ok := t.(*ast.StarExpr); ok {
+		t = star.X
+	}
+	ident, ok := t.(*ast.Ident)
+	if !ok {
+		return "", false
+	}
+	if _, declared := typeFile[ident.Name]; !declared {
+		return "", false
+	}
+	return ident.Name, true
+}
+
+// ctorName — the part of a constructor's name after the New/new prefix. A bare
+// New is a constructor too — the idiom of a library package (batch.New), where
+// GID-104 does not ask for the entity in the name — and its entity is then read
+// from the result type.
+func ctorName(fnName string) (string, bool) {
+	for _, prefix := range [...]string{"New", "new"} {
+		if rest, ok := strings.CutPrefix(fnName, prefix); ok {
+			return rest, true
+		}
+	}
+
+	return "", false
 }
 
 // structFiles — the declaration file of each struct in the package.
