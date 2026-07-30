@@ -732,7 +732,7 @@ linters:
         original-url: github.com/slipros/gid-data-golang-eval
       gidbuildsig:
         type: module
-        description: 'GID-212: build functions return (string, []any, error) or (*batch.Batch, error); squirrel only in build'
+        description: 'GID-212: build functions (non-test files) return (string, []any, error) or (*batch.Batch, error); squirrel only in build'
         original-url: github.com/slipros/gid-data-golang-eval
       gidvalidatorshape:
         type: module

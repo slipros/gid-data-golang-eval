@@ -6,15 +6,18 @@
 // Checks:
 //
 //  1. Result signature. In /dal/repository/build/** packages, exported
-//     functions (FuncDecl without a receiver) must return EITHER
-//     (string, []any, error) — a single query (sql, args, err), OR
+//     functions (FuncDecl without a receiver) of non-test files must return
+//     EITHER (string, []any, error) — a single query (sql, args, err), OR
 //     (*<...>.Batch, error) — a batch operation (matched by the name of the
 //     named type Batch, any package). Any other result signature → diagnostic.
-//     Unexported helper functions of the build package are not checked.
+//     Unexported helper functions of the build package are not checked, and
+//     neither are _test.go files: a Test/Benchmark/Fuzz function or a test
+//     builder is not a build function.
 //
 //  2. Ban on the squirrel import. Importing github.com/Masterminds/squirrel is
-//     allowed only in /dal/repository/build/** packages. In any other package
-//     a squirrel import → diagnostic.
+//     allowed only in /dal/repository/build/** packages (including their
+//     external test package build_test). In any other package a squirrel
+//     import → diagnostic, in _test.go files as well.
 //
 // Signatures are recognized structurally via go/types (LoadModeTypesInfo).
 // Generated code is skipped.
@@ -24,6 +27,7 @@ import (
 	"go/ast"
 	"go/types"
 	"strconv"
+	"strings"
 
 	"golang.org/x/tools/go/analysis"
 
@@ -41,7 +45,10 @@ var Analyzer = &analysis.Analyzer{
 }
 
 func run(pass *analysis.Pass) (any, error) {
-	inBuild := pathseg.HasLayer(pass.Pkg.Path(), "dal", "repository", "build")
+	// The external test package of a build package (build_test) is a build
+	// package too as far as the squirrel ban goes.
+	pkgPath := strings.TrimSuffix(pass.Pkg.Path(), "_test")
+	inBuild := pathseg.HasLayer(pkgPath, "dal", "repository", "build")
 
 	for _, file := range pass.Files {
 		if ast.IsGenerated(file) {
@@ -53,12 +60,19 @@ func run(pass *analysis.Pass) (any, error) {
 			checkSquirrelImports(pass, file)
 		}
 
-		// Check 1: the result signature of exported build functions.
-		if inBuild {
+		// Check 1: the result signature of exported build functions. _test.go
+		// files are out of scope: a Test/Benchmark/Fuzz function or a test
+		// builder is not a build function.
+		if inBuild && !isTestFile(pass, file) {
 			checkBuildSignatures(pass, file)
 		}
 	}
 	return nil, nil
+}
+
+// isTestFile reports whether the file is a _test.go one.
+func isTestFile(pass *analysis.Pass, file *ast.File) bool {
+	return strings.HasSuffix(pass.Fset.Position(file.Pos()).Filename, "_test.go")
 }
 
 // checkSquirrelImports flags a squirrel import outside a build package.

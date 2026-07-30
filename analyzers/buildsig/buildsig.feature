@@ -8,9 +8,10 @@ Feature: GID-212 — contract of repository build functions
   Source: repo.md
   Scope:
     - signature check: exported functions without a receiver
-      in packages /dal/repository/build/**;
+      in non-test files of packages /dal/repository/build/**;
     - squirrel ban: importing github.com/Masterminds/squirrel in any package
-      outside /dal/repository/build/**.
+      outside /dal/repository/build/** (build_test, the external test package
+      of a build package, counts as a build package).
   Result-signature contract:
     - (string, []any, error) — a single query (sql, args, err); OR
     - (*<...>.Batch, error) — a batch operation (matched by the type name Batch,
@@ -67,6 +68,31 @@ Feature: GID-212 — contract of repository build functions
     Given "func BuildVoid()" is declared in /dal/repository/build
     When the analyzer checks the file
     Then a "GID-212" diagnostic is reported with the text "a build function must return ..."
+
+  Scenario: a test function in a build package — not flagged
+    Given "func TestSelectJobs(t *testing.T)" is declared in /dal/repository/build/build_test.go
+    When the analyzer checks the file
+    Then no diagnostic is reported
+
+  Scenario: a benchmark and a fuzz target in a build package — not flagged
+    Given "func BenchmarkSelectJobs(b *testing.B)" and "func FuzzSelectJobs(f *testing.F)" are declared in /dal/repository/build/build_test.go
+    When the analyzer checks the file
+    Then no diagnostic is reported
+
+  Scenario: an exported test builder in a build package — not flagged
+    Given "func NewStatusFixture() []string" is declared in /dal/repository/build/build_test.go
+    When the analyzer checks the file
+    Then no diagnostic is reported
+
+  Scenario: squirrel import in the external test package of a build package — ok
+    Given "github.com/Masterminds/squirrel" is imported in /dal/repository/build/external_test.go declaring "package build_test"
+    When the analyzer checks the file
+    Then no diagnostic is reported
+
+  Scenario: squirrel import in a _test.go file outside build — violation
+    Given "github.com/Masterminds/squirrel" is imported in /dal/repository/repo_test.go
+    When the analyzer checks the file
+    Then a "GID-212" diagnostic is reported with the text "squirrel is allowed only in repository build packages ..."
 
   Scenario: a generated file — skipped
     Given the file is marked "// Code generated ... DO NOT EDIT."
