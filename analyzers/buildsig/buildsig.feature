@@ -15,7 +15,10 @@ Feature: GID-212 — contract of repository build functions
   Result-signature contract:
     - (string, []any, error) — a single query (sql, args, err); OR
     - (*<...>.Batch, error) — a batch operation (matched by the type name Batch,
-      any package).
+      any package); OR
+    - any signature listed in settings.allow-results — the extension point for
+      builders that do not produce SQL (a search-engine DSL builder has no
+      args []any). Empty by default: the contract stays strict.
   Generated code is skipped.
 
   # --- Positive class: the violation is caught ---
@@ -56,6 +59,38 @@ Feature: GID-212 — contract of repository build functions
     Given "github.com/Masterminds/squirrel" is imported in /dal/repository/build
     When the analyzer checks the file
     Then no diagnostic is reported
+
+  # --- Settings class: allow-results ---
+
+  Scenario: an ES-DSL builder with a signature listed in allow-results — ok
+    Given settings.allow-results contains "(string, error)", "string", "[]string" and "(*omd.SearchParams, error)"
+    And "func DatasetFilterDSL(schemaFQN string) (string, error)" is declared in /dal/repository/build
+    When the analyzer checks the file
+    Then no diagnostic is reported
+
+  Scenario: a signature listed with different spelling — ok
+    Given settings.allow-results contains "( *omd.SearchParams,error )"
+    And "func SearchParamsForDatasets(schemaFQN string) (*omd.SearchParams, error)" is declared in /dal/repository/build
+    When the analyzer checks the file
+    Then no diagnostic is reported
+
+  Scenario: a signature outside both the contract and allow-results — violation
+    Given settings.allow-results contains "(string, error)", "string", "[]string" and "(*omd.SearchParams, error)"
+    And "func CountDatasets() (int, error)" is declared in /dal/repository/build
+    When the analyzer checks the file
+    Then a "GID-212" diagnostic is reported with the text "a build function must return ..."
+
+  Scenario: a partial match against an allow-results entry — violation
+    Given settings.allow-results contains "(*omd.SearchParams, error)"
+    And "func SearchParamsBare() *omd.SearchParams" is declared in /dal/repository/build
+    When the analyzer checks the file
+    Then a "GID-212" diagnostic is reported with the text "a build function must return ..."
+
+  Scenario: allow-results is empty — the strict contract holds
+    Given settings.allow-results is not configured
+    And "func BuildBad(status string) (string, error)" is declared in /dal/repository/build
+    When the analyzer checks the file
+    Then a "GID-212" diagnostic is reported with the text "a build function must return ..."
 
   # --- Boundary class ---
 

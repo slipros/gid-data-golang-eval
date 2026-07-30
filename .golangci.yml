@@ -734,6 +734,16 @@ linters:
         type: module
         description: 'GID-212: build functions (non-test files) return (string, []any, error) or (*batch.Batch, error); squirrel only in build'
         original-url: github.com/slipros/gid-data-golang-eval
+        # Additional allowed result signatures — for builders that do not
+        # produce SQL (a search-engine DSL builder has no args []any).
+        # Spelled the way the signature is written in Go; a named type's
+        # package — by its name. Empty (the default) = the strict contract.
+        # settings:
+        #   allow-results:
+        #     - '(string, error)'
+        #     - 'string'
+        #     - '[]string'
+        #     - '(*omd.SearchEntitiesWithQueryParams, error)'
       gidvalidatorshape:
         type: module
         description: 'GID-213: a validator is a struct with a Validate(ctx, req) error method'

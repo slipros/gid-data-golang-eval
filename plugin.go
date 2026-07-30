@@ -192,7 +192,7 @@ func init() {
 	register.Plugin("gidenumconvert", newSingleAnalyzerPlugin(enumconvert.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidopstruct", newSingleAnalyzerPlugin(opstruct.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidenumplace", newSingleAnalyzerPlugin(enumplace.Analyzer, register.LoadModeTypesInfo))
-	register.Plugin("gidbuildsig", newSingleAnalyzerPlugin(buildsig.Analyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidbuildsig", newConfigurablePlugin(buildsig.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidvalidatorshape", newConfigurablePlugin(validatorshape.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidloggernew", newSingleAnalyzerPlugin(loggernew.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidinlineconv", newSingleAnalyzerPlugin(inlineconv.Analyzer, register.LoadModeTypesInfo))

@@ -14,6 +14,12 @@
 //     neither are _test.go files: a Test/Benchmark/Fuzz function or a test
 //     builder is not a build function.
 //
+//     settings.allow-results extends the contract with additional result
+//     signatures for builders that do not produce SQL (a search-engine DSL
+//     builder has no args []any): e.g. ["(string, error)", "string",
+//     "[]string", "(*omd.SearchEntitiesWithQueryParams, error)"]. Empty by
+//     default — the strict contract above.
+//
 //  2. Ban on the squirrel import. Importing github.com/Masterminds/squirrel is
 //     allowed only in /dal/repository/build/** packages (including their
 //     external test package build_test). In any other package a squirrel
@@ -36,15 +42,37 @@ import (
 
 const ruleID = "GID-212"
 
-// Analyzer — rule GID-212: the contract of repository build functions.
-var Analyzer = &analysis.Analyzer{
-	Name: "gidbuildsig",
-	Doc: ruleID + ": build functions return (string, []any, error) or (*batch.Batch, error); " +
-		"squirrel only in /dal/repository/build",
-	Run: run,
+// Analyzer — the variant with default settings (the strict contract).
+var Analyzer = NewAnalyzer(Settings{})
+
+// Settings — linter settings from .golangci.yml.
+type Settings struct {
+	// AllowResults — additional allowed result signatures of a build function,
+	// beyond the built-in (string, []any, error) and (*batch.Batch, error).
+	// Written the way they are declared in Go: "(string, error)", "string",
+	// "[]string", "(*omd.SearchEntitiesWithQueryParams, error)" — the package
+	// is named by its name, not by its import path. Whitespace is ignored,
+	// interface{} and any are the same thing. Empty — the strict contract.
+	AllowResults []string `json:"allow-results"`
 }
 
-func run(pass *analysis.Pass) (any, error) {
+// NewAnalyzer builds the GID-212 analyzer with the given settings.
+func NewAnalyzer(cfg Settings) *analysis.Analyzer {
+	allowed := make(map[string]struct{}, len(cfg.AllowResults))
+	for _, sig := range cfg.AllowResults {
+		allowed[normalizeResults(sig)] = struct{}{}
+	}
+	return &analysis.Analyzer{
+		Name: "gidbuildsig",
+		Doc: ruleID + ": build functions return (string, []any, error) or (*batch.Batch, error) " +
+			"(settings.allow-results extends the contract); squirrel only in /dal/repository/build",
+		Run: func(pass *analysis.Pass) (any, error) {
+			return run(pass, allowed)
+		},
+	}
+}
+
+func run(pass *analysis.Pass, allowed map[string]struct{}) (any, error) {
 	// The external test package of a build package (build_test) is a build
 	// package too as far as the squirrel ban goes.
 	pkgPath := strings.TrimSuffix(pass.Pkg.Path(), "_test")
@@ -64,7 +92,7 @@ func run(pass *analysis.Pass) (any, error) {
 		// files are out of scope: a Test/Benchmark/Fuzz function or a test
 		// builder is not a build function.
 		if inBuild && !isTestFile(pass, file) {
-			checkBuildSignatures(pass, file)
+			checkBuildSignatures(pass, file, allowed)
 		}
 	}
 	return nil, nil
@@ -93,7 +121,7 @@ func checkSquirrelImports(pass *analysis.Pass, file *ast.File) {
 }
 
 // checkBuildSignatures checks the result of exported functions without a receiver.
-func checkBuildSignatures(pass *analysis.Pass, file *ast.File) {
+func checkBuildSignatures(pass *analysis.Pass, file *ast.File, allowed map[string]struct{}) {
 	for _, decl := range file.Decls {
 		fn, ok := decl.(*ast.FuncDecl)
 		if !ok {
@@ -111,13 +139,52 @@ func checkBuildSignatures(pass *analysis.Pass, file *ast.File) {
 		if !ok {
 			continue
 		}
-		if isSingleQuerySig(sig) || isBatchSig(sig) {
+		if isSingleQuerySig(sig) || isBatchSig(sig) || isAllowedSig(sig, allowed) {
 			continue
 		}
 		const msgSignature = ruleID +
 			": a build function must return (sql string, args []any, err error) or (*batch.Batch, error). Fix: adjust the signature"
 		pass.Reportf(fn.Name.Pos(), msgSignature)
 	}
+}
+
+// isAllowedSig — the result matches one of the signatures from
+// settings.allow-results. Packages of named types are compared by package name
+// (omd.SearchEntitiesWithQueryParams), not by import path: that is how the
+// signature is written in the source, and that is what the setting spells out.
+func isAllowedSig(sig *types.Signature, allowed map[string]struct{}) bool {
+	if len(allowed) == 0 {
+		return false
+	}
+	_, ok := allowed[resultsString(sig)]
+	return ok
+}
+
+// resultsString renders the function's result list in the normalized form used
+// for comparison with settings.allow-results.
+func resultsString(sig *types.Signature) string {
+	res := sig.Results()
+	parts := make([]string, 0, res.Len())
+	for v := range res.Variables() {
+		parts = append(parts, types.TypeString(v.Type(), pkgNameQualifier))
+	}
+	return normalizeResults("(" + strings.Join(parts, ",") + ")")
+}
+
+// pkgNameQualifier renders a named type's package by its name, not by its
+// import path: gitlab.gid.team/…/omd.Params → omd.Params.
+func pkgNameQualifier(pkg *types.Package) string {
+	return pkg.Name()
+}
+
+// normalizeResults brings a result list to a comparable form: no whitespace, no
+// outer parentheses, interface{} spelled as any. So "(string, error)",
+// "( string,error )" and "string,error" are the same setting.
+func normalizeResults(sig string) string {
+	s := strings.Join(strings.Fields(sig), "")
+	s = strings.TrimPrefix(s, "(")
+	s = strings.TrimSuffix(s, ")")
+	return strings.ReplaceAll(s, "interface{}", "any")
 }
 
 // isSingleQuerySig — result (string, []any, error).
