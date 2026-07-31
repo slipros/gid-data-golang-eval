@@ -942,6 +942,17 @@ linters:
         text: 'commentedOutCode: may want to remove commented-out code'
       - path: (.+)\.go$
         text: ST1000
+      # --- validate packages ---
+      # goconst is off in a validation package: the rules there repeat field
+      # names and error messages as literals — that is the rule set itself,
+      # not duplication, and hoisting them into constants hides what is
+      # being validated. The regex matches any nesting and any layer:
+      # validate/, internal/validate/, server/http/validate/,
+      # kafka/consumer/validate/, … To exempt another folder, copy the entry
+      # and change the segment name in the path regex.
+      - path: (^|/)validate/
+        linters:
+          - goconst
     paths:
       - \.pb\.go$
       - \.pb\.gw\.go$
