@@ -45,6 +45,11 @@ Dependency versions are pinned to golangci v2.9.0 — do not upgrade without ver
   `settings.tags`, etc.
 - The package layer is determined by path segments through `internal/pathseg`,
   not by a string `strings.Contains`.
+- Tests live in the same package as the code (GID-250), so a rule written for
+  production code must decide what to do with `_test.go` and prove it with a
+  non-applicability fixture: skip via `internal/srcfile.IsTest` when a test
+  double is *forced* to break the rule, judge it otherwise. See "Test files" at
+  the end of RULES.md.
 - Diagnostics and `description`/`Doc` are formulated **in English** in the format
   `<problem>. Fix: <example>.` — each message contains a valid fix
   example. Accordingly, the `// want` comments in testdata are written in English.
