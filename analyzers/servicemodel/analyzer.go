@@ -7,6 +7,11 @@
 // /domain/service do not reference types from /dal/entity (recursively —
 // through pointers, slices, maps, and fields). Inside the method body an
 // entity is allowed — that is what conversion is for.
+//
+// A _test.go file is not judged: tests live in the same package (GID-250), and
+// a test double of the repository is bound to the repository contract — it
+// takes and returns entity by definition, which is exactly what this rule
+// forbids the service to do.
 package servicemodel
 
 import (
@@ -16,6 +21,7 @@ import (
 	"golang.org/x/tools/go/analysis"
 
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
+	"github.com/slipros/gid-data-golang-eval/internal/srcfile"
 )
 
 const ruleID = "GID-151"
@@ -32,7 +38,7 @@ func run(pass *analysis.Pass) (any, error) {
 		return nil, nil
 	}
 	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
+		if ast.IsGenerated(file) || srcfile.IsTest(pass, file) {
 			continue
 		}
 		for _, decl := range file.Decls {

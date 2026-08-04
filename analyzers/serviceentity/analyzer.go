@@ -12,6 +12,11 @@
 // "Repository"): the entity is that name with the suffix stripped; if
 // the entity does not match the struct's own name, it is a violation.
 //
+// A _test.go file is not judged: tests live in the same package (GID-250), and
+// a capture double named after the repository it fakes (captureCreateRepo with
+// a CreateCampaignRepository field) is test scaffolding, not a service reaching
+// for a foreign entity.
+//
 // Per-project relaxation — settings.suffixes, settings.exclude
 // ("Struct" as a whole | "Struct.Field"). Pointwise — //nolint:gidserviceentity
 // when a cross-entity call is explicitly intended (service.md: "unless
@@ -28,6 +33,7 @@ import (
 
 	"github.com/slipros/gid-data-golang-eval/internal/exclude"
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
+	"github.com/slipros/gid-data-golang-eval/internal/srcfile"
 )
 
 const ruleID = "GID-236"
@@ -68,7 +74,7 @@ func run(pass *analysis.Pass, suffixes, excl []string) (any, error) {
 		return nil, nil
 	}
 	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
+		if ast.IsGenerated(file) || srcfile.IsTest(pass, file) {
 			continue
 		}
 		for _, decl := range file.Decls {

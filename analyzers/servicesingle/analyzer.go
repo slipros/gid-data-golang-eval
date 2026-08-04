@@ -6,6 +6,11 @@
 // The deterministic check: in the root of /domain/service a struct field
 // whose type is another struct from the same package (except *Options) means
 // a service-on-service dependency.
+//
+// A _test.go file is not judged: tests live in the same package (GID-250), and
+// a test harness — a capture struct holding the service under test, a fixture
+// bundling several doubles — is composition of the test, not a dependency of a
+// service on a service.
 package servicesingle
 
 import (
@@ -16,6 +21,7 @@ import (
 	"golang.org/x/tools/go/analysis"
 
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
+	"github.com/slipros/gid-data-golang-eval/internal/srcfile"
 )
 
 const ruleID = "GID-148"
@@ -32,7 +38,7 @@ func run(pass *analysis.Pass) (any, error) {
 		return nil, nil
 	}
 	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
+		if ast.IsGenerated(file) || srcfile.IsTest(pass, file) {
 			continue
 		}
 		for _, decl := range file.Decls {
