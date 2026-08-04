@@ -16,6 +16,12 @@
 // of type error and calling error constructors (errors.New, fmt.Errorf,
 // errors.Errorf). Exchange and enrichment — errors.Wrap/WithStack/WithMessage
 // (github.com/pkg/errors) and typed gderror errors — are allowed.
+//
+// A _test.go file is not judged: a test lives in the same package (GID-250),
+// and its sentinel ("errRepoDown" handed to a fake repository to check the
+// error is propagated) belongs to the test, not to the layer's error home —
+// moving it to /domain/model or /dal/entity would put a test fixture into
+// production code.
 package errplace
 
 import (
@@ -27,6 +33,7 @@ import (
 	"golang.org/x/tools/go/types/typeutil"
 
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
+	"github.com/slipros/gid-data-golang-eval/internal/srcfile"
 )
 
 // forbiddenCtors — error constructors: package -> function names.
@@ -74,7 +81,7 @@ func newRun(cfg *config) func(*analysis.Pass) (any, error) {
 			return nil, nil
 		}
 		for _, file := range pass.Files {
-			if ast.IsGenerated(file) {
+			if ast.IsGenerated(file) || srcfile.IsTest(pass, file) {
 				continue
 			}
 			checkErrorVars(pass, cfg, file)

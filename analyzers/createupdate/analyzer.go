@@ -8,6 +8,10 @@
 //   - centralized: settings.exclude in .golangci.yml —
 //     entries like "CreateSession" (a method name) or "Job.CreateJob"
 //     (a specific type).
+//
+// A _test.go file is not judged: a test lives in the same package (GID-250),
+// and a double implementing the interface under test copies its signatures —
+// the shape of the method is the interface's, not the double's.
 package createupdate
 
 import (
@@ -20,6 +24,7 @@ import (
 
 	"github.com/slipros/gid-data-golang-eval/internal/exclude"
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
+	"github.com/slipros/gid-data-golang-eval/internal/srcfile"
 )
 
 const ruleID = "GID-112"
@@ -56,7 +61,7 @@ func run(pass *analysis.Pass, s Settings) (any, error) {
 		return nil, nil
 	}
 	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
+		if ast.IsGenerated(file) || srcfile.IsTest(pass, file) {
 			continue
 		}
 		for _, decl := range file.Decls {

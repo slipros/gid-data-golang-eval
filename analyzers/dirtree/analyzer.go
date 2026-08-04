@@ -6,6 +6,10 @@
 // The tree is configured in .golangci.yml (settings.tree); the key is a folder
 // path (segments separated by /, matched anywhere in the import path), the
 // value is the allowed subfolders. A tree given in settings replaces the default one.
+//
+// A _test.go file is not judged: the diagnostic is about the package's
+// placement and is reported once per file, so a test file would only duplicate
+// what the production file of the same package already says.
 package dirtree
 
 import (
@@ -18,6 +22,7 @@ import (
 
 	"github.com/slipros/gid-data-golang-eval/internal/modlayout"
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
+	"github.com/slipros/gid-data-golang-eval/internal/srcfile"
 )
 
 const ruleID = "GID-158"
@@ -97,7 +102,7 @@ func report(pass *analysis.Pass, key, dir string, allowed []string) {
 		hint = "; perhaps it should be a service or usecase"
 	}
 	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
+		if ast.IsGenerated(file) || srcfile.IsTest(pass, file) {
 			continue
 		}
 		pass.Reportf(file.Name.Pos(),

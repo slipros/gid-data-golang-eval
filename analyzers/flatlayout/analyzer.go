@@ -4,6 +4,10 @@
 //
 // Legitimate subpackages from the styleguide: convert/ and build/ for a
 // repository, convert/ for a service.
+//
+// A _test.go file is not judged: the diagnostic is about the package's
+// placement and is reported once per file, so a test file would only duplicate
+// what the production file of the same package already says.
 package flatlayout
 
 import (
@@ -12,6 +16,7 @@ import (
 	"golang.org/x/tools/go/analysis"
 
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
+	"github.com/slipros/gid-data-golang-eval/internal/srcfile"
 )
 
 const ruleID = "GID-138"
@@ -35,6 +40,9 @@ type layerRoot struct {
 }
 
 func run(pass *analysis.Pass) (any, error) {
+	if srcfile.IsTestBinaryPkg(pass) {
+		return nil, nil
+	}
 	pkgPath := pass.Pkg.Path()
 	// The layer root is anchored to the module root (LayerSegments): a nested
 	// dal/repository or domain/service below another layer is not this layer.
@@ -53,6 +61,9 @@ func run(pass *analysis.Pass) (any, error) {
 		}
 		rootPath := strings.Join(root.seq, "/")
 		for _, file := range pass.Files {
+			if srcfile.IsTest(pass, file) {
+				continue
+			}
 			pass.Reportf(file.Name.Pos(),
 				"%s: package %q. Fix: grouping subpackages in /%s are forbidden, keep layer entities at its root",
 				ruleID, pkgPath, rootPath)

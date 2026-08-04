@@ -1,12 +1,18 @@
 // Package nopanic implements rule GID-161: panic is used only in package
 // main (bootstrap). In all other code errors are returned and handled
 // explicitly.
+//
+// A _test.go file is not judged: a test lives in the same package (GID-250),
+// and a must-helper feeding a package-level fixture
+// (var msk = mustLoadLocation("Europe/Moscow")) has no *testing.T to fail
+// through — panic is the only way to report at that point.
 package nopanic
 
 import (
 	"go/ast"
 	"go/types"
 
+	"github.com/slipros/gid-data-golang-eval/internal/srcfile"
 	"golang.org/x/tools/go/analysis"
 )
 
@@ -24,7 +30,7 @@ func run(pass *analysis.Pass) (any, error) {
 		return nil, nil
 	}
 	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
+		if ast.IsGenerated(file) || srcfile.IsTest(pass, file) {
 			continue
 		}
 		ast.Inspect(file, func(n ast.Node) bool {

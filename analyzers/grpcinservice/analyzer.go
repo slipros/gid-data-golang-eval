@@ -11,6 +11,12 @@
 //   - pointwise: //nolint:gidgrpcinservice
 //   - centrally: settings.exclude — a list of import paths
 //     allowed in the domain layer.
+//
+// A _test.go file is not judged: a test lives in the same package (GID-250),
+// and a double of a consumer-side client interface has to repeat its
+// signatures — including the grpc.CallOption of the generated client it
+// stands in for — so the import is forced by the interface, not a new
+// dependency of the domain.
 package grpcinservice
 
 import (
@@ -22,6 +28,7 @@ import (
 	"golang.org/x/tools/go/analysis"
 
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
+	"github.com/slipros/gid-data-golang-eval/internal/srcfile"
 )
 
 const (
@@ -60,7 +67,7 @@ func run(pass *analysis.Pass, s Settings) (any, error) {
 	}
 	grpcBacked := grpcBackedImports(pass.Pkg)
 	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
+		if ast.IsGenerated(file) || srcfile.IsTest(pass, file) {
 			continue
 		}
 		for _, imp := range file.Imports {

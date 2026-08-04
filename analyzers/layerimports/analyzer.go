@@ -28,6 +28,11 @@
 //     (and /validate) from the service layers — concrete service/usecase are
 //     injected through interfaces at the consumer.
 //
+// A _test.go file is not judged: a test lives in the same package (GID-250),
+// and a double of a repository has to speak that repository's types — the
+// import mirrors what the package's own interfaces already declare, and the
+// production file that declares them is judged as usual.
+//
 // GID-225 (root-and-leaves):
 //   - /internal/app (composition root) and the leaves (/server, /schedule,
 //     /validate, /job) are imported by nobody.
@@ -94,6 +99,7 @@ import (
 	"golang.org/x/tools/go/analysis"
 
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
+	"github.com/slipros/gid-data-golang-eval/internal/srcfile"
 )
 
 // repoWiringID — GID-241 (repository-wiring-only), the allow-list rule.
@@ -372,7 +378,7 @@ func run(pass *analysis.Pass, rules []layerRule, checkRepo bool) (any, error) {
 		return nil, nil
 	}
 	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
+		if ast.IsGenerated(file) || srcfile.IsTest(pass, file) {
 			continue
 		}
 		checkImports(pass, scoped, file, checkRepo)

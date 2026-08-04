@@ -21,6 +21,7 @@ import (
 	"go/ast"
 	"go/types"
 
+	"github.com/slipros/gid-data-golang-eval/internal/srcfile"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/types/typeutil"
 )
@@ -36,7 +37,7 @@ var Analyzer = &analysis.Analyzer{
 
 func run(pass *analysis.Pass) (any, error) {
 	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
+		if ast.IsGenerated(file) || srcfile.IsTest(pass, file) {
 			continue
 		}
 		checkFile(pass, file)
