@@ -18,6 +18,7 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/chainperline"
 	"github.com/slipros/gid-data-golang-eval/analyzers/chanbuf"
 	"github.com/slipros/gid-data-golang-eval/analyzers/chandir"
+	"github.com/slipros/gid-data-golang-eval/analyzers/clientwiring"
 	"github.com/slipros/gid-data-golang-eval/analyzers/cliflags"
 	"github.com/slipros/gid-data-golang-eval/analyzers/constexpr"
 	"github.com/slipros/gid-data-golang-eval/analyzers/constscope"
@@ -170,6 +171,7 @@ func init() {
 	register.Plugin("gidsentinelwrap", newConfigurablePlugin(sentinelwrap.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidscanrow", newConfigurablePlugin(scanrow.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidapproot", newConfigurablePlugin(approot.NewAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidclientwiring", newSingleAnalyzerPlugin(clientwiring.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidifaceplace", newSingleAnalyzerPlugin(ifaceplace.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidembedmutex", newSingleAnalyzerPlugin(embedmutex.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidchanbuf", newSingleAnalyzerPlugin(chanbuf.Analyzer, register.LoadModeTypesInfo))

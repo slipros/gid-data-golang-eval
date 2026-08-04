@@ -177,6 +177,7 @@ linters:
     - gidsentinelwrap  # GID-244
     - gidscanrow       # GID-245
     - gidapproot       # GID-246
+    - gidclientwiring  # GID-255
   disable:
     # The disabled list comes from the consent-api base (a deliberate team choice).
     # Some of them would cover GID rules — marked with a comment.
@@ -955,6 +956,11 @@ linters:
         #     - internal/legacy
         #   exclude:
         #     - LegacyAdapter
+      gidclientwiring:
+        type: module
+        description: 'GID-255: a package in /client/** with constructors but no method declares no client — it is wiring (a connection factory), and wiring lives in the composition root /app/**'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # No settings; pinpoint exclusions via //nolint:gidclientwiring on the package clause.
 
   exclusions:
     generated: lax
