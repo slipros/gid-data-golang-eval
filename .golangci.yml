@@ -95,6 +95,7 @@ linters:
     - gidlogfields     # GID-253
     - gidconstvarorder # GID-130
     - gidconstscope    # GID-194
+    - gidconstexpr     # GID-254
     - gidmodelmethod   # GID-195
     - gidchainperline  # GID-196
     - gidifacemin      # GID-197
@@ -413,6 +414,11 @@ linters:
         # settings:
         #   exclude:
         #     - LegacyTimeout
+      gidconstexpr:
+        type: module
+        description: 'GID-254: a local variable initialized with a constant string expression (a concatenation of constants) must be a const — the value is folded at compile time; lone literals and numeric expressions are out of scope'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # No settings; pinpoint exclusions via //nolint:gidconstexpr.
       gidmodelmethod:
         type: module
         description: 'GID-195: a service/usecase function over one model value is a model method'

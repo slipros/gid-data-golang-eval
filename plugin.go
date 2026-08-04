@@ -19,6 +19,7 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/chanbuf"
 	"github.com/slipros/gid-data-golang-eval/analyzers/chandir"
 	"github.com/slipros/gid-data-golang-eval/analyzers/cliflags"
+	"github.com/slipros/gid-data-golang-eval/analyzers/constexpr"
 	"github.com/slipros/gid-data-golang-eval/analyzers/constscope"
 	"github.com/slipros/gid-data-golang-eval/analyzers/constvarorder"
 	"github.com/slipros/gid-data-golang-eval/analyzers/convnaming"
@@ -127,6 +128,7 @@ func init() {
 	register.Plugin("gidlogfields", newSingleAnalyzerPlugin(logfields.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidconstvarorder", newSingleAnalyzerPlugin(constvarorder.Analyzer, register.LoadModeSyntax))
 	register.Plugin("gidconstscope", newConfigurablePlugin(constscope.NewAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidconstexpr", newSingleAnalyzerPlugin(constexpr.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidmodelmethod", newConfigurablePlugin(modelmethod.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidchainperline", newConfigurablePlugin(chainperline.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidifacemin", newConfigurablePlugin(ifacemin.NewAnalyzer, register.LoadModeTypesInfo))
