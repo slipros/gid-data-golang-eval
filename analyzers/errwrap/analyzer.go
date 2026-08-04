@@ -14,6 +14,12 @@
 //     builder build.Select(...)) or a concrete-type method that is not (a) is
 //     not a boundary call and may be enriched with WithMessage or passed
 //     through as is.
+//     Shape (a) also covers an interface-method call whose signature ends in a
+//     variadic parameter typed outside the current module (opts
+//     ...grpc.CallOption): such an interface mirrors a generated client of an
+//     external system, so the call is a boundary call in ANY layer, even
+//     though the interface itself is declared locally next to its consumer
+//     (see isExternalClientCall).
 //     An external error is neither passed through as is (return err) nor
 //     enriched without context (WithStack/WithMessage) — Wrap is required: it
 //     collects the stack AND adds the mandatory context. A TRANSIT helper
@@ -48,6 +54,10 @@
 //     redundant stack. WithStack is for an error that has no stack of its own
 //     yet: a static error (GID-177) or one the service just converted to its
 //     own model error.
+//     A _test.go file is not judged: a test lives in the same package
+//     (GID-250) and builds the very error shape the production code would
+//     produce — WithMessage in a fixture reproduces the input, it does not add
+//     a message on the way out of a service.
 //
 //   - GID-248 (gidwithstack): errors.WithStack of an error that already carries
 //     a stack is banned — pkg/errors.WithStack appends a new *withStack
@@ -77,6 +87,7 @@ import (
 
 	"github.com/slipros/gid-data-golang-eval/internal/exclude"
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
+	"github.com/slipros/gid-data-golang-eval/internal/srcfile"
 )
 
 const (
@@ -365,7 +376,7 @@ func runServiceMessage(pass *analysis.Pass, s Settings) (any, error) {
 		return nil, nil
 	}
 	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
+		if ast.IsGenerated(file) || srcfile.IsTest(pass, file) {
 			continue
 		}
 		for _, decl := range file.Decls {
@@ -515,7 +526,7 @@ func isStackedCall(pass *analysis.Pass, call *ast.CallExpr, boundary bool) bool 
 	if calleePkg.Path() == pkgErrorsPath {
 		return true
 	}
-	if isExternalCall(pass, call) {
+	if isExternalCall(pass, call) || isExternalClientCall(pass, call) {
 		return false
 	}
 	if boundary && isInterfaceMethodCall(pass, call) {
@@ -634,7 +645,7 @@ func classifyCallErrors(pass *analysis.Pass, fn *ast.FuncDecl, boundary bool) ma
 		}
 		var src errSource
 		switch {
-		case isExternalCall(pass, call):
+		case isExternalCall(pass, call), isExternalClientCall(pass, call):
 			src = errSourceExternal
 		case boundary && isInterfaceMethodCall(pass, call):
 			src = errSourceInterface
@@ -724,6 +735,59 @@ func isInterfaceMethodCall(pass *analysis.Pass, call *ast.CallExpr) bool {
 	}
 	_, isIface := recv.Underlying().(*types.Interface)
 	return isIface
+}
+
+// isExternalClientCall reports whether call invokes a method of an interface
+// that mirrors a generated client of an external system, and therefore is a
+// boundary call in ANY layer — like a direct external call (mechanism a) and
+// unlike an ordinary injected dependency (mechanism b, boundaryScopes only).
+//
+// The marker is the signature: a variadic trailing parameter whose type is
+// declared outside the current module (opts ...grpc.CallOption). A
+// consumer-side interface declared next to its user (GID-134) hides where the
+// call actually goes — the linter sees only a local interface, so a service
+// calling a raw gRPC client through one used to be judged as a same-module
+// call: errors.Wrap forbidden by GID-176, errors.WithMessage forbidden by
+// GID-237, no legal way out (incident 2026-08-04, advertising-api
+// dropdown_ad_cabinets.go). The call-option type pins it down: a generated
+// client of an external system carries per-call options of that system, while
+// a repository or a service interface of this module never does.
+func isExternalClientCall(pass *analysis.Pass, call *ast.CallExpr) bool {
+	if !isInterfaceMethodCall(pass, call) {
+		return false
+	}
+	sel, ok := call.Fun.(*ast.SelectorExpr)
+	if !ok {
+		return false
+	}
+	sig, ok := pass.TypesInfo.Selections[sel].Type().(*types.Signature)
+	if !ok || !sig.Variadic() {
+		return false
+	}
+	params := sig.Params()
+	lastParam := params.At(params.Len() - 1)
+	slice, ok := lastParam.Type().(*types.Slice)
+	if !ok {
+		return false
+	}
+	optPkg := namedTypePkg(slice.Elem())
+
+	return optPkg != nil && !sameModule(pass.Pkg.Path(), optPkg.Path())
+}
+
+// namedTypePkg returns the package declaring t — a named type or a pointer to
+// one — and nil for an unnamed type (a bare func, a struct literal type).
+func namedTypePkg(t types.Type) *types.Package {
+	if ptr, ok := types.Unalias(t).(*types.Pointer); ok {
+		t = ptr.Elem()
+	}
+	named, ok := types.Unalias(t).(*types.Named)
+	if !ok {
+		return nil
+	}
+	obj := named.Obj()
+
+	return obj.Pkg()
 }
 
 func isTrackedCallErr(pass *analysis.Pass, expr ast.Expr, callErrs map[types.Object]errSource) bool {
