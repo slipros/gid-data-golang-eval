@@ -77,7 +77,35 @@ Feature: GID-176 / GID-177 / GID-237 / GID-248 — error handling by layer (errw
     When the giderrwrap analyzer checks the file
     Then the diagnostic "GID-176: an error from an external call must be wrapped with errors.Wrap …" is reported on "err"
 
+  Scenario: positive (v3, 2026-08-04) — the boundary error is passed through a TRANSIT helper
+    Given a package in "/dal/repository" with "err := r.conn.call(); return errors.WithMessage(mapError(err), \"select\")"
+    When the giderrwrap analyzer checks the file
+    Then the diagnostic "GID-176: an error from an external call must be wrapped with errors.Wrap (WithMessage adds no context) …" is reported
+    # A transit call — exactly one error in, one error out (mapError/normalize) — forwards the
+    # boundary error without collecting a stack, so the return is still a pass-through. Before v3
+    # the rule looked only at a plain identifier as the wrapper's argument, so ANY helper around
+    # err silenced it (incident: resource-registry repository.Integration, GID-242 mapper).
+    # unwrapErrTransit looks through such calls (max depth 8, nesting included).
+
+  Scenario: positive (v3) — a bare transit call as the returned expression
+    Given a package in "/dal/repository" with "err := r.conn.call(); return mapError(err)"
+    When the giderrwrap analyzer checks the file
+    Then the diagnostic "GID-176: an error from an external call must be wrapped with errors.Wrap (passing it through a helper adds no stack) …" is reported
+
   # --- Class 2: negative (clean code passes) ---
+
+  Scenario: negative (v3) — the transit chain already collects a stack: unwrapping stops at Wrap/WithStack
+    Given a package in "/dal/repository" with "err := r.conn.call(); return errors.WithMessage(errors.Wrap(err, \"select\"), \"ctx\")"
+    When the giderrwrap analyzer checks the file
+    Then no diagnostic is reported
+    # Past a pkg/errors Wrap/Wrapf/WithStack the error is stacked and GID-176 is satisfied;
+    # WithMessage/WithMessagef add no stack and stay transparent to the unwrapping.
+
+  Scenario: negative (v3) — a call that CONSUMES the error (more than one argument) is not a transit
+    Given a package in "/dal/repository" with "err := r.conn.call(); return errors.Wrap(combine(err, \"x\"), \"select\")"
+    When the giderrwrap analyzer checks the file
+    Then no diagnostic is reported
+    # Only a func(error) error shape forwards the value verbatim; anything else consumed it.
 
   Scenario: negative — the error from an interface-method call is wrapped with Wrap
     Given a package in "/dal/repository" with "err := r.conn.call(); return errors.Wrap(err, \"select\")"

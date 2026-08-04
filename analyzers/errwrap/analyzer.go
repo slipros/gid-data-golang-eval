@@ -16,7 +16,12 @@
 //     through as is.
 //     An external error is neither passed through as is (return err) nor
 //     enriched without context (WithStack/WithMessage) — Wrap is required: it
-//     collects the stack AND adds the mandatory context. To map it to a
+//     collects the stack AND adds the mandatory context. A TRANSIT helper
+//     around the error (exactly one error in, one error out: mapError(err),
+//     normalize(err)) forwards it without a stack and is looked through
+//     (unwrapErrTransit), so neither errors.WithMessage(mapError(err), "…")
+//     nor a bare return mapError(err) hides the boundary; unwrapping stops at
+//     a pkg/errors Wrap/Wrapf/WithStack, which does collect the stack. To map it to a
 //     sentinel, reassign then wrap once (the sentinel-then-Wrap pattern stays
 //     legal). Inside the application (/domain/**), Wrap is forbidden for a
 //     same-module non-static error (a same-module call result or a function
@@ -219,33 +224,54 @@ func checkMustWrap(pass *analysis.Pass, fn *ast.FuncDecl, callErrs map[types.Obj
 			return true
 		}
 		for _, res := range ret.Results {
-			expr := res
-			// errors.WithStack(err) / errors.WithMessage(err) — a wrapper without context.
-			if call, ok := expr.(*ast.CallExpr); ok {
-				name := pkgErrorsCallName(pass, call)
-				if name == "WithStack" || name == "WithMessage" {
-					if len(call.Args) > 0 && isTrackedCallErr(pass, call.Args[0], callErrs) {
-						pass.Reportf(call.Pos(),
-							"%s: an error from an external call must be wrapped with errors.Wrap (%s adds no context). "+
-								"Fix: collect stack and context; to map a sentinel, reassign then wrap once: "+
-								"if IsNoResult(err) { err = ErrNoResult }; return errors.Wrap(err, ...)",
-							ruleIDWrap, name)
-					}
-					continue
-				}
-				// errors.Wrap / any other call — fine (Wrap is already correct).
-				continue
-			}
-			if isTrackedCallErr(pass, expr, callErrs) {
-				pass.Reportf(expr.Pos(),
-					"%s: an error from an external call must be wrapped with errors.Wrap. "+
-						"Fix: collect stack and context; to map a sentinel, reassign then wrap once: "+
-						"if IsNoResult(err) { err = ErrNoResult }; return errors.Wrap(err, ...)",
-					ruleIDWrap)
-			}
+			checkReturnedErr(pass, res, callErrs)
 		}
 		return true
 	})
+}
+
+// checkReturnedErr reports one returned expression when it hands a tracked
+// external-call error on without a stack: as is, through a pkg/errors wrapper
+// that adds none (WithStack/WithMessage), or through a transit helper.
+func checkReturnedErr(pass *analysis.Pass, expr ast.Expr, callErrs map[types.Object]errSource) {
+	call, isCall := expr.(*ast.CallExpr)
+	if !isCall {
+		if isTrackedCallErr(pass, expr, callErrs) {
+			pass.Reportf(expr.Pos(),
+				"%s: an error from an external call must be wrapped with errors.Wrap. "+
+					"Fix: collect stack and context; to map a sentinel, reassign then wrap once: "+
+					"if IsNoResult(err) { err = ErrNoResult }; return errors.Wrap(err, ...)",
+				ruleIDWrap)
+		}
+		return
+	}
+	switch name := pkgErrorsCallName(pass, call); name {
+	// errors.WithStack(err) / errors.WithMessage(err) — a wrapper without context.
+	case "WithStack", "WithMessage":
+		if len(call.Args) > 0 && isTrackedCallErr(pass, call.Args[0], callErrs) {
+			pass.Reportf(call.Pos(),
+				"%s: an error from an external call must be wrapped with errors.Wrap (%s adds no context). "+
+					"Fix: collect stack and context; to map a sentinel, reassign then wrap once: "+
+					"if IsNoResult(err) { err = ErrNoResult }; return errors.Wrap(err, ...)",
+				ruleIDWrap, name)
+		}
+	// errors.Wrap/Wrapf — already correct, it collects the stack.
+	case "Wrap", "Wrapf":
+	// Any other call: a transit helper (MapError(err), normalize(err)) hands the
+	// boundary error on without a stack — it is still a pass-through, so
+	// unwrapErrTransit looks through it. A call that is not a transit stays
+	// unreported (its argument list carries more than the error, so the error
+	// was consumed, not forwarded).
+	default:
+		if isTrackedCallErr(pass, call, callErrs) {
+			pass.Reportf(call.Pos(),
+				"%s: an error from an external call must be wrapped with errors.Wrap "+
+					"(passing it through a helper adds no stack). Fix: collect stack and context; "+
+					"to map a sentinel, reassign then wrap once: "+
+					"if IsNoResult(err) { err = ErrNoResult }; return errors.Wrap(err, ...)",
+				ruleIDWrap)
+		}
+	}
 }
 
 // checkDomainWrapBan — GID-176 in /domain/**: wrapping a same-module non-static
@@ -701,12 +727,50 @@ func isInterfaceMethodCall(pass *analysis.Pass, call *ast.CallExpr) bool {
 }
 
 func isTrackedCallErr(pass *analysis.Pass, expr ast.Expr, callErrs map[types.Object]errSource) bool {
-	obj := objectOfErrExpr(pass, expr)
+	// maxTransitDepth caps the transit-call unwrapping: real code nests one or
+	// two of them, the cap only guards against a pathological chain.
+	const maxTransitDepth = 8
+
+	obj := objectOfErrExpr(pass, unwrapErrTransit(pass, expr, maxTransitDepth))
 	if obj == nil {
 		return false
 	}
 	_, ok := callErrs[obj]
 	return ok
+}
+
+// unwrapErrTransit looks THROUGH a transit call — a call that takes exactly
+// one error and returns an error (errors.WithMessage(MapError(err), "…"),
+// normalize(err)) — down to the error value it carries, so the boundary error
+// stays tracked. Without this, wrapping a boundary error in ANY helper call
+// erased it from GID-176: the argument of WithStack/WithMessage stopped being
+// a plain identifier and the rule went silent (incident 2026-08-04,
+// resource-registry: errors.WithMessage(MapError(err), "select integration")
+// on an interface call in /dal/repository).
+//
+// Unwrapping stops at a pkg/errors constructor that COLLECTS A STACK
+// (Wrap/Wrapf/WithStack): past it the error is already stacked and GID-176 is
+// satisfied — errors.WithMessage(errors.Wrap(err, "a"), "b") is not a
+// violation. WithMessage/WithMessagef add no stack, so they are transparent.
+func unwrapErrTransit(pass *analysis.Pass, expr ast.Expr, depth int) ast.Expr {
+	if depth <= 0 {
+		return expr
+	}
+	call, ok := expr.(*ast.CallExpr)
+	if !ok {
+		return expr
+	}
+	switch pkgErrorsCallName(pass, call) {
+	case "Wrap", "Wrapf", "WithStack":
+		return expr
+	}
+	if len(call.Args) != 1 || !isErrorType(pass.TypesInfo.TypeOf(call.Args[0])) {
+		return expr
+	}
+	if !isErrorType(pass.TypesInfo.TypeOf(call)) {
+		return expr
+	}
+	return unwrapErrTransit(pass, call.Args[0], depth-1)
 }
 
 // objectOfErrExpr returns the object expr refers to when it is a plain
