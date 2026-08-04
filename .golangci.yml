@@ -706,7 +706,7 @@ linters:
         original-url: github.com/slipros/gid-data-golang-eval
       gidentitymethod:
         type: module
-        description: 'GID-114: repo/service methods are named after the entity, without a List prefix or ByID suffix'
+        description: 'GID-114: repo/service methods are named after the entity (or its leading part, AdCabinetResolver -> AdCabinet), without a List prefix or ByID suffix'
         original-url: github.com/slipros/gid-data-golang-eval
         # Exclusions for verb-only methods without an entity (Close, Ping, ...):
         # settings:

@@ -16,6 +16,6 @@ func (j *Job) Ping(ctx context.Context) error {
 }
 
 // Not excluded — caught by check 3 (no Job entity name).
-func (j *Job) Flush(ctx context.Context) error { // want `GID-114: method name "Flush" must contain the entity name "Job"`
+func (j *Job) Flush(ctx context.Context) error { // want `GID-114: method name "Flush" does not name the entity "Job"`
 	return nil
 }

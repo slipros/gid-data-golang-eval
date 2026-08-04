@@ -20,12 +20,12 @@ func (j *Job) JobByID(ctx context.Context, id string) (Snapshot, error) { // wan
 }
 
 // The method name does not contain the Job entity name.
-func (j *Job) Fetch(ctx context.Context) (Snapshot, error) { // want `GID-114: method name "Fetch" must contain the entity name "Job"`
+func (j *Job) Fetch(ctx context.Context) (Snapshot, error) { // want `GID-114: method name "Fetch" does not name the entity "Job"`
 	return Snapshot{}, nil
 }
 
 // FP zone: a verb method without an entity — rarely legitimate, but caught; muted via exclude/nolint.
-func (j *Job) Close() error { // want `GID-114: method name "Close" must contain the entity name "Job"`
+func (j *Job) Close() error { // want `GID-114: method name "Close" does not name the entity "Job"`
 	return nil
 }
 
@@ -67,6 +67,6 @@ func (j *Job) ListenJobEvents(ctx context.Context) error {
 // FP zone: the verb method Ping; in production muted via //nolint:gidentitymethod
 // (analysistest does not process nolint — filtering happens on the golangci-lint
 // side, so the diagnostic is expected here).
-func (j *Job) Ping(ctx context.Context) error { // want `GID-114: method name "Ping" must contain the entity name "Job"`
+func (j *Job) Ping(ctx context.Context) error { // want `GID-114: method name "Ping" does not name the entity "Job"`
 	return nil
 }
