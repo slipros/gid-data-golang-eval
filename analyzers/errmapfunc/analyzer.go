@@ -12,20 +12,31 @@
 //
 // Detect: a top-level FuncDecl F such that ALL of
 //   - F has a NAMED parameter of type error (e.g. err error), AND
-//   - F's body calls errors.Is(<that parameter>, ...) OR
-//     errors.As(<that parameter>, &target) — where errors is any of the
-//     configured classifier packages (settings.packages; default: the
-//     standard library "errors" and github.com/pkg/errors, which forwards
-//     Is/As to stdlib since v0.9.1; gid.team code uses pkg/errors, GID-146) —
-//     with that parameter as the first argument, anywhere (chain inspection /
-//     type-assert stays allowed, see GID-146), AND
-//   - F's result list includes error (F returns error, or (T, error), ...).
+//   - F's body CLASSIFIES that parameter, in either of two shapes:
+//     (a) errors.Is(<that parameter>, ...) / errors.As(<that parameter>,
+//     &target) — where errors is any of the configured classifier packages
+//     (settings.packages; default: the standard library "errors" and
+//     github.com/pkg/errors, which forwards Is/As to stdlib since v0.9.1;
+//     gid.team code uses pkg/errors, GID-146) — with that parameter as the
+//     first argument, anywhere (chain inspection / type-assert stays
+//     allowed, see GID-146);
+//     (b) a call to ANY bool-predicate over an error — a function or method
+//     whose signature is func(error, ...) bool — with that parameter as the
+//     first argument: gdpostgres.IsUniqueViolation(err), IsNoResult(err),
+//     s.isRetryable(err). A driver library exports its classification as
+//     such predicates rather than through errors.Is sentinels, so shape (a)
+//     alone let a real mapper through (incident 2026-08-04, resource-registry
+//     repository.MapError). Predicate calls are matched by SIGNATURE, in any
+//     package — including this one, AND
+//   - F's result list includes error (F returns error, or (T, error), ...), AND
+//   - F actually PRODUCES an error of its own (discriminator #3, see below).
 //
 // settings.packages lets a project add its own errors-facade package paths
 // (e.g. an internal errors wrapper that re-exports Is/As) without a code
-// change; when empty, defaultPackages is used.
+// change; when empty, defaultPackages is used. It governs shape (a) only —
+// shape (b) is signature-based and needs no package list.
 //
-// All three hold together → F is a dedicated error mapper, reported on F's
+// All of them hold together → F is a dedicated error mapper, reported on F's
 // declaration.
 //
 // Discriminator #1 — the RETURN type (added 2026-07-12, owner refinement):
@@ -41,6 +52,16 @@
 // (the result of an inner call, e.g. res, err := u.Do(...)) rather than on
 // F's own parameter, is NOT reported. The question is always: does errors.Is
 // inspect the function's error PARAMETER, or a value produced inside the body?
+//
+// Discriminator #3 — MAPPING vs merely observing (added 2026-08-04 alongside
+// shape (b)): a mapper replaces the error. F is reported only when it either
+// assigns to its own error parameter (err = entity.ErrNoResult) or returns,
+// in some branch, an error expression that is NOT that bare parameter
+// (errors.WithStack(ErrX), status.Error(...), nil). A function that classifies
+// the error only to decide how to LOG or count it and always hands the very
+// same value back (if isTemporary(err) { log.Warn() }; return err) produces no
+// error of its own — it is not a mapper and is not reported. Without this
+// discriminator, shape (b) would report such observers.
 //
 // Generated code (ast.IsGenerated) is skipped.
 package errmapfunc
@@ -123,26 +144,117 @@ func checkFunc(pass *analysis.Pass, fn *ast.FuncDecl, classifierPkgs map[string]
 	if !funcReturnsError(pass, fn) {
 		return
 	}
-	mapsParam := false
+	classifies := false
 	ast.Inspect(fn.Body, func(n ast.Node) bool {
 		call, ok := n.(*ast.CallExpr)
 		if !ok {
 			return true
 		}
-		if isErrorsClassifyOnParam(pass, call, errParams, classifierPkgs) {
-			mapsParam = true
+		if isErrorsClassifyOnParam(pass, call, errParams, classifierPkgs) ||
+			isPredicateOnParam(pass, call, errParams) {
+			classifies = true
 		}
 		return true
 	})
-	if mapsParam {
+	if classifies && producesOwnError(pass, fn, errParams) {
 		pass.Reportf(fn.Name.Pos(),
-			"%s: a dedicated error-mapper function is forbidden — it classifies its own error parameter via "+
-				"errors.Is/errors.As and returns error (maps error to error/status). Map the bounded set of errors "+
-				"inline, at the call site (in the handler/interceptor where the error occurs). A bool-predicate "+
-				"(func isNotFound(err error) bool) is a legitimate classifier, not a mapper. "+
-				"Fix: remove the function, inline the switch errors.Is(...) into the caller",
+			"%s: a dedicated error-mapper function is forbidden — it classifies its own error parameter "+
+				"(errors.Is/errors.As, or a bool-predicate such as IsNoResult(err)) and returns an error of its "+
+				"own (maps error to error/status). Map the bounded set of errors inline, at the call site (in the "+
+				"repository method/handler where the error occurs): "+
+				"if IsNoResult(err) { err = entity.ErrNoResult }; return errors.Wrap(err, \"select x\"). "+
+				"A bool-predicate (func isNotFound(err error) bool) is a legitimate classifier, not a mapper",
 			ruleID)
 	}
+}
+
+// isPredicateOnParam reports whether call is a bool-predicate over one of
+// errParams: a call to a function or method whose signature is
+// func(error, ...) bool, with that parameter as the FIRST argument
+// (gdpostgres.IsUniqueViolation(err), IsNoResult(err), s.isRetryable(err)).
+// Matching is by SIGNATURE on the resolved callee, so any package counts —
+// a driver library publishes its error classification exactly this way, and
+// the errors.Is/As shape alone never sees it.
+func isPredicateOnParam(pass *analysis.Pass, call *ast.CallExpr, errParams map[types.Object]bool) bool {
+	fn := typeutil.Callee(pass.TypesInfo, call)
+	f, ok := fn.(*types.Func)
+	if !ok {
+		return false
+	}
+	sig, ok := f.Type().(*types.Signature)
+	if !ok || !isErrorBoolPredicate(sig) {
+		return false
+	}
+	if len(call.Args) == 0 {
+		return false
+	}
+	return paramObject(pass, call.Args[0], errParams) != nil
+}
+
+// isErrorBoolPredicate reports whether sig is func(error, ...) bool — the
+// first parameter is an error and the only result is a bool.
+func isErrorBoolPredicate(sig *types.Signature) bool {
+	params := sig.Params()
+	results := sig.Results()
+	if params.Len() == 0 || results.Len() != 1 {
+		return false
+	}
+	firstParam := params.At(0)
+	if !isErrorType(firstParam.Type()) {
+		return false
+	}
+	result := results.At(0)
+	resultType := result.Type()
+	basic, ok := resultType.Underlying().(*types.Basic)
+	return ok && basic.Kind() == types.Bool
+}
+
+// producesOwnError reports whether fn replaces the error instead of merely
+// observing it (discriminator #3): it assigns to its own error parameter, or
+// some return hands back an error expression that is not that bare parameter.
+// A classifier that always returns the very same value it received (logging,
+// metrics) maps nothing and is left alone.
+func producesOwnError(pass *analysis.Pass, fn *ast.FuncDecl, errParams map[types.Object]bool) bool {
+	produces := false
+	ast.Inspect(fn.Body, func(n ast.Node) bool {
+		switch stmt := n.(type) {
+		case *ast.AssignStmt:
+			for _, lhs := range stmt.Lhs {
+				if paramObject(pass, lhs, errParams) != nil {
+					produces = true
+				}
+			}
+		case *ast.ReturnStmt:
+			for _, res := range stmt.Results {
+				if !isErrorType(pass.TypesInfo.TypeOf(res)) {
+					continue
+				}
+				if paramObject(pass, res, errParams) == nil {
+					produces = true
+				}
+			}
+		}
+		return true
+	})
+	return produces
+}
+
+// paramObject returns the object expr refers to when it is a plain identifier
+// resolving to one of params; nil otherwise. Both Uses (a read) and Defs
+// (the declaration itself) are consulted so an assignment target resolves too.
+func paramObject(pass *analysis.Pass, expr ast.Expr, params map[types.Object]bool) types.Object {
+	id, ok := expr.(*ast.Ident)
+	if !ok {
+		return nil
+	}
+	obj := pass.TypesInfo.Uses[id]
+	if obj == nil {
+		obj = pass.TypesInfo.Defs[id]
+	}
+	if obj == nil || !params[obj] {
+		return nil
+	}
+	return obj
 }
 
 // funcReturnsError reports whether fn's result list includes an error.

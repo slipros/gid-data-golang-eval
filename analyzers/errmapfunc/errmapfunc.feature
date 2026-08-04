@@ -6,8 +6,10 @@ Feature: GID-242 — a dedicated error-mapper function is forbidden
   So that no shared error-mapper translates errors from layer to layer and gets called from
   everywhere, hiding the actually bounded set of errors a real call site can produce.
   A function is a MAPPER only when it BOTH classifies its own error parameter (errors.Is /
-  errors.As) AND returns error; a bool-predicate (isNotFound / isRetryable / isCustom) merely
-  classifies and is legitimate, not a mapper.
+  errors.As, or any bool-predicate over an error such as a driver's IsNoResult) AND returns an
+  error of its own; a bool-predicate (isNotFound / isRetryable / isCustom) merely classifies and
+  is legitimate, not a mapper, and neither is an observer that only logs and returns the error
+  it received.
 
   # Layer: go/analysis (package errmapfunc, linter giderrmapfunc), LoadModeTypesInfo.
   # No exceptions — the rule is absolute (owner's decision). Config: settings.packages —
@@ -15,27 +17,43 @@ Feature: GID-242 — a dedicated error-mapper function is forbidden
   #
   # Detect: a top-level FuncDecl F such that ALL of
   #   - F has a NAMED parameter of type error, AND
-  #   - F's body calls errors.Is(<that parameter>, ...) OR errors.As(<that parameter>, ...) —
-  #     where errors is any of the configured classifier packages (default: stdlib "errors" +
-  #     github.com/pkg/errors, which forwards Is/As to stdlib since v0.9.1; gid.team code uses
-  #     pkg/errors, GID-146) — with that parameter as the first argument, anywhere, AND
-  #   - F's result list includes error (F returns error, or (T, error), ...).
-  # All three together → reported on F's declaration. The package is matched on the RESOLVED
+  #   - F's body CLASSIFIES that parameter, in either shape:
+  #     (a) errors.Is(<that parameter>, ...) / errors.As(<that parameter>, ...) — where errors is
+  #         any of the configured classifier packages (default: stdlib "errors" +
+  #         github.com/pkg/errors, which forwards Is/As to stdlib since v0.9.1; gid.team code uses
+  #         pkg/errors, GID-146) — with that parameter as the first argument, anywhere;
+  #     (b) a call to ANY bool-predicate over an error — a function or method whose SIGNATURE is
+  #         func(error, ...) bool — with that parameter as the first argument
+  #         (gdpostgres.IsUniqueViolation(err), IsNoResult(err), s.isRetryable(err)). Matched by
+  #         signature, in any package (including F's own), so no whitelist is involved, AND
+  #   - F's result list includes error (F returns error, or (T, error), ...), AND
+  #   - F PRODUCES an error of its own (discriminator #3).
+  # All of them together → reported on F's declaration. The package is matched on the RESOLVED
   # callee (typeutil.Callee -> f.Pkg().Path()), so import aliases (pkgerrors "github.com/pkg/errors",
   # stderrors "errors") are handled automatically. A project-internal errors facade that re-exports
-  # Is/As is added via settings.packages — no code change needed.
+  # Is/As is added via settings.packages — no code change needed (and since v0.9.1 of the rule, a
+  # facade Is/As is a func(error, ...) bool anyway, so shape (b) already covers it).
   #
   # Discriminator #1 (return type, owner refinement 2026-07-12): only functions that RETURN
   # error are mappers. A bool-predicate over the error parameter is a legitimate classifier.
-  # Discriminator #2 (parameter vs local): errors.Is/As must branch on F's own PARAMETER, not
-  # on a local variable produced inside the body (the inline handler shape).
+  # Discriminator #2 (parameter vs local): the classification must branch on F's own PARAMETER,
+  # not on a local variable produced inside the body (the inline handler/repository shape).
+  # Discriminator #3 (produces its own error, added 2026-08-04 with shape (b)): F must replace
+  # the error — assign to its own error parameter, or return, in some branch, an error expression
+  # that is not that bare parameter. A function that classifies only to decide how to log/count
+  # and always returns the same value maps nothing.
+  #
+  # Why shape (b) (incident 2026-08-04, resource-registry internal/dal/repository/errors.go):
+  # a storage driver publishes its error classification as bool-predicates, not as sentinels for
+  # errors.Is — so `func MapError(err error) error { switch { case gdpostgres.IsUniqueViolation(err):
+  # ... } }` never mentions errors.Is and passed the shape-(a)-only detector untouched.
 
   # --- Class 1: positive (the violation is caught) ---
 
   Scenario: positive — a mapper classifies the error parameter via errors.Is and returns error
     Given the top-level function "func mapErr(err error) error { switch { case errors.Is(err, ErrX): return status.Error(codes.NotFound, \"not found\"); default: return status.Error(codes.Internal, \"internal error\") } }"
     When the giderrmapfunc analyzer checks the file
-    Then the diagnostic "GID-242: a dedicated error-mapper function is forbidden — it classifies its own error parameter via errors.Is/errors.As and returns error (maps error to error/status). Map the bounded set of errors inline, at the call site (in the handler/interceptor where the error occurs). A bool-predicate (func isNotFound(err error) bool) is a legitimate classifier, not a mapper. Fix: remove the function, inline the switch errors.Is(...) into the caller" is reported on "mapErr"
+    Then the diagnostic "GID-242: a dedicated error-mapper function is forbidden — it classifies its own error parameter (errors.Is/errors.As, or a bool-predicate such as IsNoResult(err)) and returns an error of its own (maps error to error/status). Map the bounded set of errors inline, at the call site (in the repository method/handler where the error occurs): if IsNoResult(err) { err = entity.ErrNoResult }; return errors.Wrap(err, \"select x\"). A bool-predicate (func isNotFound(err error) bool) is a legitimate classifier, not a mapper" is reported on "mapErr"
 
   Scenario: positive — a mapper classifies via errors.As (type-assert) and returns error
     Given the top-level function "func mapErrAs(err error) error { var t *CustomErr; if errors.As(err, &t) { return status.Error(codes.Internal, t.Msg) }; return err }"
@@ -59,7 +77,47 @@ Feature: GID-242 — a dedicated error-mapper function is forbidden
     When the giderrmapfunc analyzer checks the file
     Then the diagnostic "GID-242: a dedicated error-mapper function is forbidden …" is reported on "mapPkgErrAs"
 
+  Scenario: positive — shape (b): a repository mapper built on a DRIVER's bool-predicates, no errors.Is anywhere
+    Given the top-level function "func MapError(err error) error { switch { case driver.IsUniqueViolation(err): return pkgerrors.WithStack(ErrX); case driver.IsNoResult(err): return pkgerrors.WithStack(ErrX); default: return err } }"
+    When the giderrmapfunc analyzer checks the file
+    Then the diagnostic "GID-242: a dedicated error-mapper function is forbidden …" is reported on "MapError"
+    # The incident this shape was added for: a driver classifies through predicates, so a
+    # detector keyed on errors.Is/As sees nothing to match and the mapper ships.
+
+  Scenario: positive — shape (b): the predicate lives in the mapper's own package
+    Given the top-level function "func mapLocalPredicate(err error) error { if isRetryable(err) { return status.Error(codes.Unavailable, \"retry\") }; return err }"
+    When the giderrmapfunc analyzer checks the file
+    Then the diagnostic "GID-242: a dedicated error-mapper function is forbidden …" is reported on "mapLocalPredicate"
+    # Keeping the classifier local does not make the mapper legitimate — predicates are matched
+    # by signature, in any package.
+
+  Scenario: positive — shape (b): the error is replaced by ASSIGNING to the parameter, not by returning another expression
+    Given the top-level function "func mapByAssign(err error) error { if driver.IsNoResult(err) { err = ErrX }; return err }"
+    When the giderrmapfunc analyzer checks the file
+    Then the diagnostic "GID-242: a dedicated error-mapper function is forbidden …" is reported on "mapByAssign"
+    # Discriminator #3 counts an assignment to the parameter, so the sentinel-then-return mapper
+    # (whose every return is a bare `return err`) is still caught.
+
+  Scenario: positive — shape (b): a method-shaped mapper
+    Given the method "func (r *Repo) mapError(err error) error { if driver.IsUniqueViolation(err) { return ErrX }; return err }"
+    When the giderrmapfunc analyzer checks the file
+    Then the diagnostic "GID-242: a dedicated error-mapper function is forbidden …" is reported on "mapError"
+
   # --- Class 2: negative (clean code passes) ---
+
+  Scenario: negative — an observer classifies via a driver predicate but produces no error of its own
+    Given the function "func logAndReturn(err error) error { if driver.IsTemporary(err) { fmt.Println(\"temporary\") } else { fmt.Println(\"permanent\") }; return err }"
+    When the giderrmapfunc analyzer checks the file
+    Then no diagnostic is reported
+    # Discriminator #3: it decides how to OBSERVE the error (log/metric) and hands the very same
+    # value back. Nothing is mapped — without this discriminator, shape (b) would report it.
+
+  Scenario: negative — inline mapping at the call site: the predicate classifies a LOCAL variable
+    Given the method "func (r *Repository) Get() error { if err := r.conn.Select(); err != nil { if driver.IsNoResult(err) { err = ErrX }; return pkgerrors.Wrap(err, \"select\") }; return nil }"
+    When the giderrmapfunc analyzer checks the file
+    Then no diagnostic is reported
+    # This is exactly the shape the rule demands instead of a mapper: classify where the error is
+    # produced, reassign the sentinel, wrap once (GID-176/GID-244).
 
   Scenario: negative — a bool-predicate classifies via errors.Is but does not map (returns bool)
     Given the function "func isRetryable(err error) bool { return errors.Is(err, ErrX) }"
@@ -102,7 +160,14 @@ Feature: GID-242 — a dedicated error-mapper function is forbidden
     Given the function "func passthrough(err error) error { return err }"
     When the giderrmapfunc analyzer checks the file
     Then no diagnostic is reported
-    # Has an error parameter and returns error, but never calls errors.Is/As on it — not a mapper.
+    # Has an error parameter and returns error, but never classifies it — not a mapper.
+
+  Scenario: boundary — discriminator #3 holds for shape (a) too, not only for the new predicates
+    Given the function "func countAndReturn(err error) error { if errors.Is(err, ErrX) { fmt.Println(\"known\") }; return err }"
+    When the giderrmapfunc analyzer checks the file
+    Then no diagnostic is reported
+    # errors.Is on the parameter + returns error, but the same value comes back out: an observer,
+    # not a mapper. The discriminator is applied uniformly to both classification shapes.
 
   # --- Class 4: non-applicability ---
 
@@ -123,9 +188,12 @@ Feature: GID-242 — a dedicated error-mapper function is forbidden
     Given settings.packages contains "myerrors" and the mapper "func mapWithFacade(err error) error { if myerrors.Is(err, ErrX) { return myerrors.New(\"mapped\") }; return err }"
     When the giderrmapfunc analyzer checks the file
     Then the diagnostic "GID-242: a dedicated error-mapper function is forbidden …" is reported on "mapWithFacade"
-    # myerrors is neither "errors" nor github.com/pkg/errors — under the DEFAULT whitelist it is clean;
-    # only settings.packages=["myerrors"] makes the facade Is/As count. The facade bool-predicate
-    # (func isFacadeErr(err error) bool) stays legitimate. Covered by TestCustomPackages.
+    # myerrors is neither "errors" nor github.com/pkg/errors, so settings.packages is what makes its
+    # Is/As count as shape (a). Since shape (b) was added, a facade whose Is is a func(error, ...) bool
+    # is caught even without the setting — the whitelist stays as the explicit, signature-independent
+    # way to declare a facade (an As-style classifier with an unusual signature still needs it).
+    # The facade bool-predicate (func isFacadeErr(err error) bool) stays legitimate — discriminator #1.
+    # Covered by TestCustomPackages.
 
 # --- Checklist when adding a new rule ---
 #  [x] ID and description are recorded in the registry (RULES.md, GID-242)

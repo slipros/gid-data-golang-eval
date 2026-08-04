@@ -1,13 +1,17 @@
 // Eval of GID-242: a dedicated error-MAPPER function — one that classifies
-// its own error parameter via errors.Is/errors.As AND returns error (maps
+// its own error parameter (errors.Is/errors.As, or ANY bool-predicate over an
+// error such as a driver's IsNoResult) AND returns an error of its own (maps
 // error to error/status) — is forbidden. The bounded set of errors must be
-// mapped inline, at the call site (handler/interceptor). This is NOT specific
-// to gRPC: any error return counts. The RETURN type is a discriminator — a
-// bool-predicate (isNotFound/isRetryable/isCustom) classifies but does not
-// map, and is legitimate.
+// mapped inline, at the call site (repository method/handler). This is NOT
+// specific to gRPC: any error return counts. Two discriminators keep the
+// legitimate shapes clean: the RETURN type — a bool-predicate
+// (isNotFound/isRetryable/isCustom) classifies but does not map; and
+// PRODUCING an error — an observer that classifies only to log and hands the
+// same value back maps nothing.
 package svc
 
 import (
+	"driver"
 	"errors"
 	"fmt"
 	"net/http"
@@ -77,6 +81,102 @@ func mapErrTuple(err error) (int, error) { // want `GID-242: a dedicated error-m
 		return 0, status.Error(codes.NotFound, "not found")
 	}
 	return 0, nil
+}
+
+// --- Positive (shape b): the real-code incident — a repository-level mapper
+// built on a DRIVER's bool-predicates. It never calls errors.Is/errors.As, so
+// shape (a) alone was blind to it (resource-registry repository.MapError,
+// 2026-08-04). It classifies its own parameter and returns errors of its own. ---
+
+func MapError(err error) error { // want `GID-242: a dedicated error-mapper function is forbidden`
+	switch {
+	case driver.IsUniqueViolation(err):
+		return pkgerrors.WithStack(ErrX)
+	case driver.IsNoResult(err):
+		return pkgerrors.WithStack(ErrX)
+	default:
+		return err
+	}
+}
+
+// --- Positive (shape b): the predicate lives in this very package — a mapper
+// does not become legitimate by keeping its classifier local. ---
+
+func mapLocalPredicate(err error) error { // want `GID-242: a dedicated error-mapper function is forbidden`
+	if isRetryable(err) {
+		return status.Error(codes.Unavailable, "retry")
+	}
+	return err
+}
+
+// --- Positive (shape b): the error is replaced by ASSIGNING to the parameter
+// rather than by returning a different expression — discriminator #3 counts
+// the assignment, so the sentinel-then-return mapper is still caught. ---
+
+func mapByAssign(err error) error { // want `GID-242: a dedicated error-mapper function is forbidden`
+	if driver.IsNoResult(err) {
+		err = ErrX
+	}
+	return err
+}
+
+// --- Positive (shape b): a method is a mapper just as a function is. ---
+
+// Repo owns a method-shaped mapper.
+type Repo struct{}
+
+func (r *Repo) mapError(err error) error { // want `GID-242: a dedicated error-mapper function is forbidden`
+	if driver.IsUniqueViolation(err) {
+		return ErrX
+	}
+	return err
+}
+
+// --- Negative (discriminator #3): classifies via a driver predicate but
+// produces no error of its own — it only decides how to observe the error and
+// hands the very same value back. An observer is not a mapper. ---
+
+func logAndReturn(err error) error {
+	if driver.IsTemporary(err) {
+		fmt.Println("temporary")
+	} else {
+		fmt.Println("permanent")
+	}
+	return err
+}
+
+// --- Boundary (discriminator #3): the same shape via errors.Is — the
+// discriminator holds for shape (a) too, not only for the new predicates. ---
+
+func countAndReturn(err error) error {
+	if errors.Is(err, ErrX) {
+		fmt.Println("known")
+	}
+	return err
+}
+
+// --- Negative (discriminator #2 under shape b): the predicate classifies a
+// LOCAL variable (the driver call result), not the function's parameter —
+// this is the legitimate inline shape the rule demands. ---
+
+// Conn is the injected dependency of the repository below.
+type Conn interface {
+	Select() error
+}
+
+// Repository demonstrates inline mapping at the call site.
+type Repository struct {
+	conn Conn
+}
+
+func (r *Repository) Get() error {
+	if err := r.conn.Select(); err != nil {
+		if driver.IsNoResult(err) {
+			err = ErrX
+		}
+		return pkgerrors.Wrap(err, "select")
+	}
+	return nil
 }
 
 // --- Negative: a bool-predicate classifies the error (errors.Is) but does not map it ---
