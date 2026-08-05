@@ -18,3 +18,17 @@ func good(id uuid.UUID) bool {
 func boundary(a, b int) bool {
 	return a == b
 }
+
+// Boundary: inside an if condition the literal must be parenthesised to parse —
+// the parentheses do not make the comparison legal.
+type request struct{ DatasetID uuid.UUID }
+
+func badInCondition(in request) bool {
+	if in.DatasetID != (uuid.UUID{}) { // want `GID-002: .* Fix: replace "in\.DatasetID != uuid\.UUID\{\}" with "!in\.DatasetID\.IsNil\(\)"\.`
+		return true
+	}
+	if (uuid.UUID{}) == in.DatasetID { // want `GID-002: .* Fix: replace "in\.DatasetID == uuid\.UUID\{\}" with "in\.DatasetID\.IsNil\(\)"\.`
+		return false
+	}
+	return false
+}

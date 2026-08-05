@@ -320,9 +320,10 @@ func isConst(pass *analysis.Pass, e ast.Expr) bool {
 }
 
 // uuidEmptyLit reports whether e is an empty composite literal of the gofrs
-// uuid.UUID type (uuid.UUID{}).
+// uuid.UUID type (uuid.UUID{}). Parentheses are stripped: inside an if
+// condition the literal must be written as (uuid.UUID{}) to parse at all.
 func uuidEmptyLit(pass *analysis.Pass, e ast.Expr) bool {
-	cl, ok := e.(*ast.CompositeLit)
+	cl, ok := ast.Unparen(e).(*ast.CompositeLit)
 	if !ok || len(cl.Elts) != 0 {
 		return false
 	}
