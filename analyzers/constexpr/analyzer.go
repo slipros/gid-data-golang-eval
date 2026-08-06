@@ -166,13 +166,19 @@ func mutatedObjects(pass *analysis.Pass, fn *ast.FuncDecl) map[types.Object]bool
 				return true
 			}
 			for _, lhs := range node.Lhs {
-				markObject(pass, lhs, out)
+				if obj := objectOf(pass, lhs); obj != nil {
+					out[obj] = true
+				}
 			}
 		case *ast.IncDecStmt:
-			markObject(pass, node.X, out)
+			if obj := objectOf(pass, node.X); obj != nil {
+				out[obj] = true
+			}
 		case *ast.UnaryExpr:
 			if node.Op == token.AND {
-				markObject(pass, node.X, out)
+				if obj := objectOf(pass, node.X); obj != nil {
+					out[obj] = true
+				}
 			}
 		}
 		return true
@@ -180,19 +186,17 @@ func mutatedObjects(pass *analysis.Pass, fn *ast.FuncDecl) map[types.Object]bool
 	return out
 }
 
-// markObject records the object expr refers to when it is a plain identifier.
-func markObject(pass *analysis.Pass, expr ast.Expr, out map[types.Object]bool) {
+// objectOf returns the object expr refers to when it is a plain identifier,
+// nil otherwise.
+func objectOf(pass *analysis.Pass, expr ast.Expr) types.Object {
 	ident, ok := expr.(*ast.Ident)
 	if !ok {
-		return
+		return nil
 	}
 	if obj := pass.TypesInfo.Uses[ident]; obj != nil {
-		out[obj] = true
-		return
+		return obj
 	}
-	if obj := pass.TypesInfo.Defs[ident]; obj != nil {
-		out[obj] = true
-	}
+	return pass.TypesInfo.Defs[ident]
 }
 
 // initStatements collects the assignments that serve as the init statement of

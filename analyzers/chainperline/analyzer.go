@@ -68,7 +68,10 @@ func run(pass *analysis.Pass, minCalls int) (any, error) {
 			if _, ok := visited[call]; ok {
 				return true
 			}
-			sels, base := chain(pass, call, visited)
+			sels, base, links := chain(pass, call)
+			for _, link := range links {
+				visited[link] = struct{}{}
+			}
 			if len(sels) < minCalls {
 				return true
 			}
@@ -83,24 +86,25 @@ func run(pass *analysis.Pass, minCalls int) (any, error) {
 }
 
 // chain collects the call chain from the outer call inward. It returns the
-// link selectors (from the outermost to the innermost) and the base expression
-// the chain starts on.
+// link selectors (from the outermost to the innermost), the base expression the
+// chain starts on, and the call nodes the chain consumed — the caller marks
+// those as visited so their own Inspect does not re-enter the chain (GID-257:
+// the consumed set is returned, not filled through a parameter).
 func chain(
 	pass *analysis.Pass,
 	call *ast.CallExpr,
-	visited map[*ast.CallExpr]struct{},
-) (sels []*ast.SelectorExpr, base ast.Expr) {
+) (sels []*ast.SelectorExpr, base ast.Expr, links []*ast.CallExpr) {
 	cur := call
 	for {
 		sel, ok := cur.Fun.(*ast.SelectorExpr)
 		if !ok || isConversion(pass, cur.Fun) {
-			return sels, cur // a function call or a conversion — the base of the chain
+			return sels, cur, links // a function call or a conversion — the base of the chain
 		}
-		visited[cur] = struct{}{}
+		links = append(links, cur)
 		sels = append(sels, sel)
 		inner := innermostCall(sel.X)
 		if inner == nil {
-			return sels, sel.X
+			return sels, sel.X, links
 		}
 		cur = inner
 	}

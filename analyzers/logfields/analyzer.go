@@ -85,7 +85,9 @@ func run(pass *analysis.Pass) (any, error) {
 			if _, seen := consumed[call]; seen {
 				return true
 			}
-			checkChain(pass, call, consumed)
+			for _, c := range checkChain(pass, call) {
+				consumed[c] = struct{}{}
+			}
 			return true
 		})
 	}
@@ -93,8 +95,11 @@ func run(pass *analysis.Pass) (any, error) {
 }
 
 // checkChain walks the logrus chain the call ends with, from the outermost
-// call inward, and reports the chain when it sets fields more than once.
-func checkChain(pass *analysis.Pass, call *ast.CallExpr, consumed map[*ast.CallExpr]struct{}) {
+// call inward, and reports the chain when it sets fields more than once. It
+// returns the call nodes the walk consumed so the caller can skip them when
+// Inspect reaches them (GID-257: the consumed set is returned, not filled
+// through a parameter).
+func checkChain(pass *analysis.Pass, call *ast.CallExpr) (consumed []*ast.CallExpr) {
 	// fields hold the field calls in reverse source order (outermost first).
 	var fields []*ast.SelectorExpr
 	for cur := ast.Expr(call); ; {
@@ -106,7 +111,7 @@ func checkChain(pass *analysis.Pass, call *ast.CallExpr, consumed map[*ast.CallE
 		if !ok || lgr.MethodKind(pass, sel) != lgr.KindLogrus {
 			break
 		}
-		consumed[c] = struct{}{}
+		consumed = append(consumed, c)
 		if _, isField := fieldMethods[sel.Sel.Name]; isField {
 			fields = append(fields, sel)
 		}
@@ -116,7 +121,7 @@ func checkChain(pass *analysis.Pass, call *ast.CallExpr, consumed map[*ast.CallE
 	// violation: two pairs already fit a single logrus.Fields literal.
 	const minFieldCalls = 2
 	if len(fields) < minFieldCalls {
-		return
+		return consumed
 	}
 	// Report on the first field call in source order — the chain is rewritten
 	// starting there, and the position does not drift with the field count.
@@ -124,4 +129,6 @@ func checkChain(pass *analysis.Pass, call *ast.CallExpr, consumed map[*ast.CallE
 		"%s: a logger chain sets its fields in %d separate calls — they belong in one. "+
 			`Fix: replace them with a single WithFields(logrus.Fields{"offset": offset, "fallback_level": level})`,
 		ruleID, len(fields))
+
+	return consumed
 }
