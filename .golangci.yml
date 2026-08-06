@@ -167,6 +167,8 @@ linters:
     - gidloggerplace   # GID-251
     - gidconvpolicy    # GID-247
     - gidserviceentity # GID-236
+    - gidserviceorch   # GID-260
+    - gidmoduleimports # GID-259
     - gidwithmessage   # GID-237
     - gidwithstack     # GID-248
     - gidcliflags      # GID-238/239
@@ -885,6 +887,34 @@ linters:
         #   exclude:
         #     - 'Snapshot.jobRepository'  # Type.Field
         #     - 'Legacy'                  # the whole service struct
+      gidserviceorch:
+        type: module
+        description: 'GID-260: a service does not orchestrate — two repositories or a transaction in its fields mean the composition belongs to a usecase'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # Type-name suffixes that mark a repository dependency, and exceptions:
+        # settings:
+        #   suffixes:
+        #     - Repository
+        #     - Store
+        #   exclude:
+        #     - 'Integration.coreRepo'  # Struct.Field
+        #     - 'LegacyWriter'          # the whole service struct
+      gidmoduleimports:
+        type: module
+        description: 'GID-259: an application module (pkg/<module>/**) must not import the core layers besides /domain/** — a module owns its dal and takes core data through a core service; judged layers of the module: domain, dal'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # Core layers a module may import (default ["domain"]), layers of the
+        # module whose packages are judged (default ["domain", "dal"] — add
+        # "server"/"client" to judge the module's transport too), and import
+        # paths shared deliberately:
+        # settings:
+        #   allow:
+        #     - domain
+        #   layers:
+        #     - domain
+        #     - dal
+        #   exclude:
+        #     - 'myservice/internal/validate/i18n'
       gidwithmessage:
         type: module
         description: 'GID-237: errors.WithMessage is banned in /domain/service — return the incoming error as is, WithStack only after conversion; message context belongs to usecase'

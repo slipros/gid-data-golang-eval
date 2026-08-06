@@ -79,6 +79,7 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/metricstruct"
 	"github.com/slipros/gid-data-golang-eval/analyzers/modelmethod"
 	"github.com/slipros/gid-data-golang-eval/analyzers/modulealias"
+	"github.com/slipros/gid-data-golang-eval/analyzers/moduleimports"
 	"github.com/slipros/gid-data-golang-eval/analyzers/nilslice"
 	"github.com/slipros/gid-data-golang-eval/analyzers/nobatch"
 	"github.com/slipros/gid-data-golang-eval/analyzers/nogetprefix"
@@ -99,6 +100,7 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/sentinelwrap"
 	"github.com/slipros/gid-data-golang-eval/analyzers/serviceentity"
 	"github.com/slipros/gid-data-golang-eval/analyzers/servicemodel"
+	"github.com/slipros/gid-data-golang-eval/analyzers/serviceorch"
 	"github.com/slipros/gid-data-golang-eval/analyzers/servicesingle"
 	"github.com/slipros/gid-data-golang-eval/analyzers/sqlnull"
 	"github.com/slipros/gid-data-golang-eval/analyzers/storageplace"
@@ -121,6 +123,8 @@ func init() {
 	register.Plugin("giddalerrors", newSingleAnalyzerPlugin(errplace.DALAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidservicesingle", newSingleAnalyzerPlugin(servicesingle.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidserviceentity", newConfigurablePlugin(serviceentity.NewAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidserviceorch", newConfigurablePlugin(serviceorch.NewAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidmoduleimports", newConfigurablePlugin(moduleimports.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidonlypkgerrors", newSingleAnalyzerPlugin(onlypkgerrors.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidlayerimports", newConfigurablePlugin(layerimports.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidservicemodel", newSingleAnalyzerPlugin(servicemodel.Analyzer, register.LoadModeTypesInfo))
