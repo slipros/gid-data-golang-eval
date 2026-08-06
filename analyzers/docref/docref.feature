@@ -14,6 +14,12 @@ Feature: GID-262 — a comment explains the code, not the development documentat
     Given the comment "collects unique cabinet ids before the call (@ФТ-11)"
     When the analyzer checks the file
     Then a "GID-262" diagnostic is reported on the "@ФТ-11" marker
+    And its fix asks to move the id into the requirement map — a file of its own linked from the README, "ФТ-15 → TestCreate_DuplicateTitle_AlreadyExists"
+
+  Scenario: boundary — the fix follows the class of the marker
+    Given the comment "BACKLOG B-48: the guard rejects a write outside a transaction"
+    When the analyzer checks the file
+    Then the fix asks to state the constraint itself and leave the reference in the document — a backlog entry has no coverage map to preserve
 
   Scenario: positive — a task of the decomposition and a commit as the source of a decision
     Given the comments "один вызов на страницу (задача 29)" and "порядок шагов — коммит 34640e6"

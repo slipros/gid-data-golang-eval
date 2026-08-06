@@ -16,6 +16,15 @@
 // (settings.patterns, plus settings.extra). One diagnostic per comment — on
 // the leftmost match — so a comment naming three documents is one finding.
 //
+// The fix depends on the class of the marker. A task number or a backlog entry
+// is dropped and replaced by the constraint it stood for; a **requirement id**
+// (`@ФТ-11`, an acceptance-criteria phrase, a VERIFY/BDD marker) is *moved*:
+// it is the only record of which test proves which requirement, so the
+// diagnostic asks for it to go into the requirement map — a file of its own
+// linked from the README, one line per requirement
+// (`ФТ-15 → TestCreate_DuplicateTitle_AlreadyExists`). Deleting those ids
+// comment by comment would dissolve a coverage map nothing else holds.
+//
 // Skipped: generated code (ast.IsGenerated) and directive comments
 // (`//nolint:…`, `//go:build`, `//lint:…` — a tool directive is machine input,
 // and the free-text justification of a //nolint is exactly the place where
@@ -39,6 +48,21 @@ import (
 
 const ruleID = "GID-262"
 
+// The two halves of the fix, picked by the class of the marker that matched.
+//
+// A requirement id is not noise the way a task number is: it is the only
+// record of which test proves which requirement, and deleting it comment by
+// comment dissolves the coverage map. So the fix for it is a move, not a
+// deletion — the map goes into a file of its own, linked from the README,
+// where it can be read as a whole and rebuilt after the comments are cleaned.
+const (
+	fixGeneric = `state the constraint itself — "one call per page: a per-item resolve would be N requests" — ` +
+		`and leave the document reference in the document`
+	fixRequirement = `state the constraint itself in the comment, and move the requirement id into the requirement map — ` +
+		`a file of its own linked from the README, one line per requirement: "ФТ-15 → TestCreate_DuplicateTitle_AlreadyExists". ` +
+		`The map is then readable as a whole and survives the cleanup, instead of living scattered across comments`
+)
+
 // defaultPatterns — the built-in marker list, calibrated on the services of
 // the UDMP-3762 sandbox (resource-registry, advertising-api,
 // ad-cabinet-connector, lk-api).
@@ -47,27 +71,27 @@ const ruleID = "GID-262"
 // TRACE_ENABLED, SkipVerify and ADR inside an identifier stay clean; the
 // Cyrillic markers carry their own left delimiter [^\p{L}\d], which is what
 // keeps UTF-8 out of the single-letter document-code pattern.
-var defaultPatterns = []string{
+var defaultPatterns = []pattern{
 	// Names of the development documents themselves.
-	`\b(?:ARD|PRD|BDD|ADR|BACKLOG)\b`,
+	{expr: `\b(?:ARD|PRD|BDD|ADR|BACKLOG)\b`, fix: fixGeneric},
 	// The same in Russian: спека, постановка, бэклог (any inflection).
-	`(?:^|[^\p{L}])(?:спек|постановк|бэклог|беклог)\p{L}*`,
+	{expr: `(?:^|[^\p{L}])(?:спек|постановк|бэклог|беклог)\p{L}*`, fix: fixGeneric},
 	// Requirement id: ФТ-33, ФТ33, @ФТ-11, НФТ-2, ФР-4.
-	`(?i)@?Н?Ф[ТР]\s?-?\s?\d+`,
+	{expr: `(?i)@?Н?Ф[ТР]\s?-?\s?\d+`, fix: fixRequirement},
 	// Document decision/contract code: Р-11, К-3, B-48, A-2.
-	`(?:^|[^\p{L}\d])[A-ZА-Я]-\d+\b`,
+	{expr: `(?:^|[^\p{L}\d])[A-ZА-Я]-\d+\b`, fix: fixGeneric},
 	// Section of a document: §12, § 8.
-	`§\s*\d+`,
+	{expr: `§\s*\d+`, fix: fixGeneric},
 	// Task of the decomposition: задача 29, задачи 13, ревью задачи 20.
-	`(?i)(?:^|[^\p{L}])задач\p{L}*\s*(?:№\s*)?\d+`,
+	{expr: `(?i)(?:^|[^\p{L}])задач\p{L}*\s*(?:№\s*)?\d+`, fix: fixGeneric},
 	// Acceptance criteria of a task.
-	`(?i)критери\p{L}*\s+при[её]мк\p{L}*`,
+	{expr: `(?i)критери\p{L}*\s+при[её]мк\p{L}*`, fix: fixRequirement},
 	// Traceability marker of a BDD suite.
-	`\bVERIFY\b`,
+	{expr: `\bVERIFY\b`, fix: fixRequirement},
 	// BDD scenario tags.
-	`@(?:positive|negative|boundary|smoke)\b`,
+	{expr: `@(?:positive|negative|boundary|smoke)\b`, fix: fixRequirement},
 	// A commit named as the source of a decision.
-	`(?i)(?:коммит|commit)\p{L}*\s+[0-9a-f]{7,40}\b`,
+	{expr: `(?i)(?:коммит|commit)\p{L}*\s+[0-9a-f]{7,40}\b`, fix: fixGeneric},
 }
 
 // directivePrefix matches a tool directive comment (//nolint:…, //go:build,
@@ -76,6 +100,19 @@ var directivePrefix = regexp.MustCompile(`^//[a-z0-9]+:\S`)
 
 // Analyzer — the variant with default settings.
 var Analyzer = NewAnalyzer(Settings{})
+
+// pattern — one marker of the development documentation and the fix its class
+// calls for.
+type pattern struct {
+	expr string
+	fix  string
+}
+
+// marker — a compiled pattern.
+type marker struct {
+	re  *regexp.Regexp
+	fix string
+}
 
 // Settings — linter settings from .golangci.yml.
 type Settings struct {
@@ -88,18 +125,23 @@ type Settings struct {
 }
 
 // NewAnalyzer builds the GID-262 analyzer with the given settings.
+//
+// A pattern given in settings gets the generic fix: only the built-in list
+// knows which of its markers is a requirement id, i.e. which finding has a
+// coverage map to preserve.
 func NewAnalyzer(cfg Settings) *analysis.Analyzer {
-	patterns := cfg.Patterns
-	if len(patterns) == 0 {
-		patterns = defaultPatterns
+	patterns := defaultPatterns
+	if len(cfg.Patterns) > 0 {
+		patterns = withGenericFix(cfg.Patterns)
 	}
-	patterns = append(append([]string{}, patterns...), cfg.Extra...)
+	patterns = append(append([]pattern{}, patterns...), withGenericFix(cfg.Extra)...)
 	markers, compileErr := compile(patterns)
 
 	return &analysis.Analyzer{
 		Name: "giddocref",
 		Doc: ruleID + ": a comment references development documentation (ARD/PRD/backlog id, requirement id, task number) " +
-			"instead of explaining the code. Fix: state the constraint itself — \"one call per page: a per-item resolve would be N requests\".",
+			"instead of explaining the code. Fix: state the constraint itself; a requirement id moves into the requirement map " +
+			"(a file of its own linked from the README, \"ФТ-15 → TestCreate_DuplicateTitle_AlreadyExists\"), not into the void.",
 		Run: func(pass *analysis.Pass) (any, error) {
 			if compileErr != nil {
 				return nil, compileErr
@@ -110,20 +152,30 @@ func NewAnalyzer(cfg Settings) *analysis.Analyzer {
 	}
 }
 
-func compile(patterns []string) ([]*regexp.Regexp, error) {
-	markers := make([]*regexp.Regexp, 0, len(patterns))
+func withGenericFix(exprs []string) []pattern {
+	patterns := make([]pattern, 0, len(exprs))
+	for _, expr := range exprs {
+		patterns = append(patterns, pattern{expr: expr, fix: fixGeneric})
+	}
+
+	return patterns
+}
+
+func compile(patterns []pattern) ([]marker, error) {
+	markers := make([]marker, 0, len(patterns))
+	//nolint:gidallptr // the plugin does not depend on the internal gdhelper library
 	for _, p := range patterns {
-		re, err := regexp.Compile(p)
+		re, err := regexp.Compile(p.expr)
 		if err != nil {
-			return nil, errors.Wrapf(err, "compile marker pattern %q", p)
+			return nil, errors.Wrapf(err, "compile marker pattern %q", p.expr)
 		}
-		markers = append(markers, re)
+		markers = append(markers, marker{re: re, fix: p.fix})
 	}
 
 	return markers, nil
 }
 
-func run(pass *analysis.Pass, markers []*regexp.Regexp) (any, error) {
+func run(pass *analysis.Pass, markers []marker) (any, error) {
 	for _, file := range pass.Files {
 		if ast.IsGenerated(file) {
 			continue
@@ -133,8 +185,8 @@ func run(pass *analysis.Pass, markers []*regexp.Regexp) (any, error) {
 				if directivePrefix.MatchString(comment.Text) {
 					continue
 				}
-				if offset, marker, ok := firstMarker(comment.Text, markers); ok {
-					report(pass, comment.Pos()+token.Pos(offset), marker)
+				if found, ok := firstMarker(comment.Text, markers); ok {
+					report(pass, comment.Pos()+token.Pos(found.offset), found)
 				}
 			}
 		}
@@ -143,22 +195,33 @@ func run(pass *analysis.Pass, markers []*regexp.Regexp) (any, error) {
 	return nil, nil
 }
 
-// firstMarker returns the leftmost marker of the comment: one diagnostic per
-// comment, pointed at the first document reference it carries.
-func firstMarker(text string, markers []*regexp.Regexp) (offset int, marker string, ok bool) {
-	offset, marker = -1, ""
-	for _, re := range markers {
-		loc := re.FindStringIndex(text)
+// reference — the document reference a comment was reported for.
+type reference struct {
+	// offset — byte offset of the reference inside the comment text.
+	offset int
+	// text — the reference as written (`@ФТ-11`, `BACKLOG`).
+	text string
+	// fix — the hint of the marker class that matched.
+	fix string
+}
+
+// firstMarker returns the leftmost reference of the comment: one diagnostic
+// per comment, pointed at the first document reference it carries.
+func firstMarker(text string, markers []marker) (found reference, ok bool) {
+	found.offset = -1
+	//nolint:gidallptr // the plugin does not depend on the internal gdhelper library
+	for _, m := range markers {
+		loc := m.re.FindStringIndex(text)
 		if loc == nil {
 			continue
 		}
-		start, found := trimDelimiter(text[loc[0]:loc[1]], loc[0])
-		if offset < 0 || start < offset {
-			offset, marker = start, found
+		start, marker := trimDelimiter(text[loc[0]:loc[1]], loc[0])
+		if found.offset < 0 || start < found.offset {
+			found = reference{offset: start, text: marker, fix: m.fix}
 		}
 	}
 
-	return offset, marker, offset >= 0
+	return found, found.offset >= 0
 }
 
 // trimDelimiter drops the left delimiter a pattern had to capture in place of
@@ -172,10 +235,8 @@ func trimDelimiter(match string, offset int) (start int, marker string) {
 	return offset + len(match) - len(trimmed), trimmed
 }
 
-func report(pass *analysis.Pass, pos token.Pos, marker string) {
+func report(pass *analysis.Pass, pos token.Pos, found reference) {
 	pass.Reportf(pos,
-		"%s: comment references development documentation (%q) instead of explaining the code. "+
-			"Fix: state the constraint itself — \"one call per page: a per-item resolve would be N requests\" — "+
-			"and leave the requirement id in the tracker",
-		ruleID, marker)
+		"%s: comment references development documentation (%q) instead of explaining the code. Fix: %s",
+		ruleID, found.text, found.fix)
 }

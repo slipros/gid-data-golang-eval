@@ -15,9 +15,9 @@ type Registry interface {
 	Cabinets(ctx context.Context, ids []string) ([]string, error)
 }
 
-// Cabinets collects unique cabinet ids before the call (@ФТ-11). // want `GID-262: comment references development documentation`
+// Cabinets collects unique cabinet ids before the call (@ФТ-11). // want `Fix: state the constraint itself in the comment, and move the requirement id into the requirement map`
 func (r *AdCabinetResolver) Cabinets(ctx context.Context, ids []string) ([]string, error) {
-	// BACKLOG B-48: the guard rejects a write outside a transaction. // want `GID-262: comment references development documentation`
+	// BACKLOG B-48: the guard rejects a write outside a transaction. // want `Fix: state the constraint itself — .* — and leave the document reference in the document`
 	unique := dedup(ids)
 
 	return r.registry.Cabinets(ctx, unique)

@@ -51,19 +51,20 @@ func TestFirstMarker(t *testing.T) {
 	}
 
 	tests := []struct {
-		name   string
-		text   string
-		marker string
-		found  bool
+		name        string
+		text        string
+		marker      string
+		requirement bool // the finding carries the requirement-map fix
+		found       bool
 	}{
 		{name: "document name", text: "// resolves cabinets (ARD Р-11): one call", marker: "ARD", found: true},
-		{name: "requirement id", text: "// unique ids before the call (@ФТ-11)", marker: "@ФТ-11", found: true},
-		{name: "requirement id without dash", text: "// не попадает в ответ (ФТ33)", marker: "ФТ33", found: true},
+		{name: "requirement id", text: "// unique ids before the call (@ФТ-11)", marker: "@ФТ-11", requirement: true, found: true},
+		{name: "requirement id without dash", text: "// не попадает в ответ (ФТ33)", marker: "ФТ33", requirement: true, found: true},
 		{name: "document code", text: "// the same guard (B-48) as the sibling", marker: "B-48", found: true},
 		{name: "task number", text: "// один вызов на страницу (задача 29)", marker: "задача 29", found: true},
 		{name: "section", text: "// terminal code of the record, PRD §12", marker: "PRD", found: true},
 		{name: "leftmost wins", text: "// (BACKLOG B-48) — задача 43", marker: "BACKLOG", found: true},
-		{name: "bdd tag", text: "// повторное выключение (@negative)", marker: "@negative", found: true},
+		{name: "bdd tag", text: "// повторное выключение (@negative)", marker: "@negative", requirement: true, found: true},
 		{name: "commit", text: "// порядок шагов — коммит 34640e6", marker: "коммит 34640e6", found: true},
 		{name: "explanation", text: "// a per-item resolve would cost N requests", found: false},
 		{name: "rfc3339", text: "// the registry answers in RFC3339", found: false},
@@ -74,18 +75,21 @@ func TestFirstMarker(t *testing.T) {
 	//nolint:gidallptr // the plugin does not depend on the internal gdhelper library
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			offset, marker, ok := firstMarker(tt.text, markers)
+			found, ok := firstMarker(tt.text, markers)
 			if ok != tt.found {
-				t.Fatalf("firstMarker(%q): got found=%v, want %v (marker %q)", tt.text, ok, tt.found, marker)
+				t.Fatalf("firstMarker(%q): got found=%v, want %v (marker %q)", tt.text, ok, tt.found, found.text)
 			}
 			if !tt.found {
 				return
 			}
-			if marker != tt.marker {
-				t.Errorf("firstMarker(%q): got marker %q, want %q", tt.text, marker, tt.marker)
+			if found.text != tt.marker {
+				t.Errorf("firstMarker(%q): got marker %q, want %q", tt.text, found.text, tt.marker)
 			}
-			if got := tt.text[offset : offset+len(tt.marker)]; got != tt.marker {
-				t.Errorf("firstMarker(%q): offset %d points at %q, want %q", tt.text, offset, got, tt.marker)
+			if got := tt.text[found.offset : found.offset+len(tt.marker)]; got != tt.marker {
+				t.Errorf("firstMarker(%q): offset %d points at %q, want %q", tt.text, found.offset, got, tt.marker)
+			}
+			if gotRequirement := found.fix == fixRequirement; gotRequirement != tt.requirement {
+				t.Errorf("firstMarker(%q): requirement fix=%v, want %v", tt.text, gotRequirement, tt.requirement)
 			}
 		})
 	}
