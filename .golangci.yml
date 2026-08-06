@@ -174,6 +174,9 @@ linters:
     - giderrname       # GID-234
     - giderrmapfunc    # GID-242
     - giderrzeroret    # GID-243
+    - giderrtext       # GID-256
+    - gidmapout        # GID-257
+    - giderrswallow    # GID-258
     - gidsentinelwrap  # GID-244
     - gidscanrow       # GID-245
     - gidapproot       # GID-246
@@ -915,7 +918,7 @@ linters:
         #   prefix: common
       giderrmapfunc:
         type: module
-        description: 'GID-242: a dedicated error-mapper function (classifies its own error parameter via errors.Is/errors.As from stdlib or github.com/pkg/errors AND returns error) is forbidden — map inline, at the call site; bool-predicates and wrappers are fine'
+        description: 'GID-242: a dedicated error-mapper function (classifies its own error parameter via errors.Is/errors.As from stdlib or github.com/pkg/errors, or via a bool-predicate, AND hands back a translation of it — an error, a *status.Status, a codes.Code, an HTTP status, a message) is forbidden — map inline, at the call site; bool-predicates and wrappers are fine'
         original-url: github.com/slipros/gid-data-golang-eval
         # The classifier packages (whose Is/As calls count) can be replaced —
         # e.g. to add a project-internal errors facade that re-exports Is/As.
@@ -929,6 +932,32 @@ linters:
         type: module
         description: 'GID-243: on error, non-error results in a multi-value return must be nil/zero'
         original-url: github.com/slipros/gid-data-golang-eval
+      gidmapout:
+        type: module
+        description: 'GID-257: a map received as a parameter must not be filled in — the result is missing from the signature; return the map instead. A map parameter is for data going IN'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # Exclusions ("Function" | "Type.Method"):
+        # settings:
+        #   exclude:
+        #     - 'Resolver.legacyResolveChunk'
+      giderrswallow:
+        type: module
+        description: 'GID-258: in /domain/**, a function that checks an error must be able to return one — logging it and moving on hides the failure from the caller; add error to the results'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # Exclusions ("Function" | "Type.Method") — soft degradation as a stated
+        # functional requirement:
+        # settings:
+        #   exclude:
+        #     - 'Resolver.degradeSilently'
+      giderrtext:
+        type: module
+        description: 'GID-256: the text of an error (err.Error()) must not be passed into an error constructor — flattening it into a string cuts the chain and drops the stack; put the cause in the chain, and carry a stable class in a typed error with Unwrap'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # Exclusions ("Function" | "Type.Method") — a functional requirement, or
+        # legacy that cannot be rewritten right now:
+        # settings:
+        #   exclude:
+        #     - 'Client.legacyConfirm'
       gidsentinelwrap:
         type: module
         description: 'GID-244: map a boundary error to a sentinel by reassign-then-wrap-once, not by wrapping the sentinel in a guard branch that duplicates the outer errors.Wrap'

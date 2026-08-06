@@ -45,6 +45,8 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/errname"
 	"github.com/slipros/gid-data-golang-eval/analyzers/errnew"
 	"github.com/slipros/gid-data-golang-eval/analyzers/errplace"
+	"github.com/slipros/gid-data-golang-eval/analyzers/errswallow"
+	"github.com/slipros/gid-data-golang-eval/analyzers/errtext"
 	"github.com/slipros/gid-data-golang-eval/analyzers/errwrap"
 	"github.com/slipros/gid-data-golang-eval/analyzers/errzeroret"
 	"github.com/slipros/gid-data-golang-eval/analyzers/eventctor"
@@ -73,6 +75,7 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/loggernew"
 	"github.com/slipros/gid-data-golang-eval/analyzers/loggerplace"
 	"github.com/slipros/gid-data-golang-eval/analyzers/mapcap"
+	"github.com/slipros/gid-data-golang-eval/analyzers/mapout"
 	"github.com/slipros/gid-data-golang-eval/analyzers/metricstruct"
 	"github.com/slipros/gid-data-golang-eval/analyzers/modelmethod"
 	"github.com/slipros/gid-data-golang-eval/analyzers/modulealias"
@@ -211,6 +214,9 @@ func init() {
 	register.Plugin("gidmodulealias", newConfigurablePlugin(modulealias.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("giderrmapfunc", newConfigurablePlugin(errmapfunc.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("giderrzeroret", newSingleAnalyzerPlugin(errzeroret.Analyzer, register.LoadModeTypesInfo))
+	register.Plugin("giderrtext", newConfigurablePlugin(errtext.NewAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("giderrswallow", newConfigurablePlugin(errswallow.NewAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidmapout", newConfigurablePlugin(mapout.NewAnalyzer, register.LoadModeTypesInfo))
 	// Layer 1 (former ruleguard) — simple AST patterns, now native analyzers.
 	register.Plugin("gidtimenow", newSingleAnalyzerPlugin(patterns.TimeNowAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("giduuidnil", newSingleAnalyzerPlugin(patterns.UUIDNilAnalyzer, register.LoadModeTypesInfo))
