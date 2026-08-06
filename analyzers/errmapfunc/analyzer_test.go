@@ -19,3 +19,13 @@ func TestCustomPackages(t *testing.T) {
 	a := NewAnalyzer(Settings{Packages: []string{"myerrors"}})
 	analysistest.Run(t, analysistest.TestData(), a, "customfacade")
 }
+
+// TestExclude — settings.exclude clears a framework-mandated converter
+// (ValidationErrorConverter, the gdgrpcserver.WithErrorConverters shape — see
+// the package doc) that would otherwise be flagged as a mapper. Converter, in
+// the same fixture with the identical shape but not on the list, proves the
+// setting drives the exclusion rather than a blanket exemption for the shape.
+func TestExclude(t *testing.T) {
+	a := NewAnalyzer(Settings{Exclude: []string{"ValidationErrorConverter"}})
+	analysistest.Run(t, analysistest.TestData(), a, "excluded")
+}

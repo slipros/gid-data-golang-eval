@@ -923,11 +923,18 @@ linters:
         # The classifier packages (whose Is/As calls count) can be replaced —
         # e.g. to add a project-internal errors facade that re-exports Is/As.
         # Default: ["errors", "github.com/pkg/errors"].
+        # Exclusions ("Function" | "Type.Method") — for a function whose
+        # signature is dictated by a framework, not chosen by the service (a
+        # gdgrpcserver error converter registered via WithErrorConverters is
+        # func(error) *status.Status, fixed by interceptor.ErrorConverterFunc
+        # — there is no call site to fold the mapping into):
         # settings:
         #   packages:
         #     - errors
         #     - github.com/pkg/errors
         #     - myproject/pkg/errs
+        #   exclude:
+        #     - 'ValidationErrorConverter'
       giderrzeroret:
         type: module
         description: 'GID-243: on error, non-error results in a multi-value return must be nil/zero'

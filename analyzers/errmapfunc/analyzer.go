@@ -84,6 +84,25 @@
 // so any non-empty return is a value of its own.
 //
 // Generated code (ast.IsGenerated) is skipped.
+//
+// settings.exclude ("Function" | "Type.Method", the same centralized-exception
+// mechanism as giderrtext/gidmapout — see internal/exclude): some frameworks
+// DICTATE the signature of the one place error translation is allowed to live,
+// leaving no call site to inline into. gdgrpcserver.WithErrorConverters (the
+// gid.team gRPC server library, gitlab.gid.team/gid-data/tech/golang/libs/grpc)
+// takes interceptor.ErrorConverterFunc = func(error) *status.Status — the
+// registered function's signature is fixed by the library, not chosen by the
+// service. A validator-result-to-gRPC-status converter registered there
+// (ValidationErrorConverter: errors.As(err, &result) to classify, then
+// status.FromError(...) to translate) has no caller-side switch to fold the
+// mapping into — the interceptor calls the registered func(error) *status.Status
+// directly. That shape is the rule's canonical false positive (incident
+// 2026-08-06, resource-registry internal/server/grpc/integration and
+// advertising-api internal/server/grpc/advertising, both named
+// ValidationErrorConverter). The exclusion is per function/method, same as
+// every other centralized exception in this repo — it does not touch
+// discriminators #1-#3, so a domain mapper (func Code(err error) codes.Code)
+// living anywhere else keeps getting caught.
 package errmapfunc
 
 import (
@@ -92,6 +111,8 @@ import (
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/types/typeutil"
+
+	"github.com/slipros/gid-data-golang-eval/internal/exclude"
 )
 
 const ruleID = "GID-242"
@@ -113,6 +134,13 @@ type Settings struct {
 	// Packages — errors-classifier package import paths whose Is/As calls
 	// count. Replaces the default list (stdlib "errors" + github.com/pkg/errors).
 	Packages []string `json:"packages"`
+	// Exclude — functions/methods that are the one framework-mandated place
+	// error translation is allowed to live (e.g. a gdgrpcserver error
+	// converter, whose signature — func(error) *status.Status — is fixed by
+	// interceptor.ErrorConverterFunc, not chosen by the service): "Function"
+	// (any receiver) or "Type.Method". See the package doc for why this
+	// exists.
+	Exclude []string `json:"exclude"`
 }
 
 // NewAnalyzer builds the GID-242 analyzer from linter settings (.golangci.yml).
@@ -132,12 +160,12 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 			"is forbidden; bool-predicates and wrappers are fine. " +
 			"Fix: remove the function, inline the switch errors.Is(...) into the caller",
 		Run: func(pass *analysis.Pass) (any, error) {
-			return run(pass, classifierPkgs)
+			return run(pass, classifierPkgs, s.Exclude)
 		},
 	}
 }
 
-func run(pass *analysis.Pass, classifierPkgs map[string]bool) (any, error) {
+func run(pass *analysis.Pass, classifierPkgs map[string]bool, excluded []string) (any, error) {
 	for _, file := range pass.Files {
 		if ast.IsGenerated(file) {
 			continue
@@ -145,6 +173,9 @@ func run(pass *analysis.Pass, classifierPkgs map[string]bool) (any, error) {
 		for _, decl := range file.Decls {
 			fn, ok := decl.(*ast.FuncDecl)
 			if !ok || fn.Body == nil {
+				continue
+			}
+			if exclude.Match(excluded, receiverType(fn), fn.Name.Name) {
 				continue
 			}
 			checkFunc(pass, fn, classifierPkgs)
@@ -410,6 +441,22 @@ func isErrorsClassifyOnParam(
 	}
 	obj := pass.TypesInfo.Uses[id]
 	return obj != nil && errParams[obj]
+}
+
+// receiverType returns the name of fn's receiver type ("Client" for both Client
+// and *Client), or "" for a plain function — the form settings.exclude matches.
+func receiverType(fn *ast.FuncDecl) string {
+	if fn.Recv == nil || len(fn.Recv.List) == 0 {
+		return ""
+	}
+	expr := fn.Recv.List[0].Type
+	if star, ok := expr.(*ast.StarExpr); ok {
+		expr = star.X
+	}
+	if id, ok := expr.(*ast.Ident); ok {
+		return id.Name
+	}
+	return ""
 }
 
 func isErrorType(t types.Type) bool {

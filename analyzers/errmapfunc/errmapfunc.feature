@@ -13,8 +13,14 @@ Feature: GID-242 — a dedicated error-mapper function is forbidden
   only logs and returns the error it received.
 
   # Layer: go/analysis (package errmapfunc, linter giderrmapfunc), LoadModeTypesInfo.
-  # No exceptions — the rule is absolute (owner's decision). Config: settings.packages —
-  # the classifier package paths whose Is/As calls count; default ["errors", "github.com/pkg/errors"].
+  # No exceptions for the DETECTION logic (owner's decision) — but a function's SIGNATURE can be
+  # dictated by a framework rather than chosen by the service (a gdgrpcserver error converter
+  # registered via WithErrorConverters is func(error) *status.Status, fixed by
+  # interceptor.ErrorConverterFunc), leaving no call site to inline the mapping into. For that one
+  # case, settings.exclude ("Function" | "Type.Method", the same mechanism as giderrtext/gidmapout)
+  # names the function/method centrally, same as a functional-requirement exception elsewhere in
+  # this repo. Config: settings.packages — the classifier package paths whose Is/As calls count;
+  # default ["errors", "github.com/pkg/errors"]. settings.exclude — see the Config scenarios below.
   #
   # Detect: a top-level FuncDecl F such that ALL of
   #   - F has a NAMED parameter of type error, AND
@@ -247,6 +253,26 @@ Feature: GID-242 — a dedicated error-mapper function is forbidden
     # way to declare a facade (an As-style classifier with an unusual signature still needs it).
     # The facade bool-predicate (func isFacadeErr(err error) bool) stays legitimate — discriminator #1.
     # Covered by TestCustomPackages.
+
+  # --- Config: settings.exclude for a framework-mandated converter ---
+
+  Scenario: config — a function on settings.exclude is not reported even though it has the full mapper shape
+    Given settings.exclude contains "ValidationErrorConverter" and the function "func ValidationErrorConverter(err error) *status.Status { var t *ValidationErr; if !pkgerrors.As(err, &t) { return nil }; return status.New(codes.InvalidArgument, t.Field) }"
+    When the giderrmapfunc analyzer checks the file
+    Then no diagnostic is reported
+    # ValidationErrorConverter is the canonical case settings.exclude exists for: registered in
+    # gdgrpcserver.WithErrorConverters, whose interceptor.ErrorConverterFunc = func(error)
+    # *status.Status fixes the signature — there is no call site to fold the mapping into
+    # (resource-registry internal/server/grpc/integration, advertising-api
+    # internal/server/grpc/advertising).
+
+  Scenario: config — a function with the identical mapper shape but NOT on settings.exclude is still reported
+    Given settings.exclude contains "ValidationErrorConverter" and, in the same file, the function "func Converter(err error) *status.Status { var t *ValidationErr; if !pkgerrors.As(err, &t) { return nil }; return status.New(codes.Internal, t.Field) }"
+    When the giderrmapfunc analyzer checks the file
+    Then the diagnostic "GID-242: a dedicated error-mapper function is forbidden …" is reported on "Converter"
+    # Proves the setting names a specific function, not the shape — a second converter of the exact
+    # same shape one line away is caught the same as before the setting existed. Covered together
+    # with the scenario above by TestExclude.
 
 # --- Checklist when adding a new rule ---
 #  [x] ID and description are recorded in the registry (RULES.md, GID-242)
