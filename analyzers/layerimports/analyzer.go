@@ -435,14 +435,39 @@ func reportRepositoryImport(pass *analysis.Pass, imp *ast.ImportSpec, path strin
 	if pathseg.HasLayer(pkgPath, "app") || pathseg.HasLayer(pkgPath, "dal", "repository") {
 		return
 	}
-	if root, ok := pathseg.PkgModuleRoot(pkgPath); ok && root == pkgPath {
-		return // the pkg/<module> root: module.go is the module's composition root (module.md)
+	if isModuleRootOf(pkgPath, path) {
+		return // module.go is the module's own composition root (module.md)
 	}
 	pass.Reportf(imp.Pos(),
 		"%s: package %q must not import %q — a repository is wired in app and consumed by services "+
 			"through an interface (GID-132/134). Fix: declare an <Entity>Repository interface next to "+
 			"the consumer and inject the concrete repository in the composition root",
 		repoWiringID, pkgPath, path)
+}
+
+// isModuleRootOf reports whether pkgPath is the composition root of the module
+// the imported repository belongs to — i.e. the repository sits right under it
+// (module.md: pkg/<module>/module.go wires the module's own layers).
+//
+// Asking pathseg.PkgModuleRoot(pkgPath) == pkgPath is not enough: a module may
+// be nested (pkg/integration/push/firebase), and a path with no layer pair in
+// it — which the module root is, by definition — carries nothing to prove the
+// nesting. The import being wired does carry it: only the module's own root
+// sits directly above its dal/repository.
+func isModuleRootOf(pkgPath, importPath string) bool {
+	if root, ok := pathseg.PkgModuleRoot(pkgPath); ok && root == pkgPath {
+		return true
+	}
+	rest, ok := strings.CutPrefix(importPath, pkgPath+"/")
+	if !ok {
+		return false
+	}
+	// rest is a layer path already (it is relative to pkgPath), so it is matched
+	// segment-wise — running it through HasLayer would strip its first segment
+	// as a module root.
+	const repoLayer = "dal/repository"
+
+	return rest == repoLayer || strings.HasPrefix(rest, repoLayer+"/")
 }
 
 // sameModule tells whether an import belongs to the same module as the

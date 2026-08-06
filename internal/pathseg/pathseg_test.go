@@ -30,6 +30,12 @@ func TestHasLayer(t *testing.T) {
 		{"pkg module client layer", "mod/pkg/billing/client/snapshot", []string{"client"}, true},
 		{"pkg module nested client", "mod/pkg/billing/connect/client/x", []string{"client"}, false},
 		{"pkg module root has no layer", "mod/pkg/billing", []string{"client"}, false},
+		// A module nested deeper than one segment (resource-registry groups its
+		// integrations: pkg/integration/push/firebase) is still a module — its
+		// layers are anchored where the layer folders begin.
+		{"nested pkg module domain/service", "mod/pkg/integration/push/firebase/domain/service", []string{"domain", "service"}, true},
+		{"nested pkg module dal/entity", "mod/pkg/integration/push/firebase/dal/entity", []string{"dal", "entity"}, true},
+		{"nested pkg module root has no layer", "mod/pkg/integration/push/firebase", []string{"domain"}, false},
 		// non-standard layout (testdata): first segment is the module root.
 		{"testdata client layer", "svc/client/billing", []string{"client"}, true},
 		{"testdata nested client", "svc/connect/client/interceptor", []string{"client"}, false},
@@ -54,6 +60,10 @@ func TestLayerSegments(t *testing.T) {
 		{"mod/internal/domain/model/filter", []string{"domain", "model", "filter"}},
 		{"mod/pkg/billing/dal/repository", []string{"dal", "repository"}},
 		{"mod/pkg/billing", nil},
+		{"mod/pkg/integration/push/firebase/domain/service", []string{"domain", "service"}},
+		// No layer pair in the path: the module root stays one segment deep, so
+		// the module's own subdirectories read as the layer path.
+		{"mod/pkg/integration/push/firebase", []string{"push", "firebase"}},
 		{"svc/client/billing", []string{"client", "billing"}},
 		{"svc", nil},
 	}
@@ -93,6 +103,15 @@ func TestPkgModuleRoot(t *testing.T) {
 		{"mod/pkg/billing", "mod/pkg/billing", true},
 		{"mod/internal/client/x", "", false},
 		{"mod/pkg/", "", false},
+		// Nested module: the root ends where a canonical layer pair begins.
+		{"mod/pkg/integration/push/firebase/domain/service", "mod/pkg/integration/push/firebase", true},
+		{"mod/pkg/integration/push/firebase/dal/repository/build", "mod/pkg/integration/push/firebase", true},
+		// Without a pair there is nothing in the path to prove the nesting is a
+		// module, so the one-segment root stands.
+		{"mod/pkg/integration/push/firebase", "mod/pkg/integration", true},
+		{"mod/pkg/billing/connect/client/x", "mod/pkg/billing", true},
+		// pkg/ itself holding the layers: pkg is the root.
+		{"mod/pkg/domain/model", "mod/pkg", true},
 	}
 	for _, tt := range tests { //nolint:gidallptr // the plugin does not depend on the internal gdhelper library
 		root, ok := PkgModuleRoot(tt.path)

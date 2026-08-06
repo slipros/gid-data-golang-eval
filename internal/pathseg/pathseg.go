@@ -6,6 +6,17 @@ package pathseg
 
 import "strings"
 
+// layerPairs — the canonical layer/sublayer pairs of a service (ARCHITECTURE.md,
+// the same tree giddirtree keeps for internal/). A pair is the only marker of
+// the layered structure strong enough to be read out of a bare import path: a
+// lone segment named client or domain is an ordinary package name in any
+// library, but dal/entity or domain/service is the service template speaking.
+var layerPairs = map[string]map[string]struct{}{
+	"dal":    {"entity": {}, "repository": {}},
+	"domain": {"model": {}, "service": {}, "usecase": {}},
+	"server": {"grpc": {}, "http": {}},
+}
+
 // Index returns the index of the first occurrence of seq as consecutive
 // path segments, or -1.
 func Index(path string, seq ...string) int {
@@ -99,9 +110,27 @@ func ModuleRoot(path string) string {
 	return first
 }
 
-// PkgModuleRoot returns the "<prefix>/pkg/<module>" root for a package path
-// under the pkg/<module> application-module layout, or ok=false if pkgPath has
-// no /pkg/ segment (or nothing follows it).
+// PkgModuleRoot returns the module root for a package path under the pkg/
+// application-module layout, or ok=false if path has no /pkg/ segment (or
+// nothing follows it).
+//
+// A module is not always one segment deep: resource-registry groups its
+// integrations by category and vendor (pkg/integration/push/firebase,
+// pkg/integration/ad_cabinet/yandex_audience). Reading exactly one segment made
+// every package of such a module layer-less — LayerSegments of
+// .../firebase/domain/service came out as ["push","firebase","domain","service"],
+// so HasLayer(…, "domain","service") was false — and that silently disabled
+// every layer rule inside the whole module tree, which linted clean (incident
+// 2026-08-06, resource-registry).
+//
+// So the root is taken to end where a canonical layer PAIR begins
+// (.../firebase + domain/service). Without a pair the old one-segment root
+// stands, which is what keeps a nested package that merely borrows a layer name
+// from being read as that layer (pkg/billing/connect/client/x is not the client
+// layer — the same false positive HasLayer fixed for internal/). The cost of
+// that caution: a lone layer directory of a deeply nested module
+// (pkg/integration/push/firebase/client, no sublayer under it) is still not
+// recognised as a layer.
 func PkgModuleRoot(path string) (string, bool) {
 	// The module.md application-module layout marker: pkg/<module>/ repeats the
 	// same layered structure (dal/, domain/, server/) as internal/.
@@ -110,11 +139,25 @@ func PkgModuleRoot(path string) (string, bool) {
 	if !ok || rest == "" {
 		return "", false
 	}
-	module, _, _ := strings.Cut(rest, "/")
-	if module == "" {
+	segs := nonEmpty(Segments(rest))
+	if len(segs) == 0 {
 		return "", false
 	}
-	return prefix + pkgSeg + module, true
+
+	end := 1 // the pkg/<module> root, unless a layer pair says otherwise
+	for i := 0; i+1 < len(segs); i++ {
+		subs, isLayer := layerPairs[segs[i]]
+		if _, isPair := subs[segs[i+1]]; isLayer && isPair {
+			end = i
+			break
+		}
+	}
+	if end == 0 {
+		// pkg/ itself holds the layers (pkg/domain/model) — pkg is the root.
+		return strings.TrimSuffix(prefix+pkgSeg, "/"), true
+	}
+
+	return prefix + pkgSeg + strings.Join(segs[:min(end, len(segs))], "/"), true
 }
 
 // SameLibrary reports whether importPath is library (an import path without a
