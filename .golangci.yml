@@ -631,7 +631,7 @@ linters:
         #     - 'gderror.NewUnhandledValueError'
       gidifaceplace:
         type: module
-        description: 'GID-134: interfaces live at the consumer; exceptions: libraries and /domain/model for service/usecase'
+        description: 'GID-134: interfaces live at the consumer; exceptions: libraries, /domain/model for service/usecase, and a _test.go helper param/result forced by the production constructor it calls'
         original-url: github.com/slipros/gid-data-golang-eval
       gidembedmutex:
         type: module

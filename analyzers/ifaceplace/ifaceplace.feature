@@ -24,6 +24,15 @@ Feature: GID-134 — interfaces live where they are used
   Not affected: anonymous interfaces, error, any/interface{},
   generic constraints. Generated code (ast.IsGenerated) is skipped.
 
+  Test files (srcfile.IsTest): a _test.go helper's parameters/results are a
+  *use* of the interface, forced by the production constructor it wires up
+  (handler.NewCreate(v, s CreateService)) — skipped. A struct type a test
+  *declares* on its own picks its field types freely, not forced by anything —
+  it stays in scope even in a _test.go file (incident 2026-08-06,
+  resource-registry: yandex_audience_wire_test.go typed a wiring helper's
+  parameters with the handler's own consumer-side interfaces because
+  NewCreate demanded exactly that type).
+
   # --- Positive class: the violation is caught ---
 
   Scenario: service uses an interface from a foreign server package (field)
@@ -96,6 +105,31 @@ Feature: GID-134 — interfaces live where they are used
     Given a method takes "model.Job" and "string"
     When the analyzer checks the file
     Then no diagnostic is reported
+
+  Scenario: a _test.go wiring helper's parameter is forced by a production constructor — skipped
+    Given a _test.go helper function in /app/api takes "grpc.Notifier" from /server/grpc,
+      mirroring the type handler.NewCreate(validator, service CreateService) demands
+    When the analyzer checks the file
+    Then no diagnostic is reported (the parameter type is not the test's free choice)
+
+  Scenario: a _test.go wiring helper's result is forced by a production constructor — skipped
+    Given a _test.go helper function in /app/api returns "grpc.Notifier" from /server/grpc
+    When the analyzer checks the file
+    Then no diagnostic is reported
+
+  # --- Boundary class: a _test.go file is not exempted wholesale ---
+
+  Scenario: a struct declared in a _test.go file still gets its fields checked
+    Given a struct type declared inside a _test.go file in /app/api has a field
+      typed "grpc.Notifier" from /server/grpc
+    When the analyzer checks the file
+    Then a "GID-134" diagnostic is reported (the field type was the test's own choice, not forced)
+
+  Scenario: the same helper shape in a non-test file is still a violation
+    Given a non-test file in /app/api declares a function with the exact shape of the
+      exempted _test.go helper (a parameter typed "grpc.Notifier")
+    When the analyzer checks the file
+    Then a "GID-134" diagnostic is reported (the _test.go exception does not leak into production code)
 
 # --- Checklist when adding a new rule ---
 #  [x] ID and description are recorded in the registry (RULES.md, GID-134)

@@ -20,6 +20,25 @@
 //
 // LoadMode: TypesInfo is needed — we detect types.Interface and the
 // declaring package via Named.Obj().Pkg().
+//
+// Test files (GID-250 puts tests in the same package as the code under test,
+// see "Test files" at the end of RULES.md). A wiring test that boots a real
+// handler has no say in the type it names: it calls a production constructor
+// (handler.NewCreate(validator, service CreateService)) and so must declare
+// its own helper's parameters with that exact consumer-side interface, even
+// though the helper itself lives in a foreign package (incident 2026-08-06,
+// resource-registry: yandex_audience_wire_test.go typed a server-startup
+// helper's parameters as handler.CreateService/handler.IntegrationService/…
+// only because NewCreate demands it — the test had no other legal type to
+// write). That is a *use* of the interface in a parameter/result list
+// (checkFuncDecl) — skipped in _test.go files via srcfile.IsTest.
+//
+// A struct type *declared* in a _test.go file is a different case: nothing
+// forces its field types. A test picking a foreign "own"-package interface
+// for a struct field chose to — it was never handed that type by a call it
+// has to match. checkTypeDecl (struct fields) therefore keeps checking
+// _test.go files exactly like production ones; only checkFuncDecl
+// (parameters/results) skips them.
 package ifaceplace
 
 import (
@@ -29,6 +48,7 @@ import (
 	"golang.org/x/tools/go/analysis"
 
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
+	"github.com/slipros/gid-data-golang-eval/internal/srcfile"
 )
 
 const ruleID = "GID-134"
@@ -43,7 +63,8 @@ var layerSegments = []string{
 var Analyzer = &analysis.Analyzer{
 	Name: "gidifaceplace",
 	Doc: ruleID + ": interfaces live where they are used; " +
-		"define the interface next to its consumer (exceptions: libraries and /domain/model for service/usecase)",
+		"define the interface next to its consumer (exceptions: libraries, /domain/model for service/usecase, " +
+		"and a _test.go helper's parameters/results dictated by a production constructor)",
 	Run: run,
 }
 
@@ -53,11 +74,19 @@ func run(pass *analysis.Pass) (any, error) {
 		if ast.IsGenerated(file) {
 			continue
 		}
+		// A _test.go file cannot be exempted wholesale: struct fields it
+		// declares are a free choice (checked as usual), while a helper's
+		// parameters/results are dictated by the production constructor it
+		// wires up and must be skipped. See the package doc.
+		isTest := srcfile.IsTest(pass, file)
 		for _, decl := range file.Decls {
 			switch d := decl.(type) {
 			case *ast.GenDecl:
 				checkTypeDecl(pass, consumerPkg, d)
 			case *ast.FuncDecl:
+				if isTest {
+					continue
+				}
 				checkFuncDecl(pass, consumerPkg, d)
 			}
 		}
