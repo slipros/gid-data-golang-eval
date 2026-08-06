@@ -359,7 +359,7 @@ linters:
         original-url: github.com/slipros/gid-data-golang-eval
       gidonlypkgerrors:
         type: module
-        description: 'GID-146: errors are created only via github.com/pkg/errors'
+        description: 'GID-146: errors are created and inspected only via github.com/pkg/errors — importing the std errors package is forbidden'
         original-url: github.com/slipros/gid-data-golang-eval
       gidservicesingle:
         type: module

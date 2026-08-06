@@ -2,40 +2,39 @@
 package onlypkgerrors
 
 import (
-	stderrors "errors"
+	stderrors "errors" // want `GID-146: the std errors package is forbidden, github\.com/pkg/errors re-exports Is/As/Unwrap\. Fix: import "github\.com/pkg/errors" alone and call errors\.Is\(err, ErrNoResult\)`
 	"fmt"
 
 	"github.com/pkg/errors"
 )
 
-// --- Positive cases: std constructors are caught ---
+// --- Positive: the std errors package is reported on its import, under any alias ---
 
-var ErrStd = stderrors.New("std") // want `GID-146: errors\.New is forbidden\. Fix: use only github\.com/pkg/errors for errors`
+// The calls below are the same defect as the import, so they carry no diagnostic
+// of their own: dropping the import is the single fix for the whole file.
+
+var ErrStd = stderrors.New("std")
+
+func badJoin(a, b error) error {
+	return stderrors.Join(a, b)
+}
+
+func badIs(err error) bool {
+	return stderrors.Is(err, ErrStd)
+}
+
+// Positive: fmt.Errorf is reported on the call — the fmt import stays legitimate.
 
 func badErrorf(id string) error {
 	return fmt.Errorf("job %s failed", id) // want `GID-146: fmt\.Errorf is forbidden\. Fix: use only github\.com/pkg/errors for errors`
 }
 
-// Boundary case: errors.Join is also error creation.
-func badJoin(a, b error) error {
-	return stderrors.Join(a, b) // want `GID-146: errors\.Join is forbidden\. Fix: use only github\.com/pkg/errors for errors`
-}
-
-// --- Negative cases: pkg/errors passes ---
+// --- Negative: pkg/errors passes ---
 
 var ErrGood = errors.New("good")
 
 func goodWrap(err error) error {
 	return errors.Wrap(err, "context")
-}
-
-// Boundary case: chain inspection — std Is/As/Unwrap are allowed.
-func goodIs(err error) bool {
-	return stderrors.Is(err, ErrGood)
-}
-
-func goodUnwrap(err error) error {
-	return stderrors.Unwrap(err)
 }
 
 // --- Not applicable: fmt for strings — not errors ---
