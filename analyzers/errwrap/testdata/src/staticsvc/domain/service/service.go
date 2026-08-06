@@ -28,6 +28,40 @@ func (s *Service) badValueLit() error {
 	return model.BigError{Code: 2} // want `GID-177: a static error is returned without a stack\. Fix: wrap with errors\.WithStack \(or errors\.Wrap if you need context\)`
 }
 
+// --- Positive: WithMessage attaches a message and no stack, so the static
+// error goes out as stackless as a bare one — its only stack is the
+// package-level var's (the package init, not the failure). The shape an HTTP
+// client on the /client boundary shipped a whole package with
+// (ad-cabinet-connector internal/client/yandexaudience, 2026-08-06). ---
+
+func (s *Service) badWithMessage() error {
+	return errors.WithMessage(model.ErrSnapshotNotFound, "ctx") // want `GID-177: a static error is returned without a stack — errors\.WithMessage attaches a message and no stack`
+}
+
+func (s *Service) badWithMessagef(code int) error {
+	return errors.WithMessagef(model.ErrSnapshotNotFound, "status %d", code) // want `GID-177: a static error is returned without a stack — errors\.WithMessagef attaches a message and no stack`
+}
+
+// --- Boundary: stacked WithMessage calls still reach the static error underneath ---
+
+func (s *Service) badNestedWithMessage() error {
+	return errors.WithMessage(errors.WithMessage(model.ErrSnapshotNotFound, "inner"), "outer") // want `GID-177: a static error is returned without a stack — errors\.WithMessage attaches a message and no stack`
+}
+
+// --- Negative: WithMessage over a WRAPPED static error — the stack is already
+// collected underneath, the message is just a message. ---
+
+func (s *Service) goodWithMessageOverStack() error {
+	return errors.WithMessage(errors.WithStack(model.ErrSnapshotNotFound), "ctx")
+}
+
+// --- Negative: WithMessage over an incoming non-static error — its stack was
+// collected upstream; this is GID-176/GID-237 territory, not GID-177. ---
+
+func (s *Service) goodWithMessageOverIncoming(err error) error {
+	return errors.WithMessage(err, "ctx")
+}
+
 // --- Negative: WithStack / Wrap of a static error ---
 
 func (s *Service) goodWithStack() error {

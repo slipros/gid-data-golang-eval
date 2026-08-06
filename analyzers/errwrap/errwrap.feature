@@ -229,6 +229,14 @@ Feature: GID-176 / GID-177 / GID-237 / GID-248 — error handling by layer (errw
   # ============================================================
   # Everywhere (except testdata/generated): a return of a static error without a wrapper.
   # Unaffected by the GID-176 v2 change.
+  #
+  # errors.WithMessage/WithMessagef are LOOKED THROUGH (2026-08-06): they attach a message and
+  # nothing else — unlike Wrap they collect no stack, so a static error under one is exactly as
+  # stackless as a bare one, and its only stack is the package-level var's (the package init, not
+  # the failure). Incident: an HTTP client on the /client boundary returned every failure as
+  # errors.WithMessagef(ErrServerError, "status %d", code) and shipped without a single usable
+  # stack; GID-176 was silent too, because the tracked external error is never the argument there —
+  # the sentinel is (ad-cabinet-connector internal/client/yandexaudience).
 
   # --- Class 1: positive ---
 
@@ -247,6 +255,11 @@ Feature: GID-176 / GID-177 / GID-237 / GID-248 — error handling by layer (errw
     When the gidstaticerr analyzer checks the file
     Then the diagnostic "GID-177: a static error is returned without a stack …" is reported
 
+  Scenario: positive — a static error returned through errors.WithMessage / WithMessagef
+    Given a function with "return errors.WithMessage(model.ErrSnapshotNotFound, \"ctx\")" (and likewise WithMessagef)
+    When the gidstaticerr analyzer checks the file
+    Then the diagnostic "GID-177: a static error is returned without a stack — errors.WithMessage attaches a message and no stack, so the only stack is the package-level var's (the package init, not the failure). Fix: errors.Wrap(ErrSome, \"context\") — it collects the stack here and keeps the message" is reported
+
   # --- Class 2: negative ---
 
   Scenario: negative — a static error wrapped with WithStack or Wrap
@@ -254,7 +267,24 @@ Feature: GID-176 / GID-177 / GID-237 / GID-248 — error handling by layer (errw
     When the gidstaticerr analyzer checks the file
     Then no diagnostic is reported
 
+  Scenario: negative — WithMessage over an ALREADY WRAPPED static error
+    Given a function with "return errors.WithMessage(errors.WithStack(model.ErrSnapshotNotFound), \"ctx\")"
+    When the gidstaticerr analyzer checks the file
+    Then no diagnostic is reported
+    # The stack is collected underneath; the message on top is just a message.
+
+  Scenario: negative — WithMessage over an incoming non-static error
+    Given the function "func (s *Service) f(err error) error { return errors.WithMessage(err, \"ctx\") }"
+    When the gidstaticerr analyzer checks the file
+    Then no diagnostic is reported
+    # The incoming error carries the stack collected upstream — GID-176/GID-237 territory.
+
   # --- Class 3: boundary ---
+
+  Scenario: boundary — stacked WithMessage calls still reach the static error underneath
+    Given a function with "return errors.WithMessage(errors.WithMessage(model.ErrSnapshotNotFound, \"inner\"), \"outer\")"
+    When the gidstaticerr analyzer checks the file
+    Then the diagnostic "GID-177: a static error is returned without a stack — errors.WithMessage …" is reported once, on the static error
 
   Scenario: boundary — returning an incoming non-static error
     Given the function "func (s *Service) f(err error) error { return err }"

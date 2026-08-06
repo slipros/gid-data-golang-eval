@@ -43,7 +43,10 @@
 //     composite literal / address of a named error type BigError{}/&BigError{})
 //     without a wrapper lacks a stack — errors.WithStack is required (or
 //     errors.Wrap if context is needed). A wrapped error (WithStack/Wrap) is fine.
-//     The var declarations themselves are not touched (they are not returns).
+//     errors.WithMessage/WithMessagef are looked THROUGH: they attach a message
+//     and collect no stack, so the static error under one is as stackless as a
+//     bare one (see checkStaticReturnVia). The var declarations themselves are
+//     not touched (they are not returns).
 //
 //   - GID-237 (gidwithmessage): in /domain/service, errors.WithMessage and
 //     errors.WithMessagef are banned — adding a message to an incoming error
@@ -350,10 +353,34 @@ func runStatic(pass *analysis.Pass, s Settings) (any, error) {
 }
 
 func checkStaticReturn(pass *analysis.Pass, s Settings, expr ast.Expr) {
-	// Already wrapped (WithStack/Wrap/another pkg/errors call) — fine.
+	checkStaticReturnVia(pass, s, expr, "")
+}
+
+// checkStaticReturnVia reports a static error returned without a stack. via
+// names the pkg/errors call the static error is returned THROUGH, empty when
+// it is returned bare.
+//
+// errors.WithMessage/WithMessagef are looked through (added 2026-08-06): they
+// attach a message and nothing else — unlike Wrap, they collect no stack. A
+// static error under one is exactly as stackless as a bare one, and its only
+// stack is the package-level var's, pointing at the package's init rather than
+// at the failure. The incident: an HTTP client on the /client boundary
+// returned every failure as errors.WithMessagef(ErrServerError, "status %d",
+// code) and no rule said a word — GID-176 was silent too (see checkReturnedErr:
+// the tracked external error is never the argument, the sentinel is), so the
+// whole package shipped without a single usable stack (ad-cabinet-connector
+// internal/client/yandexaudience, 2026-08-06).
+func checkStaticReturnVia(pass *analysis.Pass, s Settings, expr ast.Expr, via string) {
 	if call, ok := expr.(*ast.CallExpr); ok {
-		name := pkgErrorsCallName(pass, call)
-		if name == "WithStack" || name == "Wrap" || name == "Wrapf" {
+		switch name := pkgErrorsCallName(pass, call); name {
+		// Already wrapped — Wrap/Wrapf/WithStack collect the stack.
+		case "WithStack", "Wrap", "Wrapf":
+			return
+		// A message and nothing else: look through to what is being messaged.
+		case "WithMessage", "WithMessagef":
+			if len(call.Args) > 0 {
+				checkStaticReturnVia(pass, s, call.Args[0], name)
+			}
 			return
 		}
 		// An excluded constructor (collects the stack itself) — fine.
@@ -362,11 +389,20 @@ func checkStaticReturn(pass *analysis.Pass, s Settings, expr ast.Expr) {
 		}
 		return
 	}
-	if isStaticError(pass, expr) {
+	if !isStaticError(pass, expr) {
+		return
+	}
+	if via == "" {
 		pass.Reportf(expr.Pos(),
 			"%s: a static error is returned without a stack. Fix: wrap with errors.WithStack (or errors.Wrap if you need context)",
 			ruleIDStatic)
+		return
 	}
+	pass.Reportf(expr.Pos(),
+		"%s: a static error is returned without a stack — errors.%s attaches a message and no stack, "+
+			"so the only stack is the package-level var's (the package init, not the failure). "+
+			"Fix: errors.Wrap(ErrSome, \"context\") — it collects the stack here and keeps the message",
+		ruleIDStatic, via)
 }
 
 // ===== GID-237 =====
