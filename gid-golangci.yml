@@ -168,6 +168,7 @@ linters:
     - gidloggerplace   # GID-251
     - gidserviceentity # GID-236
     - gidserviceorch   # GID-260
+    - gidbranchdispatch # GID-261
     - gidmoduleimports # GID-259
     - gidwithmessage   # GID-237
     - gidwithstack     # GID-248
@@ -888,6 +889,14 @@ linters:
         #   exclude:
         #     - 'Integration.coreRepo'  # Struct.Field
         #     - 'LegacyWriter'          # the whole service struct
+      gidbranchdispatch:
+        type: module
+        description: 'GID-261: a service method must not pick between two methods of the same dependency by a condition on its input — one name, two operations; split it into a method per query'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # Exclusions ("Method" | "Type.Method"):
+        # settings:
+        #   exclude:
+        #     - 'Integration.legacyGet'
       gidmoduleimports:
         type: module
         description: 'GID-259: an application module (pkg/<module>/**) must not import the core layers besides /domain/** — a module owns its dal and takes core data through a core service; judged layers of the module: domain, dal'

@@ -12,6 +12,7 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/allptr"
 	"github.com/slipros/gid-data-golang-eval/analyzers/approot"
 	"github.com/slipros/gid-data-golang-eval/analyzers/bansymbol"
+	"github.com/slipros/gid-data-golang-eval/analyzers/branchdispatch"
 	"github.com/slipros/gid-data-golang-eval/analyzers/buildsig"
 	"github.com/slipros/gid-data-golang-eval/analyzers/bytesinloop"
 	"github.com/slipros/gid-data-golang-eval/analyzers/cacheplace"
@@ -124,6 +125,7 @@ func init() {
 	register.Plugin("gidservicesingle", newSingleAnalyzerPlugin(servicesingle.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidserviceentity", newConfigurablePlugin(serviceentity.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidserviceorch", newConfigurablePlugin(serviceorch.NewAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidbranchdispatch", newConfigurablePlugin(branchdispatch.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidmoduleimports", newConfigurablePlugin(moduleimports.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidonlypkgerrors", newSingleAnalyzerPlugin(onlypkgerrors.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidlayerimports", newConfigurablePlugin(layerimports.NewAnalyzer, register.LoadModeTypesInfo))
