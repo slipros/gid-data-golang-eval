@@ -208,16 +208,95 @@ func isPkgRetryable(err error) bool {
 	return pkgerrors.Is(err, ErrX)
 }
 
-// --- Negative: classifies via errors.Is but returns a plain int (HTTP status code),
-// not an error — by the return-type discriminator this is not a mapper. ---
+// --- Positive (discriminator #1, widened 2026-08-06): classifies via errors.Is
+// and hands back an HTTP status code. The transport type of the translation is
+// irrelevant — the error is still being mapped away from its origin by a
+// dedicated function. ---
 
-func mapToHTTPStatus(err error) int {
+func mapToHTTPStatus(err error) int { // want `GID-242: a dedicated error-mapper function is forbidden`
 	switch {
 	case errors.Is(err, ErrX):
 		return http.StatusNotFound
 	default:
 		return http.StatusInternalServerError
 	}
+}
+
+// --- Positive (the 2026-08-06 incident, resource-registry
+// internal/server/grpc/errors): the mapper split into a codes.Code half and a
+// *status.Status half, classifying through the package's own bool-predicates.
+// Neither half returns error, so both were invisible to the first cut of
+// discriminator #1 — and the package doc cited the clean lint run as proof of
+// legitimacy. ---
+
+func Code(err error) codes.Code { // want `GID-242: a dedicated error-mapper function is forbidden`
+	switch {
+	case isNotFound(err):
+		return codes.NotFound
+	case isRetryable(err):
+		return codes.Unavailable
+	default:
+		return codes.Internal
+	}
+}
+
+func Converter(err error) *status.Status { // want `GID-242: a dedicated error-mapper function is forbidden`
+	if isNotFound(err) {
+		return status.New(codes.NotFound, err.Error())
+	}
+	return status.New(codes.Internal, err.Error())
+}
+
+// --- Positive (discriminator #1 + #3): a named result filled in by the
+// classified branch, with a naked return — no return expression to inspect,
+// the assignment to the named result is what marks the translation. ---
+
+func mapToNamedCode(err error) (code codes.Code) { // want `GID-242: a dedicated error-mapper function is forbidden`
+	code = codes.Internal
+	if driver.IsNoResult(err) {
+		code = codes.NotFound
+	}
+	return
+}
+
+// --- Positive: classifies and hands back a message string — the flattest
+// translation there is, and still a mapper. ---
+
+func errorMessage(err error) string { // want `GID-242: a dedicated error-mapper function is forbidden`
+	if errors.Is(err, ErrX) {
+		return "not found"
+	}
+	return err.Error()
+}
+
+// --- Negative (discriminator #1): a named bool result is still a predicate —
+// the discriminator is the result TYPE, not whether it carries a name. ---
+
+func isKnown(err error) (ok bool) {
+	ok = errors.Is(err, ErrX)
+	return
+}
+
+// --- Negative (discriminator #1): a classifier with NO results translates the
+// error into nothing at all — it only decides what to log. ---
+
+func logClassified(err error) {
+	if driver.IsTemporary(err) {
+		fmt.Println("temporary")
+		return
+	}
+	fmt.Println("permanent")
+}
+
+// --- Negative (discriminator #3 under the widened #1): an observer with a
+// (T, error) signature. It fills in a zero T next to the untouched err — the
+// zero T must not read as a translation, or every observer would be reported. ---
+
+func observeTuple(err error) (int, error) {
+	if driver.IsTemporary(err) {
+		fmt.Println("temporary")
+	}
+	return 0, err
 }
 
 // --- Negative: inline handling in a handler — errors.Is branches on a LOCAL

@@ -2,14 +2,15 @@
 
 Feature: GID-242 — a dedicated error-mapper function is forbidden
   As the styleguide owner
-  I want error mapping (error -> error/status) to happen inline, at the place the error occurs
+  I want error mapping (error -> error / status / code / message) to happen inline, at the place
+  the error occurs
   So that no shared error-mapper translates errors from layer to layer and gets called from
   everywhere, hiding the actually bounded set of errors a real call site can produce.
   A function is a MAPPER only when it BOTH classifies its own error parameter (errors.Is /
-  errors.As, or any bool-predicate over an error such as a driver's IsNoResult) AND returns an
-  error of its own; a bool-predicate (isNotFound / isRetryable / isCustom) merely classifies and
-  is legitimate, not a mapper, and neither is an observer that only logs and returns the error
-  it received.
+  errors.As, or any bool-predicate over an error such as a driver's IsNoResult) AND hands back a
+  translation of it — anything but a lone bool. A bool-predicate (isNotFound / isRetryable /
+  isCustom) merely classifies and is legitimate, not a mapper, and neither is an observer that
+  only logs and returns the error it received.
 
   # Layer: go/analysis (package errmapfunc, linter giderrmapfunc), LoadModeTypesInfo.
   # No exceptions — the rule is absolute (owner's decision). Config: settings.packages —
@@ -26,22 +27,34 @@ Feature: GID-242 — a dedicated error-mapper function is forbidden
   #         func(error, ...) bool — with that parameter as the first argument
   #         (gdpostgres.IsUniqueViolation(err), IsNoResult(err), s.isRetryable(err)). Matched by
   #         signature, in any package (including F's own), so no whitelist is involved, AND
-  #   - F's result list includes error (F returns error, or (T, error), ...), AND
-  #   - F PRODUCES an error of its own (discriminator #3).
+  #   - F RETURNS something, and that something is not a lone bool (discriminator #1), AND
+  #   - F PRODUCES a value of its own (discriminator #3).
   # All of them together → reported on F's declaration. The package is matched on the RESOLVED
   # callee (typeutil.Callee -> f.Pkg().Path()), so import aliases (pkgerrors "github.com/pkg/errors",
   # stderrors "errors") are handled automatically. A project-internal errors facade that re-exports
   # Is/As is added via settings.packages — no code change needed (and since v0.9.1 of the rule, a
   # facade Is/As is a func(error, ...) bool anyway, so shape (b) already covers it).
   #
-  # Discriminator #1 (return type, owner refinement 2026-07-12): only functions that RETURN
-  # error are mappers. A bool-predicate over the error parameter is a legitimate classifier.
+  # Discriminator #1 (return type, owner refinement 2026-07-12, WIDENED 2026-08-06): the only
+  # legitimate shape is a bool-predicate — a single bool result (named or not). Everything else a
+  # classifier hands back IS the translation, whatever its Go type: error, *status.Status,
+  # codes.Code, an HTTP status int, a message string. A function with no results at all is not a
+  # mapper either (it translates the error into nothing).
+  # Why widened (incident 2026-08-06, resource-registry internal/server/grpc/errors): the earlier
+  # cut asked "does F return error?", reading the OUTPUT TYPE as the thing being ruled on. A
+  # mapper split into `func Code(err error) codes.Code` + `func Converter(err error)
+  # *status.Status` — both classifying err through the package's own IsNotFound/IsAlreadyExists
+  # predicates — returns no error anywhere and passed clean; the package doc then cited that clean
+  # run as proof the pair was legitimate.
   # Discriminator #2 (parameter vs local): the classification must branch on F's own PARAMETER,
   # not on a local variable produced inside the body (the inline handler/repository shape).
-  # Discriminator #3 (produces its own error, added 2026-08-04 with shape (b)): F must replace
-  # the error — assign to its own error parameter, or return, in some branch, an error expression
-  # that is not that bare parameter. A function that classifies only to decide how to log/count
-  # and always returns the same value maps nothing.
+  # Discriminator #3 (produces its own value, added 2026-08-04 with shape (b), extended 2026-08-06):
+  # F must replace the error — assign to its own error parameter, assign to a NAMED result, or
+  # return, in some branch, an expression that is not that bare parameter. A function that
+  # classifies only to decide how to log/count and always returns the same value maps nothing.
+  # When F returns error, only its ERROR results are weighed (an observer with a (T, error)
+  # signature returns a zero T beside the untouched err); when F returns no error, no result of
+  # F can be the parameter, so every result counts.
   #
   # Why shape (b) (incident 2026-08-04, resource-registry internal/dal/repository/errors.go):
   # a storage driver publishes its error classification as bool-predicates, not as sentinels for
@@ -53,7 +66,7 @@ Feature: GID-242 — a dedicated error-mapper function is forbidden
   Scenario: positive — a mapper classifies the error parameter via errors.Is and returns error
     Given the top-level function "func mapErr(err error) error { switch { case errors.Is(err, ErrX): return status.Error(codes.NotFound, \"not found\"); default: return status.Error(codes.Internal, \"internal error\") } }"
     When the giderrmapfunc analyzer checks the file
-    Then the diagnostic "GID-242: a dedicated error-mapper function is forbidden — it classifies its own error parameter (errors.Is/errors.As, or a bool-predicate such as IsNoResult(err)) and returns an error of its own (maps error to error/status). Map the bounded set of errors inline, at the call site (in the repository method/handler where the error occurs): if IsNoResult(err) { err = entity.ErrNoResult }; return errors.Wrap(err, \"select x\"). A bool-predicate (func isNotFound(err error) bool) is a legitimate classifier, not a mapper" is reported on "mapErr"
+    Then the diagnostic "GID-242: a dedicated error-mapper function is forbidden — it classifies its own error parameter (errors.Is/errors.As, or a bool-predicate such as IsNoResult(err)) and hands back a translation of it: an error, a *status.Status, a codes.Code, a message. Map the bounded set of errors inline, at the call site (in the repository method/handler where the error occurs): if IsNoResult(err) { err = entity.ErrNoResult }; return errors.Wrap(err, \"select x\"). Only a bool-predicate (func isNotFound(err error) bool) is a legitimate classifier, not a mapper" is reported on "mapErr"
 
   Scenario: positive — a mapper classifies via errors.As (type-assert) and returns error
     Given the top-level function "func mapErrAs(err error) error { var t *CustomErr; if errors.As(err, &t) { return status.Error(codes.Internal, t.Msg) }; return err }"
@@ -103,6 +116,34 @@ Feature: GID-242 — a dedicated error-mapper function is forbidden
     When the giderrmapfunc analyzer checks the file
     Then the diagnostic "GID-242: a dedicated error-mapper function is forbidden …" is reported on "mapError"
 
+  Scenario: positive — the mapper split in two: a codes.Code half and a *status.Status half, neither returning error
+    Given the top-level functions "func Code(err error) codes.Code { switch { case isNotFound(err): return codes.NotFound; default: return codes.Internal } }" and "func Converter(err error) *status.Status { if isNotFound(err) { return status.New(codes.NotFound, err.Error()) }; return status.New(codes.Internal, err.Error()) }"
+    When the giderrmapfunc analyzer checks the file
+    Then the diagnostic "GID-242: a dedicated error-mapper function is forbidden …" is reported on both "Code" and "Converter"
+    # The 2026-08-06 incident (resource-registry internal/server/grpc/errors). codes.Code is a
+    # uint32 and *status.Status carries Err() rather than being an error, so an error-return-only
+    # discriminator saw two clean functions — while the pair is a textbook shared mapper feeding
+    # every handler through the server's error converter.
+
+  Scenario: positive — the translation is an HTTP status code
+    Given the top-level function "func mapToHTTPStatus(err error) int { switch { case errors.Is(err, ErrX): return http.StatusNotFound; default: return http.StatusInternalServerError } }"
+    When the giderrmapfunc analyzer checks the file
+    Then the diagnostic "GID-242: a dedicated error-mapper function is forbidden …" is reported on "mapToHTTPStatus"
+    # Was a negative until 2026-08-06 (return-type discriminator, error only). The transport type
+    # of the translation was never what the rule is about.
+
+  Scenario: positive — a named result filled in by the classified branch, with a naked return
+    Given the top-level function "func mapToNamedCode(err error) (code codes.Code) { code = codes.Internal; if driver.IsNoResult(err) { code = codes.NotFound }; return }"
+    When the giderrmapfunc analyzer checks the file
+    Then the diagnostic "GID-242: a dedicated error-mapper function is forbidden …" is reported on "mapToNamedCode"
+    # There is no return expression to inspect — discriminator #3 counts the assignment to the
+    # NAMED result instead.
+
+  Scenario: positive — the translation is a message string
+    Given the top-level function "func errorMessage(err error) string { if errors.Is(err, ErrX) { return \"not found\" }; return err.Error() }"
+    When the giderrmapfunc analyzer checks the file
+    Then the diagnostic "GID-242: a dedicated error-mapper function is forbidden …" is reported on "errorMessage"
+
   # --- Class 2: negative (clean code passes) ---
 
   Scenario: negative — an observer classifies via a driver predicate but produces no error of its own
@@ -136,11 +177,23 @@ Feature: GID-242 — a dedicated error-mapper function is forbidden
     Then no diagnostic is reported
     # pkg/errors is in the classification-API whitelist, but the function returns bool, not error — a predicate.
 
-  Scenario: negative — classifies via errors.Is but returns a plain int (HTTP status), not error
-    Given the function "func mapToHTTPStatus(err error) int { switch { case errors.Is(err, ErrX): return http.StatusNotFound; default: return http.StatusInternalServerError } }"
+  Scenario: negative — a NAMED bool result is still a predicate
+    Given the function "func isKnown(err error) (ok bool) { ok = errors.Is(err, ErrX); return }"
     When the giderrmapfunc analyzer checks the file
     Then no diagnostic is reported
-    # By the return-type discriminator, a function that does not return error is not a mapper.
+    # Discriminator #1 keys on the result TYPE, not on whether the result carries a name.
+
+  Scenario: negative — a classifier with NO results translates the error into nothing
+    Given the function "func logClassified(err error) { if driver.IsTemporary(err) { fmt.Println(\"temporary\"); return }; fmt.Println(\"permanent\") }"
+    When the giderrmapfunc analyzer checks the file
+    Then no diagnostic is reported
+
+  Scenario: negative — an observer with a (T, error) signature returns a zero T beside the untouched error
+    Given the function "func observeTuple(err error) (int, error) { if driver.IsTemporary(err) { fmt.Println(\"temporary\") }; return 0, err }"
+    When the giderrmapfunc analyzer checks the file
+    Then no diagnostic is reported
+    # Discriminator #3 weighs only the ERROR results when F returns error — otherwise the zero T
+    # would read as a translation and every observer with a value result would be reported.
 
   Scenario: negative — inline handling in a handler switches on a LOCAL variable, not a parameter
     Given the method "func (h *Handler) Handle() (int, error) { res, err := h.u.Do(); if err != nil { switch { case errors.Is(err, ErrX): return 0, status.Error(codes.NotFound, \"not found\") } }; return res, nil }"

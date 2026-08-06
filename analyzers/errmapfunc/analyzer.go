@@ -1,6 +1,7 @@
 // Package errmapfunc implements rule GID-242: a dedicated error-MAPPER
 // function — one that classifies its own error parameter via errors.Is and
-// returns an error (maps error → error/status) — is forbidden.
+// turns it into something else (an error, a gRPC status, a status code, a
+// message) — is forbidden.
 //
 // Owner's principle (absolute, no exceptions, and NOT specific to any one
 // error-return target — a mapped error, a gRPC status error, an HTTP error,
@@ -28,8 +29,9 @@
 //     alone let a real mapper through (incident 2026-08-04, resource-registry
 //     repository.MapError). Predicate calls are matched by SIGNATURE, in any
 //     package — including this one, AND
-//   - F's result list includes error (F returns error, or (T, error), ...), AND
-//   - F actually PRODUCES an error of its own (discriminator #3, see below).
+//   - F RETURNS something, and that something is NOT a lone bool
+//     (discriminator #1, see below), AND
+//   - F actually PRODUCES a value of its own (discriminator #3, see below).
 //
 // settings.packages lets a project add its own errors-facade package paths
 // (e.g. an internal errors wrapper that re-exports Is/As) without a code
@@ -39,13 +41,24 @@
 // All of them hold together → F is a dedicated error mapper, reported on F's
 // declaration.
 //
-// Discriminator #1 — the RETURN type (added 2026-07-12, owner refinement):
-// only functions that RETURN error are mappers. A bool-predicate over the
-// error parameter (func isNotFound(err error) bool { return errors.Is(...) },
+// Discriminator #1 — the RETURN type (added 2026-07-12, widened 2026-08-06):
+// the ONLY legitimate shape is a bool-predicate — a function whose single
+// result is a bool (func isNotFound(err error) bool { return errors.Is(...) },
 // func isRetryable(err error) bool, func isCustom(err error) bool { var t
-// *CustomErr; return errors.As(err, &t) }) is a legitimate classifier/helper,
-// not a mapper, and is NOT reported — it does not translate the error into a
-// new error/status, it merely answers a yes/no question about it.
+// *CustomErr; return errors.As(err, &t) }). It does not translate the error
+// into anything, it merely answers a yes/no question about it. Everything else
+// a classifier can hand back IS the translation, whatever its Go type:
+// error, *status.Status, codes.Code, an HTTP status int, a message string.
+// The first cut of this discriminator asked "does F return error?", which read
+// the mapper's OUTPUT TYPE as the thing being ruled on — but the rule is about
+// the error being translated away from its origin, and gRPC transport types
+// carry it just as well. That gap shipped a textbook mapper split across two
+// functions (incident 2026-08-06, resource-registry internal/server/grpc/errors:
+// func Code(err error) codes.Code + func Converter(err error) *status.Status,
+// both classifying err through the package's own IsNotFound/IsAlreadyExists
+// predicates, both invisible to an error-return-only detector).
+// A function with NO results is not a mapper either — it produces nothing to
+// map into (a classifier that only logs or counts).
 //
 // Discriminator #2 — the PARAMETER vs a local: inline handling inside a
 // handler/interceptor method, where errors.Is branches on a LOCAL variable
@@ -55,13 +68,20 @@
 //
 // Discriminator #3 — MAPPING vs merely observing (added 2026-08-04 alongside
 // shape (b)): a mapper replaces the error. F is reported only when it either
-// assigns to its own error parameter (err = entity.ErrNoResult) or returns,
-// in some branch, an error expression that is NOT that bare parameter
-// (errors.WithStack(ErrX), status.Error(...), nil). A function that classifies
-// the error only to decide how to LOG or count it and always hands the very
-// same value back (if isTemporary(err) { log.Warn() }; return err) produces no
-// error of its own — it is not a mapper and is not reported. Without this
-// discriminator, shape (b) would report such observers.
+// assigns to its own error parameter (err = entity.ErrNoResult), assigns to a
+// NAMED result (out = ErrX; return), or returns, in some branch, an expression
+// that is NOT that bare parameter (errors.WithStack(ErrX), status.Error(...),
+// codes.NotFound, nil). A function that classifies the error only to decide
+// how to LOG or count it and always hands the very same value back
+// (if isTemporary(err) { log.Warn() }; return err) produces nothing of its own
+// — it is not a mapper and is not reported. Without this discriminator, shape
+// (b) would report such observers.
+//
+// When F returns error, only its ERROR results are weighed — an observer with
+// a (T, error) signature legitimately returns a zero T alongside the untouched
+// err. When F returns no error at all (the codes.Code / *status.Status mapper),
+// every result counts: nothing it hands back can be the error parameter itself,
+// so any non-empty return is a value of its own.
 //
 // Generated code (ast.IsGenerated) is skipped.
 package errmapfunc
@@ -108,7 +128,8 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name: "giderrmapfunc",
 		Doc: ruleID + ": a dedicated error-mapper function (classifies its own error parameter via errors.Is/errors.As " +
-			"AND returns error — maps error to error/status) is forbidden; bool-predicates and wrappers are fine. " +
+			"or a bool-predicate AND returns anything but a lone bool — error, *status.Status, codes.Code, a message) " +
+			"is forbidden; bool-predicates and wrappers are fine. " +
 			"Fix: remove the function, inline the switch errors.Is(...) into the caller",
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, classifierPkgs)
@@ -133,15 +154,17 @@ func run(pass *analysis.Pass, classifierPkgs map[string]bool) (any, error) {
 }
 
 // checkFunc reports fn if it is a dedicated error mapper: it has an error
-// parameter, its body calls errors.Is/As (from a classifier package) on that
-// parameter, AND it returns error. A function that does not return error
-// (e.g. a bool predicate) is a legitimate classifier/helper and is not reported.
+// parameter, its body classifies that parameter (errors.Is/As from a
+// classifier package, or a bool-predicate), AND it hands back a translation of
+// it — anything other than a lone bool. A bool-predicate answers a yes/no
+// question about the error instead of translating it, and a function with no
+// results translates it into nothing at all; both are legitimate.
 func checkFunc(pass *analysis.Pass, fn *ast.FuncDecl, classifierPkgs map[string]bool) {
 	errParams := errorParams(pass, fn)
 	if len(errParams) == 0 {
 		return
 	}
-	if !funcReturnsError(pass, fn) {
+	if !funcReturnsTranslation(pass, fn) {
 		return
 	}
 	classifies := false
@@ -156,16 +179,44 @@ func checkFunc(pass *analysis.Pass, fn *ast.FuncDecl, classifierPkgs map[string]
 		}
 		return true
 	})
-	if classifies && producesOwnError(pass, fn, errParams) {
+	if classifies && producesOwnValue(pass, fn, errParams) {
 		pass.Reportf(fn.Name.Pos(),
 			"%s: a dedicated error-mapper function is forbidden — it classifies its own error parameter "+
-				"(errors.Is/errors.As, or a bool-predicate such as IsNoResult(err)) and returns an error of its "+
-				"own (maps error to error/status). Map the bounded set of errors inline, at the call site (in the "+
-				"repository method/handler where the error occurs): "+
+				"(errors.Is/errors.As, or a bool-predicate such as IsNoResult(err)) and hands back a translation "+
+				"of it: an error, a *status.Status, a codes.Code, a message. Map the bounded set of errors inline, "+
+				"at the call site (in the repository method/handler where the error occurs): "+
 				"if IsNoResult(err) { err = entity.ErrNoResult }; return errors.Wrap(err, \"select x\"). "+
-				"A bool-predicate (func isNotFound(err error) bool) is a legitimate classifier, not a mapper",
+				"Only a bool-predicate (func isNotFound(err error) bool) is a legitimate classifier, not a mapper",
 			ruleID)
 	}
+}
+
+// funcReturnsTranslation reports whether fn hands back a translation of the
+// error it classifies — discriminator #1. Every result shape counts (error,
+// *status.Status, codes.Code, an HTTP status int, a message string) except the
+// two that translate nothing: a lone bool (a predicate answers a yes/no
+// question about the error) and no results at all (a classifier that only logs
+// or counts).
+func funcReturnsTranslation(pass *analysis.Pass, fn *ast.FuncDecl) bool {
+	if fn.Type.Results == nil || len(fn.Type.Results.List) == 0 {
+		return false
+	}
+	return !isBoolPredicate(pass, fn)
+}
+
+// isBoolPredicate reports whether fn's result list is exactly one unnamed-or-
+// named bool: func isNotFound(err error) bool.
+func isBoolPredicate(pass *analysis.Pass, fn *ast.FuncDecl) bool {
+	fields := fn.Type.Results.List
+	if len(fields) != 1 || len(fields[0].Names) > 1 {
+		return false
+	}
+	resultType := pass.TypesInfo.TypeOf(fields[0].Type)
+	if resultType == nil {
+		return false
+	}
+	basic, ok := resultType.Underlying().(*types.Basic)
+	return ok && basic.Kind() == types.Bool
 }
 
 // isPredicateOnParam reports whether call is a bool-predicate over one of
@@ -209,24 +260,37 @@ func isErrorBoolPredicate(sig *types.Signature) bool {
 	return ok && basic.Kind() == types.Bool
 }
 
-// producesOwnError reports whether fn replaces the error instead of merely
-// observing it (discriminator #3): it assigns to its own error parameter, or
-// some return hands back an error expression that is not that bare parameter.
-// A classifier that always returns the very same value it received (logging,
-// metrics) maps nothing and is left alone.
-func producesOwnError(pass *analysis.Pass, fn *ast.FuncDecl, errParams map[types.Object]bool) bool {
+// producesOwnValue reports whether fn replaces the error instead of merely
+// observing it (discriminator #3): it assigns to its own error parameter or to
+// a named result, or some return hands back an expression that is not that
+// bare parameter. A classifier that always returns the very same value it
+// received (logging, metrics) maps nothing and is left alone.
+//
+// When fn returns error, only its error results are weighed — an observer with
+// a (T, error) signature returns a zero T next to the untouched err, and that
+// zero T must not read as a translation. When fn returns no error at all, its
+// results cannot BE the error parameter, so every one of them counts.
+func producesOwnValue(pass *analysis.Pass, fn *ast.FuncDecl, errParams map[types.Object]bool) bool {
+	errorResultsOnly := funcReturnsError(pass, fn)
+	targets := map[types.Object]bool{}
+	for obj := range errParams {
+		targets[obj] = true
+	}
+	for obj := range namedResults(pass, fn, errorResultsOnly) {
+		targets[obj] = true
+	}
 	produces := false
 	ast.Inspect(fn.Body, func(n ast.Node) bool {
 		switch stmt := n.(type) {
 		case *ast.AssignStmt:
 			for _, lhs := range stmt.Lhs {
-				if paramObject(pass, lhs, errParams) != nil {
+				if paramObject(pass, lhs, targets) != nil {
 					produces = true
 				}
 			}
 		case *ast.ReturnStmt:
 			for _, res := range stmt.Results {
-				if !isErrorType(pass.TypesInfo.TypeOf(res)) {
+				if errorResultsOnly && !isErrorType(pass.TypesInfo.TypeOf(res)) {
 					continue
 				}
 				if paramObject(pass, res, errParams) == nil {
@@ -237,6 +301,30 @@ func producesOwnError(pass *analysis.Pass, fn *ast.FuncDecl, errParams map[types
 		return true
 	})
 	return produces
+}
+
+// namedResults collects the objects of fn's NAMED results, so that a mapper
+// written as `func code(err error) (c codes.Code) { if isX(err) { c = … };
+// return }` — which never returns an expression at all — still counts as
+// producing a value of its own. errorsOnly restricts the set to error results,
+// mirroring producesOwnValue: when fn returns error, filling in a non-error
+// result (a zero T next to the untouched err) is not a translation.
+func namedResults(pass *analysis.Pass, fn *ast.FuncDecl, errorsOnly bool) map[types.Object]bool {
+	out := map[types.Object]bool{}
+	if fn.Type.Results == nil {
+		return out
+	}
+	for _, field := range fn.Type.Results.List {
+		if errorsOnly && !isErrorType(pass.TypesInfo.TypeOf(field.Type)) {
+			continue
+		}
+		for _, name := range field.Names {
+			if obj := pass.TypesInfo.Defs[name]; obj != nil {
+				out[obj] = true
+			}
+		}
+	}
+	return out
 }
 
 // paramObject returns the object expr refers to when it is a plain identifier
