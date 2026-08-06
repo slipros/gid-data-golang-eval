@@ -169,6 +169,7 @@ linters:
     - gidserviceentity # GID-236
     - gidserviceorch   # GID-260
     - gidbranchdispatch # GID-261
+    - giddocref        # GID-262
     - gidmoduleimports # GID-259
     - gidwithmessage   # GID-237
     - gidwithstack     # GID-248
@@ -908,6 +909,15 @@ linters:
         # settings:
         #   exclude:
         #     - 'Integration.legacyGet'
+      giddocref:
+        type: module
+        description: 'GID-262: a comment must explain the code, not reference the development documentation — ARD/PRD/backlog names, requirement ids (@ФТ-11), document codes (Р-11, B-48), sections (§12), task numbers, BDD tags'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # patterns replace the built-in marker list, extra is appended to it
+        # (a project's tracker key). Pinpoint exclusions — //nolint:giddocref:
+        # settings:
+        #   extra:
+        #     - '\bUDMP-\d+\b'
       gidmoduleimports:
         type: module
         description: 'GID-259: an application module (pkg/<module>/**) must not import the core layers besides /domain/** — a module owns its dal and takes core data through a core service; judged layers of the module: domain, dal'
@@ -1078,6 +1088,13 @@ linters:
         linters:
           - goconst
           - mnd
+      # GID-262 forbids a comment that references the development documentation,
+      # and the package documenting that rule has to quote the very markers it
+      # bans (ARD, @ФТ-11, VERIFY) as examples — the same carve-out testdata
+      # gets, one directory wide.
+      - path: analyzers/docref/
+        linters:
+          - giddocref
     paths:
       - \.pb\.go$
       - \.pb\.gw\.go$

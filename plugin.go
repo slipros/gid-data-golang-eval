@@ -34,6 +34,7 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/dataresponse"
 	"github.com/slipros/gid-data-golang-eval/analyzers/dbtags"
 	"github.com/slipros/gid-data-golang-eval/analyzers/dirtree"
+	"github.com/slipros/gid-data-golang-eval/analyzers/docref"
 	"github.com/slipros/gid-data-golang-eval/analyzers/embedmutex"
 	"github.com/slipros/gid-data-golang-eval/analyzers/entitygroup"
 	"github.com/slipros/gid-data-golang-eval/analyzers/entitymethod"
@@ -126,6 +127,7 @@ func init() {
 	register.Plugin("gidserviceentity", newConfigurablePlugin(serviceentity.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidserviceorch", newConfigurablePlugin(serviceorch.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidbranchdispatch", newConfigurablePlugin(branchdispatch.NewAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("giddocref", newConfigurablePlugin(docref.NewAnalyzer, register.LoadModeSyntax))
 	register.Plugin("gidmoduleimports", newConfigurablePlugin(moduleimports.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidonlypkgerrors", newSingleAnalyzerPlugin(onlypkgerrors.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidlayerimports", newConfigurablePlugin(layerimports.NewAnalyzer, register.LoadModeTypesInfo))
