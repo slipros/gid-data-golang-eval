@@ -933,8 +933,9 @@ linters:
         #     - errors
         #     - github.com/pkg/errors
         #     - myproject/pkg/errs
-        #   exclude:
-        #     - 'ValidationErrorConverter'
+        settings:
+          exclude:
+            - 'ValidationErrorConverter'
       giderrzeroret:
         type: module
         description: 'GID-243: on error, non-error results in a multi-value return must be nil/zero'
