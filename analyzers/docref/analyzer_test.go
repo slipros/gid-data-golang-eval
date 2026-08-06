@@ -9,8 +9,9 @@ import (
 // TestAnalyzer — default markers: a document name (ARD/PRD/BACKLOG), a
 // requirement id (@ФТ-11), a section (§12), a task number, a traceability
 // marker (VERIFY) and a commit reference are all reported, one diagnostic per
-// comment. The package also holds svc_test.go: a test doc comment is judged
-// like any other.
+// comment. The package also holds svc_test.go: a test file is not judged by
+// default — the id paired with the name of the test proving it is the trace
+// the requirement map is built from.
 func TestAnalyzer(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), Analyzer, "svc")
 }
@@ -37,6 +38,13 @@ func TestCustomPatterns(t *testing.T) {
 		Extra:    []string{`\bUDMP-\d+\b`},
 	})
 	analysistest.Run(t, analysistest.TestData(), a, "custom")
+}
+
+// TestIncludeTests — boundary: settings.include-tests judges _test.go too, for
+// a repository that has already extracted its requirement map into a file.
+func TestIncludeTests(t *testing.T) {
+	a := NewAnalyzer(Settings{IncludeTests: true})
+	analysistest.Run(t, analysistest.TestData(), a, "withtests")
 }
 
 // TestFirstMarker — the quoted marker of the diagnostic: the leftmost

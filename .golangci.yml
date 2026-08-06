@@ -911,13 +911,14 @@ linters:
         #     - 'Integration.legacyGet'
       giddocref:
         type: module
-        description: 'GID-262: a comment must explain the code, not reference the development documentation — ARD/PRD/backlog names, requirement ids (@ФТ-11), document codes (Р-11, B-48), sections (§12), task numbers, BDD tags. A requirement id is not deleted but moved into the requirement map — a file of its own linked from the README (ФТ-15 → TestCreate_DuplicateTitle_AlreadyExists)'
+        description: 'GID-262: a comment must explain the code, not reference the development documentation — ARD/PRD/backlog names, requirement ids (@ФТ-11), document codes (Р-11, B-48), sections (§12), task numbers, BDD tags. _test.go is not judged (the id next to the test name is the trace the map is built from; settings.include-tests turns it on). A requirement id is not deleted but moved into the requirement map — a file of its own linked from the README (ФТ-15 → TestCreate_DuplicateTitle_AlreadyExists)'
         original-url: github.com/slipros/gid-data-golang-eval
         # patterns replace the built-in marker list, extra is appended to it
         # (a project's tracker key). Pinpoint exclusions — //nolint:giddocref:
         # settings:
         #   extra:
         #     - '\bUDMP-\d+\b'
+        #   include-tests: true  # once the requirement map lives in a file of its own
       gidmoduleimports:
         type: module
         description: 'GID-259: an application module (pkg/<module>/**) must not import the core layers besides /domain/** — a module owns its dal and takes core data through a core service; judged layers of the module: domain, dal'

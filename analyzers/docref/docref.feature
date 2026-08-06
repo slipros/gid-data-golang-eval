@@ -26,10 +26,16 @@ Feature: GID-262 — a comment explains the code, not the development documentat
     When the analyzer checks the file
     Then a "GID-262" diagnostic is reported on each of them
 
-  Scenario: positive — a test doc comment is judged like any other
+  Scenario: non-applicability — a _test.go file
     Given the file svc_test.go with the comment "TestCabinets_Duplicates_ResolvedOnce — @ФТ-15: a repeated id costs one call"
     When the analyzer checks the file
-    Then a "GID-262" diagnostic is reported
+    Then no diagnostic is reported — the id paired with the name of the test proving it is the trace the requirement map is built from
+
+  Scenario: boundary — settings.include-tests
+    Given settings.include-tests is true, for a repository that has already extracted its requirement map into a file
+    And the file svc_test.go carries "@ФТ-15" in a doc comment
+    When the analyzer checks the file
+    Then a "GID-262" diagnostic is reported with the requirement-map fix
 
   Scenario: boundary — one diagnostic per comment, on the leftmost marker
     Given the comment "(BACKLOG B-48) — задача 43" carrying three markers

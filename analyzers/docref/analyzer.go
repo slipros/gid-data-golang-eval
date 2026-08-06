@@ -30,9 +30,13 @@
 // and the free-text justification of a //nolint is exactly the place where
 // naming the decision that granted the exception is legitimate).
 //
-// A _test.go file is judged: a test doc comment states what the test proves
-// as easily as production code does, and nothing forces a double to carry a
-// requirement id.
+// A _test.go file is **not** judged (internal/srcfile.IsTest). The requirement
+// map the rule asks production code to hand over is `ФТ-15 → the test that
+// proves it`, and the test is the one place where that pairing is not a
+// pointer into a foreign document but a fact about the file it sits in: the
+// name of the test is right there. Judging tests would delete the very
+// trace the map is built from — settings.include-tests turns them back on
+// once the map has been extracted into a file of its own.
 package docref
 
 import (
@@ -44,6 +48,8 @@ import (
 
 	"github.com/pkg/errors"
 	"golang.org/x/tools/go/analysis"
+
+	"github.com/slipros/gid-data-golang-eval/internal/srcfile"
 )
 
 const ruleID = "GID-262"
@@ -122,6 +128,10 @@ type Settings struct {
 	// Extra — additional markers, always appended to whatever Patterns
 	// resolved to (a project's tracker key: `\bUDMP-\d+\b`).
 	Extra []string `json:"extra"`
+	// IncludeTests judges _test.go files too. Off by default: the requirement
+	// map lives in the tests until it is extracted into a file of its own —
+	// turn this on once it has been, and the ids leave the tests as well.
+	IncludeTests bool `json:"include-tests"`
 }
 
 // NewAnalyzer builds the GID-262 analyzer with the given settings.
@@ -147,7 +157,7 @@ func NewAnalyzer(cfg Settings) *analysis.Analyzer {
 				return nil, compileErr
 			}
 
-			return run(pass, markers)
+			return run(pass, markers, cfg.IncludeTests)
 		},
 	}
 }
@@ -175,9 +185,12 @@ func compile(patterns []pattern) ([]marker, error) {
 	return markers, nil
 }
 
-func run(pass *analysis.Pass, markers []marker) (any, error) {
+func run(pass *analysis.Pass, markers []marker, includeTests bool) (any, error) {
 	for _, file := range pass.Files {
 		if ast.IsGenerated(file) {
+			continue
+		}
+		if !includeTests && srcfile.IsTest(pass, file) {
 			continue
 		}
 		for _, group := range file.Comments {
