@@ -70,10 +70,10 @@ func run() error {
 	return commands.Execute(info)
 }
 
-// useDefaultConfig rewrites the command line so that a run finding no
-// .golangci.yml is made with the config built into the binary. A failure to
-// write that config is not fatal: it is reported, and the run goes on with the
-// command line as given — the way the binary behaved before.
+// useDefaultConfig rewrites the command line so that the run is made with the
+// config built into the binary. A failure to write that config is not fatal:
+// it is reported, and the run goes on with the command line as given — plain
+// golangci-lint behaviour, without the gid rules.
 func useDefaultConfig(config []byte) {
 	args, path, err := defaultconfig.Inject(os.Args, config)
 	if err != nil {
@@ -83,8 +83,20 @@ func useDefaultConfig(config []byte) {
 	}
 
 	if path != "" {
-		_, _ = fmt.Fprintf(os.Stderr, "custom-gcl: no .golangci.yml found, using the built-in gid config (%s)\n", path)
+		_, _ = fmt.Fprintf(os.Stderr, "custom-gcl: using the built-in gid config (%s)%s\n", path, ignoredLocalConfig())
 	}
 
 	os.Args = args
+}
+
+// ignoredLocalConfig — the tail of the notice naming the repository config the
+// run is not using. Regular golangci-lint would have read that file, so its
+// silent absence from the run is exactly what needs saying out loud.
+func ignoredLocalConfig() string {
+	local := defaultconfig.LocalConfig()
+	if local == "" {
+		return ""
+	}
+
+	return fmt.Sprintf("; %s is ignored — pass --config %s to use it", local, local)
 }

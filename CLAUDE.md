@@ -22,10 +22,11 @@ Dependency versions are pinned to golangci v2.9.0 — do not upgrade without ver
 - `analyzers/patterns/` — simple AST patterns (GID-001…008), layer 1
 - `plugin.go` — registration of all analyzers in the plugin system
 - `config.go` + `internal/defaultconfig` — `gid-golangci.yml` embedded into the
-  binary: a repo without its own `.golangci.yml` is linted by it (materialized
-  into the user cache dir and passed as `--config`); `custom-gcl gid-config`
-  prints it. A new rule enabled in `gid-golangci.yml` therefore ships with the
-  binary — the gate is `TestDefaultConfigEnablesRegisteredLinters`
+  binary and used by **every** run (materialized into the user cache dir and
+  passed as `--config`); a repo `.golangci.yml` applies only via an explicit
+  `--config`, which is why `make lint-fast` passes it. `custom-gcl gid-config`
+  prints the built-in config. A new rule enabled in `gid-golangci.yml` therefore
+  ships with the binary — the gate is `TestDefaultConfigEnablesRegisteredLinters`
 - `internal/pathseg` — matching layers by path segments (`/domain/model`, `/dal/entity`, …)
 - `internal/exclude` — parsing of `settings.exclude` (`Method` | `Type.Method`)
 - `.golangci.yml` — the reference config: each linter with a `desc` and example settings

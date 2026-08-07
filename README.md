@@ -27,13 +27,14 @@ the linter does that deterministically.
 - `analyzers/` — go/analysis analyzers (one rule or a group of related GID-IDs = one linter)
 - `analyzers/patterns/` — simple AST pattern rules (GID-001…008), layer 1
 - `.golangci.yml` — this repo's own config (self-lint): all linters plus
-  repo-specific settings (its own `giddirtree` tree, testdata exclusions);
+  repo-specific settings (its own `giddirtree` tree, testdata exclusions). The
+  binary does not read it by itself, so `make lint-fast` passes `--config`;
 - `gid-golangci.yml` — **distributable config for services**: the same rule
   set with the canonical gid.team `internal/` tree (app, client, dal, domain,
   event, job, metric, schedule, server, validate) and no repo-specific
   exclusions. It is **embedded into the custom-gcl binary** (`config.go`,
-  `internal/defaultconfig`) and used automatically in a repo without a
-  `.golangci.yml` of its own — nothing to copy, nothing to keep in sync;
+  `internal/defaultconfig`) and is what a plain run uses — nothing to copy,
+  nothing to keep in sync;
   based on the production config of consent-api (UDMP/backend-go) with GID layers on top
 
 ## Quick start
@@ -53,7 +54,8 @@ make install-hook  # git pre-commit hook with the local check
 does **not** see them — they are compiled into a separate `custom-gcl` binary
 (full golangci-lint v2.12.2 + our linters). You use the built binary exactly like
 regular golangci-lint — standard and `gid*` linters run in a single pass over a
-single `.golangci.yml`. Build the binary in one of two ways.
+single config, and that config ships inside the binary. Build it in one of two
+ways.
 
 ### Option A — `go install` (recommended)
 
@@ -64,13 +66,13 @@ go install github.com/slipros/gid-data-golang-eval/cmd/custom-gcl@latest
 ```
 
 `custom-gcl` lands in `$(go env GOPATH)/bin` (add it to `PATH`). To upgrade, rerun
-`go install` with a newer tag. A service only needs its `.golangci.yml` —
+`go install` with a newer tag. A service needs nothing else — no config to clone
+or copy, the binary carries its own.
 
 > **After upgrading the binary run `custom-gcl cache clean`.** The golangci-lint
 > result cache keys on the config and the checked sources, not on the gid rules
 > embedded in the binary — without cleaning it replays stale diagnostics from
 > the previous revision.
-nothing else to clone or copy.
 
 ### Option B — `golangci-lint custom` (.custom-gcl.yml)
 
@@ -91,28 +93,37 @@ Build: `golangci-lint custom` → `./bin/custom-gcl`.
 ### Next (for both options)
 
 Just run it: `custom-gcl run ./...` (option A) or `./bin/custom-gcl run ./...`
-(option B).
+(option B). **Nothing to configure** — custom-gcl is the gid ruleset, and it
+runs with the config it carries.
 
-**A repo without a config needs nothing else.** The distributable
-[gid-golangci.yml](gid-golangci.yml) is compiled into the binary: when
-golangci-lint finds no `.golangci.yml` (neither next to the checked packages,
-nor above them, nor in `$HOME`), the built-in one is written to
-`~/.cache/gid-golangci/gid-golangci.yml` and used — the run says so on stderr.
-That file is refreshed whenever the binary carries a different config, so an
-upgrade updates it by itself; it is a run detail, not something to edit or
-point at. The binary and its ruleset are therefore always the same revision.
-`--no-config` opts out and falls back to the stock golangci-lint set.
+The distributable [gid-golangci.yml](gid-golangci.yml) is compiled into the
+binary. On every run it is written to `~/.cache/gid-golangci/gid-golangci.yml`
+and passed as `--config` — the run says so on stderr. That file is refreshed
+whenever the binary carries a different config, so an upgrade updates it by
+itself; it is a run detail, not something to edit or point at. The binary and
+its ruleset are therefore always the same revision.
 
-**A repo with its own `.golangci.yml` is linted by that config**, exactly as
-with regular golangci-lint — the built-in one stays out of the way. To start
-such a config from the shipped ruleset:
+A `.golangci.yml` lying in the repository is **not** picked up by itself —
+unlike regular golangci-lint, which would read it and then run without a single
+gid linter. To lint by that config instead, name it:
+
+```sh
+custom-gcl run --config .golangci.yml ./...   # the repository ruleset
+custom-gcl run --no-config ./...              # the stock golangci-lint set
+```
+
+The notice on stderr names the repository config it stepped over, so an ignored
+one never goes unnoticed.
+
+To start a repository config from the shipped ruleset:
 
 ```sh
 custom-gcl gid-config > .golangci.yml     # prints the built-in config
 ```
 
 Then enable the `gid*` linters you need and configure exceptions
-(`settings.exclude`, `settings.tree`, `settings.tags`, …).
+(`settings.exclude`, `settings.tree`, `settings.tags`, …) — and run with
+`--config`.
 
 ## IDE
 

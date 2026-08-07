@@ -20,8 +20,11 @@ eval:
 lint: build lint-fast
 
 ## lint-fast: run the already built custom-gcl (no rebuild)
+# --config is explicit on purpose: a plain run uses the config built into the
+# binary, and this repository needs its own (testdata exclusions, its own
+# giddirtree tree).
 lint-fast:
-	./bin/custom-gcl run ./...
+	./bin/custom-gcl run --config .golangci.yml ./...
 
 ## install-hook: install a git pre-commit hook with the local check
 install-hook:

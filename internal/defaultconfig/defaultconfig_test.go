@@ -15,6 +15,8 @@ const (
 	allPkgs    = "./..."
 	verbose    = "-v"
 	configName = ".golangci.yml"
+	yamlConfig = ".golangci.yaml"
+	tomlConfig = ".golangci.toml"
 	userConfig = "my.yml"
 )
 
@@ -39,21 +41,17 @@ func TestInject(t *testing.T) {
 		args []string
 		want bool
 	}{
-		// positive — nothing tells golangci-lint where its config is.
-		{name: "run without a config", args: []string{bin, commandRun, allPkgs}, want: true},
+		// positive — the choice of config is left to the binary.
+		{name: "run", args: []string{bin, commandRun, allPkgs}, want: true},
 		{name: "run without arguments", args: []string{bin, commandRun}, want: true},
-		{name: "fmt without a config", args: []string{bin, commandFmt, allPkgs}, want: true},
-		{name: "config verify without a config", args: []string{bin, commandConfig, "verify"}, want: true},
+		{name: "fmt", args: []string{bin, commandFmt, allPkgs}, want: true},
+		{name: "config verify", args: []string{bin, commandConfig, "verify"}, want: true},
 		{name: "flag before the subcommand", args: []string{bin, verbose, commandRun}, want: true},
-		// negative — a config file is already there.
-		{name: "config in the working directory", configs: []string{configName}, args: []string{bin, commandRun, allPkgs}},
-		{name: "yaml extension", configs: []string{".golangci.yaml"}, args: []string{bin, commandRun, allPkgs}},
-		{name: "toml extension", configs: []string{".golangci.toml"}, args: []string{bin, commandRun, allPkgs}},
-		{name: "config above the working directory", configs: []string{"../" + configName}, args: []string{bin, commandRun, allPkgs}},
-		// The search starts from the path arguments too, not only from the
-		// working directory — that is where golangci-lint would start.
-		{name: "config above the path argument", configs: []string{"../other/" + configName}, args: []string{bin, commandRun, "../other/..."}},
-		{name: "config in the home directory", home: true, args: []string{bin, commandRun, allPkgs}},
+		// positive — a repository config does not win by simply being there:
+		// custom-gcl is the gid ruleset, and a plain run applies it.
+		{name: "config in the working directory", configs: []string{configName}, args: []string{bin, commandRun, allPkgs}, want: true},
+		{name: "config above the working directory", configs: []string{"../" + configName}, args: []string{bin, commandRun, allPkgs}, want: true},
+		{name: "config in the home directory", home: true, args: []string{bin, commandRun, allPkgs}, want: true},
 		// negative — the user decided about the config themselves.
 		{name: "explicit config", args: []string{bin, commandRun, flagConfig, userConfig}},
 		{name: "explicit config with an equals sign", args: []string{bin, commandRun, flagConfig + "=" + userConfig}},
@@ -186,6 +184,36 @@ func TestInjectWithoutConfig(t *testing.T) {
 	}
 }
 
+// TestLocalConfig — the notice names the repository config the run steps over,
+// and says nothing when there is none.
+func TestLocalConfig(t *testing.T) {
+	tests := []struct {
+		name    string
+		created string
+		want    string
+	}{
+		{name: "yml", created: configName, want: configName},
+		{name: "yaml", created: yamlConfig, want: yamlConfig},
+		{name: "toml", created: tomlConfig, want: tomlConfig},
+		{name: "none", created: "", want: ""},
+		{name: "only above the working directory", created: "../" + configName, want: ""},
+	}
+
+	for _, tt := range tests { //nolint:gidallptr // the plugin does not depend on the internal gdhelper library
+		t.Run(tt.name, func(t *testing.T) {
+			sandbox(t)
+
+			if tt.created != "" {
+				write(t, tt.created)
+			}
+
+			if got := LocalConfig(); got != tt.want {
+				t.Errorf("LocalConfig() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 // sandbox isolates the run from the developer's own files: the working
 // directory moves into a temporary tree with no config above it, and both the
 // home and the cache directory point inside that tree. It returns the home
@@ -238,7 +266,7 @@ func assertContent(t *testing.T, path string, want []byte) {
 func assertConfigFlag(t *testing.T, args []string, path string) {
 	t.Helper()
 
-	flag := "--config=" + path
+	flag := flagConfig + "=" + path
 	if !slices.Contains(args, flag) {
 		t.Errorf("%v carries no %s", args, flag)
 	}

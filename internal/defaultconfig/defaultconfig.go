@@ -1,19 +1,15 @@
-// Package defaultconfig makes custom-gcl usable in a repository that has no
-// golangci-lint config of its own: the gid ruleset ships inside the binary and
-// is used when — and only when — golangci-lint would otherwise find no config.
+// Package defaultconfig makes the gid ruleset the default of custom-gcl: the
+// binary carries its own config and runs with it unless told otherwise.
 //
-// golangci-lint reads exactly one config file and has no notion of a built-in
-// default: without .golangci.yml the gid* linters are simply not enabled, which
-// is why the distributable config had to be copied next to the binary and kept
-// in sync with it by hand. Here the same file is embedded into the binary,
-// written into the user cache directory on demand and passed as --config.
+// custom-gcl is not a drop-in golangci-lint — it is golangci-lint plus the gid
+// rules, and those rules only exist as the config that enables them. Left to
+// itself, golangci-lint would read whatever .golangci.yml happens to sit in the
+// repository and quietly run without a single gid linter. So the distributable
+// config is embedded into the binary, written into the user cache directory on
+// demand and passed as --config on every run.
 //
-// The rule is conservative: anything that looks like an existing config wins.
-// The search repeats what pkg/config does (.golangci.* from the target
-// directory up to the filesystem root, then $HOME), and it starts not only from
-// the working directory but from every path argument on the command line — an
-// over-eager find only means the binary keeps its stock behaviour, while a
-// missed one would override the config the repository actually has.
+// The user stays in charge: --config picks another file (a repository config is
+// used exactly this way), --no-config drops to the stock golangci-lint set.
 package defaultconfig
 
 import (
@@ -54,15 +50,14 @@ var configAwareCommands = map[string]struct{}{
 	commandFormatters: {},
 }
 
-// Inject returns the command line to execute. It is args unchanged whenever
-// golangci-lint has a config to read — an explicit --config, --no-config, a
-// .golangci.* file above the checked packages, a subcommand that reads no
-// config at all. Otherwise the built-in config is written into the user cache
-// directory and --config pointing at it is inserted after the subcommand;
-// path is the file written, and stays empty when nothing was injected. On an
+// Inject returns the command line to execute: the built-in config written into
+// the user cache directory and --config pointing at it, inserted after the
+// subcommand. args comes back unchanged when the user has decided about the
+// config themselves (--config, --no-config) or the subcommand reads no config
+// at all; path is the file written, and stays empty in those cases. On an
 // error out is nil: the caller runs with the command line it already has.
 func Inject(args []string, config []byte) (out []string, path string, err error) {
-	if len(config) == 0 || !needsConfig(args) {
+	if len(config) == 0 || !wantsDefault(args) {
 		return args, "", nil
 	}
 
@@ -74,14 +69,15 @@ func Inject(args []string, config []byte) (out []string, path string, err error)
 	return insertConfigFlag(args, path), path, nil
 }
 
-// needsConfig reports whether this command line would run without any config.
-func needsConfig(args []string) bool {
+// wantsDefault reports whether this command line leaves the choice of config to
+// the binary.
+func wantsDefault(args []string) bool {
 	command, rest := split(args)
 	if _, ok := configAwareCommands[command]; !ok {
 		return false
 	}
 
-	return !hasConfigFlag(rest) && findConfig(searchDirs(rest)) == ""
+	return !hasConfigFlag(rest)
 }
 
 // split separates the subcommand from its arguments. The program name and any
@@ -115,80 +111,16 @@ func hasConfigFlag(args []string) bool {
 	return false
 }
 
-// searchDirs — the directories the config search starts from: the working
-// directory plus every path argument, resolved the way pkg/config resolves its
-// first argument (./... is not a directory, so its parent is taken).
-func searchDirs(args []string) []string {
-	dirs := []string{"."}
-
-	for _, arg := range args {
-		if strings.HasPrefix(arg, "-") {
-			continue
-		}
-
-		dirs = append(dirs, packageDir(arg))
-	}
-
-	return dirs
-}
-
-func packageDir(arg string) string {
-	abs, err := filepath.Abs(arg)
-	if err != nil {
-		return filepath.Clean(arg)
-	}
-
-	if info, statErr := os.Stat(abs); statErr == nil && info.IsDir() {
-		return abs
-	}
-
-	return filepath.Dir(abs)
-}
-
-// findConfig returns the first .golangci.* file golangci-lint would read,
-// walking each start directory up to the filesystem root and then $HOME.
-func findConfig(dirs []string) string {
-	for _, dir := range dirs {
-		if path := findUp(dir); path != "" {
-			return path
-		}
-	}
-
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-
-	return configIn(home)
-}
-
-func findUp(dir string) string {
-	current, err := filepath.Abs(dir)
-	if err != nil {
-		return ""
-	}
-
-	for {
-		if path := configIn(current); path != "" {
-			return path
-		}
-
-		parent := filepath.Dir(current)
-		if parent == current {
-			return ""
-		}
-
-		current = parent
-	}
-}
-
-func configIn(dir string) string {
+// LocalConfig returns the .golangci.* file of the working directory, or an
+// empty string when there is none. That file is NOT what a plain run uses — it
+// is named in the notice so that nobody mistakes the built-in config for it.
+func LocalConfig() string {
 	// The name golangci-lint looks for, without an extension
 	// (pkg/config: viper.SetConfigName(".golangci")).
 	const configBaseName = ".golangci"
 
 	for _, ext := range configExts {
-		path := filepath.Join(dir, configBaseName+ext)
+		path := configBaseName + ext
 		if info, err := os.Stat(path); err == nil && !info.IsDir() {
 			return path
 		}
