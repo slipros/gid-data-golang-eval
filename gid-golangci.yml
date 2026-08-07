@@ -1,6 +1,7 @@
 # Distributable custom-gcl config for gid.team services.
-# Copy it next to the custom-gcl binary (or into the service repo as
-# .golangci.yml) and run: custom-gcl run --config gid-golangci.yml ./...
+# It is embedded into the custom-gcl binary and used automatically in a repo
+# that has no .golangci.yml of its own — nothing to copy next to the binary.
+# To start a repo config from it: custom-gcl gid-config > .golangci.yml
 # Rule registry — RULES.md. Base — the production consent-api config;
 # on top of it sit the GID layers (patterns, gid analyzers, tuned linters).
 # Generated from the repo's .golangci.yml minus repo-specific settings.
@@ -8,6 +9,10 @@ version: "2"
 
 run:
   issues-exit-code: 1
+  # Paths in the output are relative to the working directory, not to the
+  # config: as the built-in copy of this file lives in the user cache
+  # directory, the default (cfg) would report every issue as ../../../<path>.
+  relative-path-mode: wd
   # The base set tests: false; enabled here, otherwise test rules
   # (GID-191 gidsubtestname, GID-209) do not work.
   tests: true

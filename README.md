@@ -31,7 +31,9 @@ the linter does that deterministically.
 - `gid-golangci.yml` — **distributable config for services**: the same rule
   set with the canonical gid.team `internal/` tree (app, client, dal, domain,
   event, job, metric, schedule, server, validate) and no repo-specific
-  exclusions. Copy it next to the custom-gcl binary or into the service repo;
+  exclusions. It is **embedded into the custom-gcl binary** (`config.go`,
+  `internal/defaultconfig`) and used automatically in a repo without a
+  `.golangci.yml` of its own — nothing to copy, nothing to keep in sync;
   based on the production config of consent-api (UDMP/backend-go) with GID layers on top
 
 ## Quick start
@@ -88,11 +90,29 @@ Build: `golangci-lint custom` → `./bin/custom-gcl`.
 
 ### Next (for both options)
 
-1. Start from the distributable [gid-golangci.yml](gid-golangci.yml) — enable the `gid*`
-   linters you need, configure exceptions (`settings.exclude`, `settings.tree`,
-   `settings.tags`, …); drop the repo-specific bits (exclusions for `testdata`,
-   `giddirtree.settings.tree`).
-2. Run: `custom-gcl run ./...` (option A) or `./bin/custom-gcl run ./...` (option B).
+Just run it: `custom-gcl run ./...` (option A) or `./bin/custom-gcl run ./...`
+(option B).
+
+**A repo without a config needs nothing else.** The distributable
+[gid-golangci.yml](gid-golangci.yml) is compiled into the binary: when
+golangci-lint finds no `.golangci.yml` (neither next to the checked packages,
+nor above them, nor in `$HOME`), the built-in one is written to
+`~/.cache/gid-golangci/gid-golangci.yml` and used — the run says so on stderr.
+That file is refreshed whenever the binary carries a different config, so an
+upgrade updates it by itself; it is a run detail, not something to edit or
+point at. The binary and its ruleset are therefore always the same revision.
+`--no-config` opts out and falls back to the stock golangci-lint set.
+
+**A repo with its own `.golangci.yml` is linted by that config**, exactly as
+with regular golangci-lint — the built-in one stays out of the way. To start
+such a config from the shipped ruleset:
+
+```sh
+custom-gcl gid-config > .golangci.yml     # prints the built-in config
+```
+
+Then enable the `gid*` linters you need and configure exceptions
+(`settings.exclude`, `settings.tree`, `settings.tags`, …).
 
 ## IDE
 
