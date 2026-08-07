@@ -4,6 +4,10 @@
 //
 // Correct code `for _, v := range gdhelper.AllPtr(s)` is not flagged:
 // AllPtr returns an iterator (range-over-func), not a slice.
+//
+// A loop that binds no value variable (`for i := range s`, `for range s`) is
+// not flagged either: it copies nothing, and AllPtr yields pointers rather
+// than indices, so it cannot replace such a loop.
 package allptr
 
 import (
@@ -31,6 +35,12 @@ func run(pass *analysis.Pass) (any, error) {
 		ast.Inspect(file, func(n ast.Node) bool {
 			rng, ok := n.(*ast.RangeStmt)
 			if !ok {
+				return true
+			}
+			// No value variable — no element is copied, and AllPtr yields
+			// pointers, not indices, so the suggested fix would not even
+			// compile in place of such a loop.
+			if rng.Value == nil {
 				return true
 			}
 			if isStructSlice(pass.TypesInfo.TypeOf(rng.X)) {

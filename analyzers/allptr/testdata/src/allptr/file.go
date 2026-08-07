@@ -29,14 +29,13 @@ func badNamed(files Files) []string {
 	return out
 }
 
-// Edge case: index-only iteration is a violation too —
-// the styleguide requires AllPtr instead of any range form over a slice of structs.
-func badIndexOnly(files []File) int {
-	n := 0
-	for i := range files { // want `GID-004: ranging over a slice of structs copies each element\. Fix: range over gdhelper\.AllPtr\(items\)`
-		n += i
+// Edge case: the index is taken alongside the value — the value still copies.
+func badIndexAndValue(files []File) []string {
+	var out []string
+	for i, f := range files { // want `GID-004: ranging over a slice of structs copies each element\. Fix: range over gdhelper\.AllPtr\(items\)`
+		out = append(out, f.Name[:i])
 	}
-	return n
+	return out
 }
 
 // --- Negative cases: clean code passes ---
@@ -56,6 +55,26 @@ func goodPtrSlice(files []*File) []string {
 		out = append(out, f.Name)
 	}
 	return out
+}
+
+// --- Not applicable: no value variable is bound ---
+
+// Index-only iteration copies nothing, and AllPtr yields pointers instead of
+// indices — it cannot replace this loop.
+func notApplicableIndexOnly(files []File) int {
+	n := 0
+	for i := range files {
+		n += i
+	}
+	return n
+}
+
+func notApplicableNoVars(files []File) int {
+	n := 0
+	for range files {
+		n++
+	}
+	return n
 }
 
 // --- Not applicable: not slices of structs ---

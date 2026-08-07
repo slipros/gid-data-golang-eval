@@ -7,8 +7,9 @@ Feature: GID-004 — iterate over a slice of structs through gdhelper.AllPtr (gi
 
   # One analyzer over RangeStmt nodes, LoadModeTypesInfo (the ranged expression
   # is resolved by type, not by name).
-  # Trigger: the type of the ranged expression is a slice whose element type is
-  # a struct underneath. Slices of pointers copy nothing and never count.
+  # Trigger: the loop binds a value variable AND the type of the ranged
+  # expression is a slice whose element type is a struct underneath. Slices of
+  # pointers copy nothing and never count.
   # Correct code — "for _, v := range gdhelper.AllPtr(items)" — is not flagged
   # for free: AllPtr returns an iterator (range-over-func), not a slice, so it
   # fails the slice check on its own.
@@ -43,12 +44,12 @@ Feature: GID-004 — iterate over a slice of structs through gdhelper.AllPtr (gi
 
   # --- Class 3: boundary ---
 
-  Scenario: boundary — only the index is taken
-    Given "files []File" and the loop "for i := range files"
+  Scenario: boundary — the index and the value are both taken
+    Given "files []File" and the loop "for i, f := range files"
     When the gidallptr analyzer checks the file
     Then the diagnostic "GID-004: …" is reported
-    # Deliberate: the ranged expression is what the rule looks at, and the loop
-    # body is free to add ", f" at any time.
+    # The value variable is what copies the element; taking the index alongside
+    # it changes nothing.
 
   Scenario: boundary — a slice of a scalar type
     Given "ids []string" and the loop "for _, id := range ids"
@@ -57,6 +58,14 @@ Feature: GID-004 — iterate over a slice of structs through gdhelper.AllPtr (gi
     # Copying a string header is not the cost the rule is about.
 
   # --- Class 4: non-applicability ---
+
+  Scenario: non-applicability — no value variable is bound
+    Given "files []File" and the loops "for i := range files" and "for range files"
+    When the gidallptr analyzer checks the file
+    Then no diagnostic is reported
+    # Nothing is copied without a value variable, and the suggested fix does not
+    # apply: AllPtr yields pointers, not indices, so it cannot replace such a
+    # loop.
 
   Scenario: non-applicability — a range over a map, a channel or an integer
     Given the loops "for k := range m", "for v := range ch" and "for i := range 10"
