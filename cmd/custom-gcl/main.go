@@ -24,6 +24,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"runtime"
+	"runtime/debug"
 
 	"github.com/golangci/golangci-lint/v2/pkg/commands"
 	"github.com/golangci/golangci-lint/v2/pkg/exitcodes"
@@ -60,14 +62,72 @@ func run() error {
 
 	useDefaultConfig(config)
 
+	return commands.Execute(buildInfo())
+}
+
+// buildInfo fills the version golangci-lint reports in `custom-gcl version` —
+// and, more importantly, uses as the binary salt of its cache (initHashSalt).
+// Cached data is keyed by that salt, so a constant version would keep serving
+// facts computed by an older build of the rules.
+//
+// A binary built from a committed tree is identified by its module version:
+// the tag it was installed by, or the pseudo-version of the commit it was built
+// from — either way a new commit is a new salt. A build with uncommitted
+// changes reports develVersion instead, because the version Go derives for it
+// (`v1.2.3+dirty`) is the same for every edit of the working tree; golangci-lint
+// answers develVersion by hashing the executable, which is the only key that
+// changes on every rebuild of unreleased rules.
+func buildInfo() commands.BuildInfo {
+	// develVersion — the version golangci-lint treats as "not a release": for
+	// it, and only for it, the cache salt falls back to hashing the executable.
+	const develVersion = "(devel)"
+
+	// unknownValue — the placeholder for build metadata a binary built outside
+	// a repository has no source for.
+	const unknownValue = "(unknown)"
+
 	info := commands.BuildInfo{
-		Version:   "custom-gcl (gid-data-golang-eval)",
-		Commit:    "(see go module version)",
-		Date:      "(unknown)",
-		GoVersion: "unknown",
+		Version:   develVersion,
+		Commit:    unknownValue,
+		Date:      unknownValue,
+		GoVersion: runtime.Version(),
 	}
 
-	return commands.Execute(info)
+	raw, ok := debug.ReadBuildInfo()
+	if !ok {
+		return info
+	}
+
+	if raw.GoVersion != "" {
+		info.GoVersion = raw.GoVersion
+	}
+
+	var modified bool
+
+	for i := range raw.Settings {
+		setting := &raw.Settings[i]
+
+		switch setting.Key {
+		case "vcs.revision":
+			info.Commit = setting.Value
+		case "vcs.time":
+			info.Date = setting.Value
+		case "vcs.modified":
+			modified = setting.Value == "true"
+		}
+	}
+
+	if modified {
+		info.Commit += " (modified)"
+
+		return info
+	}
+
+	if raw.Main.Version != "" && raw.Main.Version != develVersion {
+		info.Version = raw.Main.Version
+	}
+
+	return info
 }
 
 // useDefaultConfig rewrites the command line so that the run is made with the
