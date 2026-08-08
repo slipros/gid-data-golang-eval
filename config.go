@@ -14,7 +14,21 @@ import (
 //go:embed gid-golangci.yml
 var distConfig []byte
 
+// rulesOnlyConfig — the same ruleset minus the stock linters and the formatter,
+// for a repository that already runs a golangci-lint of its own: there the ~40
+// stock linters of distConfig are enabled a second time, and the pair costs
+// roughly twice what it should (lk-api, 1681 files: 17.0 s against 1.12 s, for
+// identical gid diagnostics). Selected with --gid-rules-only.
+//
+//go:embed gid-golangci-rules.yml
+var rulesOnlyConfig []byte
+
 // DefaultConfig returns the golangci-lint config built into the binary.
 func DefaultConfig() []byte {
 	return slices.Clone(distConfig)
+}
+
+// RulesOnlyConfig returns the built-in config that enables the gid rules alone.
+func RulesOnlyConfig() []byte {
+	return slices.Clone(rulesOnlyConfig)
 }

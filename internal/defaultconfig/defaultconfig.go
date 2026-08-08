@@ -14,6 +14,8 @@ package defaultconfig
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
 	"path/filepath"
 	"strings"
@@ -171,7 +173,14 @@ func materialize(config []byte) (string, error) {
 		return "", errors.Wrap(mkErr, "create the cache directory")
 	}
 
-	path := filepath.Join(dir, cacheDirName+".yml")
+	// The file is named after the content, not after the binary: there is more
+	// than one built-in config (the full ruleset and the --gid-rules-only one),
+	// and run.allow-parallel-runners lets agents lint at the same time. Sharing
+	// one path would have them rewrite it under each other — atomically, but
+	// still swapping the config out from under a run that already pointed
+	// --config at it. A content-addressed name gives each config its own file,
+	// written once and never rewritten.
+	path := filepath.Join(dir, cacheDirName+"-"+digest(config)+".yml")
 
 	if current, readErr := os.ReadFile(path); readErr == nil && bytes.Equal(current, config) {
 		return path, nil
@@ -182,6 +191,16 @@ func materialize(config []byte) (string, error) {
 	}
 
 	return path, nil
+}
+
+// digest — a short content hash, enough to tell the built-in configs and the
+// builds of them apart inside one cache directory.
+func digest(config []byte) string {
+	const prefixLen = 16
+
+	sum := sha256.Sum256(config)
+
+	return hex.EncodeToString(sum[:])[:prefixLen]
 }
 
 // writeAtomic writes through a temporary neighbour, so a parallel run never

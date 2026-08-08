@@ -17,6 +17,15 @@
 // `custom-gcl gid-config` prints the built-in config to stdout, so it can be
 // used as a starting point for a repository config.
 //
+// `--gid-rules-only` selects the second built-in config: the gid rules alone,
+// without the ~40 stock linters and the formatter. It is for a repository that
+// ALREADY runs a golangci-lint of its own — there the stock set would run
+// twice. Measured on lk-api (1681 files): 41.7 s for the full config against
+// 1.24 s for this one, for byte-identical gid diagnostics. Check first what the
+// repository config actually reports: `run.tests: false` and
+// `issues.max-issues-per-linter` routinely make that run cover far less than it
+// looks (see gid-golangci-rules.yml).
+//
 // The golangci-lint version is pinned in go.mod (v2.12.2) — it must match
 // the version in .custom-gcl.yml.
 package main
@@ -52,7 +61,20 @@ func run() error {
 	// binary runs: custom-gcl gid-config > .golangci.yml
 	const printConfigCommand = "gid-config"
 
+	// rulesOnlyFlag selects the second built-in config: the gid rules alone,
+	// without the stock linters and the formatter. It is for a repository that
+	// already runs a golangci-lint of its own, where those would otherwise run
+	// twice. golangci-lint knows nothing about the flag, so it is consumed here
+	// and never reaches the command line it parses.
+	const rulesOnlyFlag = "--gid-rules-only"
+
+	args, rulesOnly := takeFlag(os.Args, rulesOnlyFlag)
+	os.Args = args
+
 	config := gidrules.DefaultConfig()
+	if rulesOnly {
+		config = gidrules.RulesOnlyConfig()
+	}
 
 	if len(os.Args) > 1 && os.Args[1] == printConfigCommand {
 		_, err := os.Stdout.Write(config)
@@ -63,6 +85,26 @@ func run() error {
 	useDefaultConfig(config)
 
 	return commands.Execute(buildInfo())
+}
+
+// takeFlag removes flag from args, reporting whether it was there. Both the
+// bare form and --flag=true are accepted; --flag=false is a way to ask for the
+// default config explicitly.
+func takeFlag(args []string, flag string) (rest []string, found bool) {
+	rest = make([]string, 0, len(args))
+
+	for _, arg := range args {
+		switch arg {
+		case flag, flag + "=true":
+			found = true
+		case flag + "=false":
+			found = false
+		default:
+			rest = append(rest, arg)
+		}
+	}
+
+	return rest, found
 }
 
 // buildInfo fills the version golangci-lint reports in `custom-gcl version` —

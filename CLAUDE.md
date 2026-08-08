@@ -27,6 +27,12 @@ Dependency versions are pinned to golangci v2.9.0 — do not upgrade without ver
   `--config`, which is why `make lint-fast` passes it. `custom-gcl gid-config`
   prints the built-in config. A new rule enabled in `gid-golangci.yml` therefore
   ships with the binary — the gate is `TestDefaultConfigEnablesRegisteredLinters`
+- `gid-golangci-rules.yml` — the second embedded config: the gid rules **only**,
+  no stock linters and no formatter, selected with `--gid-rules-only`. For a
+  repo that already runs its own golangci-lint, where the stock set would run
+  twice (lk-api, 1681 files: 41.7 s → 1.24 s, identical gid diagnostics). A new
+  rule must be enabled in BOTH files — the gate is
+  `TestRulesOnlyConfigMatchesDefault`
 - `internal/pathseg` — matching layers by path segments (`/domain/model`, `/dal/entity`, …)
 - `internal/exclude` — parsing of `settings.exclude` (`Method` | `Type.Method`)
 - `.golangci.yml` — the reference config: each linter with a `desc` and example settings
@@ -51,6 +57,14 @@ Dependency versions are pinned to golangci v2.9.0 — do not upgrade without ver
   `settings.tags`, etc.
 - The package layer is determined by path segments through `internal/pathseg`,
   not by a string `strings.Contains`.
+- The AST is walked through `internal/astwalk`, never `ast.Inspect(file, …)`:
+  add `Requires: astwalk.Requires` to the analyzer and call `astwalk.NodesOf`
+  (one node type) or `Nodes`/`Around`/`NodesPruning` (several). golangci-lint
+  merges every analyzer into one action graph, so the inspector is built once
+  per package and shared; a private `ast.Inspect` per rule is ~100 traversals
+  of the same trees (measured: a full pass 0.40 ms vs 0.043 ms filtered to
+  `*ast.CallExpr`). A walk already narrowed to one function body stays on
+  `ast.Inspect` — there the event list costs more than it saves.
 - Tests live in the same package as the code (GID-250), so a rule written for
   production code must decide what to do with `_test.go` and prove it with a
   non-applicability fixture: skip via `internal/srcfile.IsTest` when a test

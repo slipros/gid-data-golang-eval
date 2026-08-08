@@ -135,10 +135,14 @@ func TestInjectWritesConfigOnce(t *testing.T) {
 	assertContent(t, first, builtIn)
 }
 
-// TestInjectReplacesOldConfig — a new binary carries a new config; the file in
-// the cache is the previous one and has to be rewritten in place, not joined by
-// a second copy.
-func TestInjectReplacesOldConfig(t *testing.T) {
+// TestInjectSeparatesDifferentConfigs — the cache file is named after the
+// content, so a different config gets a different file instead of overwriting
+// the one already there. That matters because the binary now carries two
+// configs (the full ruleset and the --gid-rules-only one) and
+// run.allow-parallel-runners lets agents lint at the same time: sharing a path
+// would swap the config out from under a run that already pointed --config at
+// it. Each file keeps its own content, and neither run is disturbed.
+func TestInjectSeparatesDifferentConfigs(t *testing.T) {
 	sandbox(t)
 
 	_, path, err := Inject([]string{bin, commandRun}, builtIn)
@@ -153,19 +157,21 @@ func TestInjectReplacesOldConfig(t *testing.T) {
 		t.Fatalf("second Inject error: %v", err)
 	}
 
-	if nextPath != path {
-		t.Errorf("the new config went to %q instead of %q", nextPath, path)
+	if nextPath == path {
+		t.Fatalf("both configs went to the same file %q — a parallel run of the other one would read "+
+			"a config it did not ask for", path)
 	}
 
-	assertContent(t, path, next)
+	assertContent(t, path, builtIn)
+	assertContent(t, nextPath, next)
 
 	entries, err := os.ReadDir(filepath.Dir(path))
 	if err != nil {
 		t.Fatalf("read the cache directory: %v", err)
 	}
 
-	if len(entries) != 1 {
-		t.Errorf("the cache directory holds %d files, want the single config", len(entries))
+	if len(entries) != 2 {
+		t.Errorf("the cache directory holds %d files, want one per config", len(entries))
 	}
 }
 
