@@ -17,6 +17,11 @@ run:
   # (GID-191 gidsubtestname, GID-209) do not work.
   tests: true
   allow-parallel-runners: true
+  # Deliberately capped, NOT left to auto-detection: several agents work in
+  # parallel and each of them runs the linter, so a run must not take the whole
+  # machine. Auto would be faster in isolation (23.1 s -> 14.4 s wall on 24
+  # cores, measured 2026-08-08) at 2.2 GB -> 3.3 GB peak RSS per run — and that
+  # is per run, multiplied by however many agents are linting right now.
   concurrency: 4
   go: "1.25"
   modules-download-mode: readonly
