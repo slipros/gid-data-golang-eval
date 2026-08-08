@@ -18,6 +18,7 @@ import (
 	"go/ast"
 	"go/types"
 
+	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
 	"golang.org/x/tools/go/analysis"
 )
 
@@ -25,38 +26,33 @@ const ruleID = "GID-178"
 
 // Analyzer — rule GID-178: do not embed sync.Mutex/sync.RWMutex; use a named field (mu sync.Mutex). Fix: give the mutex a name.
 var Analyzer = &analysis.Analyzer{
-	Name: "gidembedmutex",
-	Doc:  ruleID + ": do not embed sync.Mutex/sync.RWMutex; use a named field (mu sync.Mutex). Fix: give the mutex a name",
-	Run:  run,
+	Name:     "gidembedmutex",
+	Doc:      ruleID + ": do not embed sync.Mutex/sync.RWMutex; use a named field (mu sync.Mutex). Fix: give the mutex a name",
+	Requires: astwalk.Requires,
+	Run:      run,
 }
 
 func run(pass *analysis.Pass) (any, error) {
-	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
-			continue
+	astwalk.NodesOf(pass, ast.IsGenerated, func(_ *ast.File, st *ast.StructType) {
+		if st.Fields == nil {
+			return
 		}
-		ast.Inspect(file, func(n ast.Node) bool {
-			st, ok := n.(*ast.StructType)
-			if !ok || st.Fields == nil {
-				return true
+		for _, field := range st.Fields.List {
+			// An anonymous (embedded) field has no names.
+			if len(field.Names) != 0 {
+				continue
 			}
-			for _, field := range st.Fields.List {
-				// An anonymous (embedded) field has no names.
-				if len(field.Names) != 0 {
-					continue
-				}
-				name, ok := embeddedMutexName(pass.TypesInfo.TypeOf(field.Type))
-				if !ok {
-					continue
-				}
-				pass.Reportf(field.Pos(),
-					"%s: sync.%s is embedded in the struct. Fix: use a named mutex field (mu sync.Mutex), "+
-						"otherwise Lock/Unlock leak into the type's API",
-					ruleID, name)
+			name, ok := embeddedMutexName(pass.TypesInfo.TypeOf(field.Type))
+			if !ok {
+				continue
 			}
-			return true
-		})
-	}
+			pass.Reportf(field.Pos(),
+				"%s: sync.%s is embedded in the struct. Fix: use a named mutex field (mu sync.Mutex), "+
+					"otherwise Lock/Unlock leak into the type's API",
+				ruleID, name)
+		}
+	})
+
 	return nil, nil
 }
 

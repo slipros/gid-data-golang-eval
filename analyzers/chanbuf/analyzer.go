@@ -24,56 +24,50 @@ import (
 	"go/types"
 
 	"golang.org/x/tools/go/analysis"
+
+	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
 )
 
 const ruleID = "GID-179"
 
 // Analyzer — rule GID-179: channel buffer size may only be 0 or 1.
 var Analyzer = &analysis.Analyzer{
-	Name: "gidchanbuf",
-	Doc:  ruleID + ": channel buffer size must be 0 or 1. Fix: use an unbuffered channel or buffer 1, or justify a larger buffer with //nolint:gidchanbuf.",
-	Run:  run,
+	Name:     "gidchanbuf",
+	Doc:      ruleID + ": channel buffer size must be 0 or 1. Fix: use an unbuffered channel or buffer 1, or justify a larger buffer with //nolint:gidchanbuf.",
+	Requires: astwalk.Requires,
+	Run:      run,
 }
 
 func run(pass *analysis.Pass) (any, error) {
-	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
-			continue
+	astwalk.NodesOf(pass, ast.IsGenerated, func(_ *ast.File, call *ast.CallExpr) {
+		if !isMakeBuiltin(pass, call) {
+			return
 		}
-		ast.Inspect(file, func(n ast.Node) bool {
-			call, ok := n.(*ast.CallExpr)
-			if !ok {
-				return true
-			}
-			if !isMakeBuiltin(pass, call) {
-				return true
-			}
-			// make(chan T, N): the first argument is the channel type, the second is the size.
-			if len(call.Args) < 2 {
-				return true
-			}
-			if _, ok := call.Args[0].(*ast.ChanType); !ok {
-				return true // make([]T, N) / make(map[K]V, N) — not a channel.
-			}
-			sizeExpr := call.Args[1]
-			tv, ok := pass.TypesInfo.Types[sizeExpr]
-			if !ok || tv.Value == nil {
-				return true // the size is not a constant (a variable/call) — skip.
-			}
-			size, ok := constant.Int64Val(constant.ToInt(tv.Value))
-			if !ok {
-				return true
-			}
-			if size <= 1 {
-				return true // 0 and 1 are allowed.
-			}
-			pass.Reportf(sizeExpr.Pos(),
-				"%s: channel buffer %d is not allowed (only 0 or 1). "+
-					"Fix: use an unbuffered channel or buffer 1, or justify a larger buffer with //nolint:gidchanbuf.",
-				ruleID, size)
-			return true
-		})
-	}
+		// make(chan T, N): the first argument is the channel type, the second is the size.
+		if len(call.Args) < 2 {
+			return
+		}
+		if _, ok := call.Args[0].(*ast.ChanType); !ok {
+			return // make([]T, N) / make(map[K]V, N) — not a channel.
+		}
+		sizeExpr := call.Args[1]
+		tv, ok := pass.TypesInfo.Types[sizeExpr]
+		if !ok || tv.Value == nil {
+			return // the size is not a constant (a variable/call) — skip.
+		}
+		size, ok := constant.Int64Val(constant.ToInt(tv.Value))
+		if !ok {
+			return
+		}
+		if size <= 1 {
+			return // 0 and 1 are allowed.
+		}
+		pass.Reportf(sizeExpr.Pos(),
+			"%s: channel buffer %d is not allowed (only 0 or 1). "+
+				"Fix: use an unbuffered channel or buffer 1, or justify a larger buffer with //nolint:gidchanbuf.",
+			ruleID, size)
+	})
+
 	return nil, nil
 }
 

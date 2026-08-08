@@ -38,6 +38,7 @@ import (
 
 	"golang.org/x/tools/go/analysis"
 
+	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
 	"github.com/slipros/gid-data-golang-eval/internal/exclude"
 )
 
@@ -67,6 +68,7 @@ func NewAnalyzer(cfg Settings) *analysis.Analyzer {
 		Doc: ruleNaming + "/" + ruleRequired + ": urfave/cli/v3 flag literals — Name must be " +
 			"kebab-case and EnvVars/Sources(cli.EnvVars) must be UPPER_SNAKE_CASE (" + ruleNaming + "); " +
 			"a flag must carry Required or a default Value (" + ruleRequired + ")",
+		Requires: astwalk.Requires,
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, cfg)
 		},
@@ -74,19 +76,13 @@ func NewAnalyzer(cfg Settings) *analysis.Analyzer {
 }
 
 func run(pass *analysis.Pass, cfg Settings) (any, error) {
-	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
-			continue
+	astwalk.NodesOf(pass, ast.IsGenerated, func(_ *ast.File, lit *ast.CompositeLit) {
+		if !isCliFlagLit(pass, lit) {
+			return
 		}
-		ast.Inspect(file, func(n ast.Node) bool {
-			lit, ok := n.(*ast.CompositeLit)
-			if !ok || !isCliFlagLit(pass, lit) {
-				return true
-			}
-			checkFlagLit(pass, cfg, lit)
-			return true
-		})
-	}
+		checkFlagLit(pass, cfg, lit)
+	})
+
 	return nil, nil
 }
 

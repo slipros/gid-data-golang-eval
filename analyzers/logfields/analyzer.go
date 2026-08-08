@@ -47,6 +47,7 @@ import (
 
 	"golang.org/x/tools/go/analysis"
 
+	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
 	"github.com/slipros/gid-data-golang-eval/internal/lgr"
 )
 
@@ -66,31 +67,25 @@ var Analyzer = &analysis.Analyzer{
 	Doc: ruleID + ": a logger chain sets its fields one by one — repeated WithField allocates an entry per " +
 		`call and scatters the payload. Fix: pass them in one WithFields(logrus.Fields{"offset": offset, ` +
 		`"fallback_level": level})`,
-	Run: run,
+	Requires: astwalk.Requires,
+	Run:      run,
 }
 
 func run(pass *analysis.Pass) (any, error) {
-	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
-			continue
+	// A chain is checked once, from its outermost call; the inner calls are
+	// consumed by that walk and skipped when the traversal reaches them. A chain
+	// never spans files, so one set per package is the same as one per file.
+	consumed := make(map[*ast.CallExpr]struct{})
+
+	astwalk.NodesOf(pass, ast.IsGenerated, func(_ *ast.File, call *ast.CallExpr) {
+		if _, seen := consumed[call]; seen {
+			return
 		}
-		// A chain is checked once, from its outermost call; the inner calls are
-		// consumed by that walk and skipped when Inspect reaches them.
-		consumed := make(map[*ast.CallExpr]struct{})
-		ast.Inspect(file, func(n ast.Node) bool {
-			call, ok := n.(*ast.CallExpr)
-			if !ok {
-				return true
-			}
-			if _, seen := consumed[call]; seen {
-				return true
-			}
-			for _, c := range checkChain(pass, call) {
-				consumed[c] = struct{}{}
-			}
-			return true
-		})
-	}
+		for _, c := range checkChain(pass, call) {
+			consumed[c] = struct{}{}
+		}
+	})
+
 	return nil, nil
 }
 

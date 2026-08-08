@@ -28,6 +28,7 @@ import (
 
 	"golang.org/x/tools/go/analysis"
 
+	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 )
 
@@ -56,7 +57,8 @@ var Analyzer = &analysis.Analyzer{
 	Doc: ruleID + ": the logger is created only in the composition root (main, internal/app) — " +
 		"logrus.New()/StandardLogger() and slog.New()/Default()/SetDefault() are banned elsewhere. " +
 		"Fix: pass a ready logger (*logrus.Entry, *slog.Logger) through the constructor",
-	Run: run,
+	Requires: astwalk.Requires,
+	Run:      run,
 }
 
 func run(pass *analysis.Pass) (any, error) {
@@ -67,24 +69,19 @@ func run(pass *analysis.Pass) (any, error) {
 		return nil, nil
 	}
 
-	for _, file := range pass.Files {
-		if ast.IsGenerated(file) || isTestFile(pass, file) {
-			continue
-		}
-		ast.Inspect(file, func(n ast.Node) bool {
-			call, ok := n.(*ast.CallExpr)
-			if !ok {
-				return true
-			}
-			if pkgName, name, ok := bannedLoggerCall(pass, call); ok {
-				pass.Reportf(call.Pos(),
-					"%s: %s.%s() may be called only in the composition root (main, internal/app). "+
-						"Fix: pass a ready logger (*logrus.Entry, *slog.Logger) through the constructor",
-					ruleID, pkgName, name)
-			}
-			return true
-		})
+	skip := func(file *ast.File) bool {
+		return ast.IsGenerated(file) || isTestFile(pass, file)
 	}
+
+	astwalk.NodesOf(pass, skip, func(_ *ast.File, call *ast.CallExpr) {
+		if pkgName, name, ok := bannedLoggerCall(pass, call); ok {
+			pass.Reportf(call.Pos(),
+				"%s: %s.%s() may be called only in the composition root (main, internal/app). "+
+					"Fix: pass a ready logger (*logrus.Entry, *slog.Logger) through the constructor",
+				ruleID, pkgName, name)
+		}
+	})
+
 	return nil, nil
 }
 

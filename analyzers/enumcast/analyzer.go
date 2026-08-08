@@ -27,6 +27,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
 	"golang.org/x/tools/go/analysis"
 )
 
@@ -35,47 +36,46 @@ const ruleID = "GID-233"
 // Analyzer — rule GID-233: no direct cast between enum types from different
 // packages; convert via map with gderror.NewUnhandledValueError (GID-143).
 var Analyzer = &analysis.Analyzer{
-	Name: "gidenumcast",
-	Doc:  ruleID + ": direct cast between enum types crosses a layer boundary unchecked. Fix: convert via map with comma-ok + gderror.NewUnhandledValueError (see GID-143)",
-	Run:  run,
+	Name:     "gidenumcast",
+	Doc:      ruleID + ": direct cast between enum types crosses a layer boundary unchecked. Fix: convert via map with comma-ok + gderror.NewUnhandledValueError (see GID-143)",
+	Requires: astwalk.Requires,
+	Run:      run,
 }
 
 func run(pass *analysis.Pass) (any, error) {
 	// enumCache memoizes the "string-based enum with consts" check per named type.
 	enumCache := map[*types.Named]bool{}
-	for _, file := range pass.Files {
-		if ast.IsGenerated(file) || isTestFile(pass, file) {
-			continue
-		}
-		ast.Inspect(file, func(n ast.Node) bool {
-			call, ok := n.(*ast.CallExpr)
-			if !ok || len(call.Args) != 1 {
-				return true
-			}
-			tv, ok := pass.TypesInfo.Types[call.Fun]
-			if !ok || !tv.IsType() {
-				return true // a regular call, not a conversion
-			}
-			dst := stringEnum(tv.Type, enumCache)
-			if dst == nil {
-				return true
-			}
-			src := stringEnum(pass.TypesInfo.TypeOf(call.Args[0]), enumCache)
-			if src == nil {
-				return true
-			}
-			srcObj, dstObj := src.Obj(), dst.Obj()
-			srcPkg, dstPkg := srcObj.Pkg(), dstObj.Pkg()
-			if srcPkg == nil || dstPkg == nil || srcPkg == dstPkg {
-				return true // same-package cast is allowed (boundary case)
-			}
-			pass.Reportf(call.Pos(),
-				"%s: direct cast between enum types crosses a layer boundary unchecked. "+
-					"Fix: convert via map with comma-ok + gderror.NewUnhandledValueError (see GID-143)",
-				ruleID)
-			return true
-		})
+	skip := func(file *ast.File) bool {
+		return ast.IsGenerated(file) || isTestFile(pass, file)
 	}
+
+	astwalk.NodesOf(pass, skip, func(_ *ast.File, call *ast.CallExpr) {
+		if len(call.Args) != 1 {
+			return
+		}
+		tv, ok := pass.TypesInfo.Types[call.Fun]
+		if !ok || !tv.IsType() {
+			return // a regular call, not a conversion
+		}
+		dst := stringEnum(tv.Type, enumCache)
+		if dst == nil {
+			return
+		}
+		src := stringEnum(pass.TypesInfo.TypeOf(call.Args[0]), enumCache)
+		if src == nil {
+			return
+		}
+		srcObj, dstObj := src.Obj(), dst.Obj()
+		srcPkg, dstPkg := srcObj.Pkg(), dstObj.Pkg()
+		if srcPkg == nil || dstPkg == nil || srcPkg == dstPkg {
+			return // same-package cast is allowed (boundary case)
+		}
+		pass.Reportf(call.Pos(),
+			"%s: direct cast between enum types crosses a layer boundary unchecked. "+
+				"Fix: convert via map with comma-ok + gderror.NewUnhandledValueError (see GID-143)",
+			ruleID)
+	})
+
 	return nil, nil
 }
 

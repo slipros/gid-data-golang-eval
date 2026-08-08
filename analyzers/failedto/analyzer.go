@@ -23,6 +23,8 @@ import (
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/types/typeutil"
+
+	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
 )
 
 const ruleID = "GID-184"
@@ -71,8 +73,9 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 		lower[i] = strings.ToLower(p)
 	}
 	return &analysis.Analyzer{
-		Name: "gidfailedto",
-		Doc:  ruleID + ": an error message describes the operation, not the fact of failure. Fix: drop prefixes like 'failed to'",
+		Name:     "gidfailedto",
+		Doc:      ruleID + ": an error message describes the operation, not the fact of failure. Fix: drop prefixes like 'failed to'",
+		Requires: astwalk.Requires,
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, lower)
 		},
@@ -80,35 +83,26 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 }
 
 func run(pass *analysis.Pass, prefixes []string) (any, error) {
-	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
-			continue
+	astwalk.NodesOf(pass, ast.IsGenerated, func(_ *ast.File, call *ast.CallExpr) {
+		name := pkgErrorsCallName(pass, call)
+		if name == "" {
+			return
 		}
-		ast.Inspect(file, func(n ast.Node) bool {
-			call, ok := n.(*ast.CallExpr)
-			if !ok {
-				return true
-			}
-			name := pkgErrorsCallName(pass, call)
-			if name == "" {
-				return true
-			}
-			idx, ok := errFuncs[name]
-			if !ok || idx >= len(call.Args) {
-				return true
-			}
-			msg, ok := stringLiteral(pass, call.Args[idx])
-			if !ok {
-				return true
-			}
-			if prefix, hit := matchPrefix(msg, prefixes); hit {
-				pass.Reportf(call.Args[idx].Pos(),
-					"%s: error message starts with %q. Fix: describe the operation, e.g. \"failed to select user\" → \"select user\"",
-					ruleID, prefix)
-			}
-			return true
-		})
-	}
+		idx, ok := errFuncs[name]
+		if !ok || idx >= len(call.Args) {
+			return
+		}
+		msg, ok := stringLiteral(pass, call.Args[idx])
+		if !ok {
+			return
+		}
+		if prefix, hit := matchPrefix(msg, prefixes); hit {
+			pass.Reportf(call.Args[idx].Pos(),
+				"%s: error message starts with %q. Fix: describe the operation, e.g. \"failed to select user\" → \"select user\"",
+				ruleID, prefix)
+		}
+	})
+
 	return nil, nil
 }
 

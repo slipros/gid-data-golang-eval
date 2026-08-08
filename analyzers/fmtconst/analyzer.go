@@ -28,6 +28,8 @@ import (
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/types/typeutil"
+
+	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
 )
 
 const ruleID = "GID-186"
@@ -40,9 +42,10 @@ const (
 
 // Analyzer — GID-186 (gidfmtconst).
 var Analyzer = &analysis.Analyzer{
-	Name: "gidfmtconst",
-	Doc:  ruleID + ": the format string of printf-like functions must be a literal or const, not a variable. Fix: declare a const format string",
-	Run:  run,
+	Name:     "gidfmtconst",
+	Doc:      ruleID + ": the format string of printf-like functions must be a literal or const, not a variable. Fix: declare a const format string",
+	Requires: astwalk.Requires,
+	Run:      run,
 }
 
 // targetFuncs — printf-style functions and the index of the format argument in
@@ -67,19 +70,10 @@ var targetFuncs = map[string]map[string]int{
 }
 
 func run(pass *analysis.Pass) (any, error) {
-	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
-			continue
-		}
-		ast.Inspect(file, func(n ast.Node) bool {
-			call, ok := n.(*ast.CallExpr)
-			if !ok {
-				return true
-			}
-			checkCall(pass, call)
-			return true
-		})
-	}
+	astwalk.NodesOf(pass, ast.IsGenerated, func(_ *ast.File, n *ast.CallExpr) {
+		checkCall(pass, n)
+	})
+
 	return nil, nil
 }
 

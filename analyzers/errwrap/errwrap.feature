@@ -260,6 +260,17 @@ Feature: GID-176 / GID-177 / GID-237 / GID-248 — error handling by layer (errw
     When the gidstaticerr analyzer checks the file
     Then the diagnostic "GID-177: a static error is returned without a stack — errors.WithMessage attaches a message and no stack, so the only stack is the package-level var's (the package init, not the failure). Fix: errors.Wrap(ErrSome, \"context\") — it collects the stack here and keeps the message" is reported
 
+  Scenario: positive — a static error returned from a func literal held by a package-level var
+    Given a package-level "var renderers = map[string]renderer{\"bad\": func(...) (string, error) { return \"\", errors.WithMessage(model.ErrSnapshotNotFound, \"ctx\") }}"
+    When the gidstaticerr analyzer checks the file
+    Then the diagnostic "GID-177: a static error is returned without a stack …" is reported
+    # The rule used to walk the bodies of function DECLARATIONS only, so a renderer/handler table
+    # built as a package-level var of func literals was a blind spot: 19 such returns in
+    # advertising-api internal/domain/service/dslsql/funcs.go handed back a sentinel through
+    # WithMessage and were never judged (found 2026-08-08 while moving the rule onto the shared
+    # inspector). A return inside such a literal is runtime code — it runs when the literal is
+    # called, not at package init — so it is judged like any other return.
+
   # --- Class 2: negative ---
 
   Scenario: negative — a static error wrapped with WithStack or Wrap

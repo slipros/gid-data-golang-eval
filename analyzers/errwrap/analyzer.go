@@ -88,6 +88,7 @@ import (
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/types/typeutil"
 
+	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
 	"github.com/slipros/gid-data-golang-eval/internal/exclude"
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 	"github.com/slipros/gid-data-golang-eval/internal/srcfile"
@@ -140,6 +141,12 @@ var ServiceMessageAnalyzer = NewServiceMessageAnalyzer(Settings{})
 // RedundantStackAnalyzer — GID-248 with default settings (no exclusions).
 var RedundantStackAnalyzer = NewRedundantStackAnalyzer(Settings{})
 
+// stackCallFilter — the declarations that scope the rule and the calls it
+// judges. Both come from the shared inspector in one pass, so a function
+// without a single errors.WithStack — the overwhelming majority — is never
+// classified.
+var stackCallFilter = []ast.Node{(*ast.FuncDecl)(nil), (*ast.CallExpr)(nil)}
+
 // Settings — linter settings from .golangci.yml.
 type Settings struct {
 	// Exclude — names of constructor/error exclusions that collect
@@ -162,8 +169,9 @@ func NewWrapAnalyzer(s Settings) *analysis.Analyzer {
 // NewStaticAnalyzer builds the GID-177 analyzer.
 func NewStaticAnalyzer(s Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
-		Name: "gidstaticerr",
-		Doc:  ruleIDStatic + ": static errors are wrapped with errors.WithStack on return. Fix: wrap with errors.WithStack",
+		Name:     "gidstaticerr",
+		Doc:      ruleIDStatic + ": static errors are wrapped with errors.WithStack on return. Fix: wrap with errors.WithStack",
+		Requires: astwalk.Requires,
 		Run: func(pass *analysis.Pass) (any, error) {
 			return runStatic(pass, s)
 		},
@@ -186,7 +194,8 @@ func NewServiceMessageAnalyzer(s Settings) *analysis.Analyzer {
 // NewRedundantStackAnalyzer builds the GID-248 analyzer.
 func NewRedundantStackAnalyzer(s Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
-		Name: "gidwithstack",
+		Name:     "gidwithstack",
+		Requires: astwalk.Requires,
 		Doc: ruleIDRedundantStack + ": errors.WithStack of an error that already carries a stack layers a second " +
 			"one. Fix: return the error as is; errors.WithStack is for an error without a stack — a static one " +
 			"or one you just converted",
@@ -328,27 +337,12 @@ func checkDomainWrapBan(pass *analysis.Pass, fn *ast.FuncDecl, callErrs map[type
 // ===== GID-177 =====
 
 func runStatic(pass *analysis.Pass, s Settings) (any, error) {
-	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
-			continue
+	astwalk.NodesOf(pass, ast.IsGenerated, func(_ *ast.File, n *ast.ReturnStmt) {
+		for _, res := range n.Results {
+			checkStaticReturn(pass, s, res)
 		}
-		for _, decl := range file.Decls {
-			fn, ok := decl.(*ast.FuncDecl)
-			if !ok || fn.Body == nil {
-				continue
-			}
-			ast.Inspect(fn.Body, func(n ast.Node) bool {
-				ret, ok := n.(*ast.ReturnStmt)
-				if !ok {
-					return true
-				}
-				for _, res := range ret.Results {
-					checkStaticReturn(pass, s, res)
-				}
-				return true
-			})
-		}
-	}
+	})
+
 	return nil, nil
 }
 
@@ -452,45 +446,65 @@ func checkNoServiceMessage(pass *analysis.Pass, fn *ast.FuncDecl) {
 
 func runRedundantStack(pass *analysis.Pass, s Settings) (any, error) {
 	boundary := inBoundary(pass.Pkg.Path())
-	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
-			continue
-		}
-		for _, decl := range file.Decls {
-			fn, ok := decl.(*ast.FuncDecl)
-			if !ok || fn.Body == nil {
-				continue
+
+	// Which functions call errors.WithStack, and where. classifyStackedErrors
+	// reads the whole body and is the expensive half of this rule, so it runs
+	// only for the functions collected here.
+	var (
+		order []*ast.FuncDecl
+		calls = map[*ast.FuncDecl][]*ast.CallExpr{}
+		fn    *ast.FuncDecl
+	)
+
+	astwalk.Around(pass, stackCallFilter, ast.IsGenerated, func(_ *ast.File, n ast.Node, push bool) bool {
+		if decl, ok := n.(*ast.FuncDecl); ok {
+			// Leaving the declaration clears the scope, so a call in a
+			// package-level var below it is not attributed to this function.
+			fn = nil
+			if push && decl.Body != nil && !exclude.Match(s.Exclude, recvTypeName(decl), decl.Name.Name) {
+				fn = decl
 			}
-			if exclude.Match(s.Exclude, recvTypeName(fn), fn.Name.Name) {
-				continue
-			}
-			checkRedundantStack(pass, fn, classifyStackedErrors(pass, fn, boundary), boundary)
+
+			return true
 		}
+		call, ok := n.(*ast.CallExpr)
+		if !ok || !push || fn == nil {
+			return true
+		}
+		if pkgErrorsCallName(pass, call) != "WithStack" || len(call.Args) == 0 {
+			return true
+		}
+		if _, seen := calls[fn]; !seen {
+			order = append(order, fn)
+		}
+		calls[fn] = append(calls[fn], call)
+
+		return true
+	})
+
+	for _, decl := range order {
+		checkRedundantStack(pass, calls[decl], classifyStackedErrors(pass, decl, boundary), boundary)
 	}
+
 	return nil, nil
 }
 
-func checkRedundantStack(pass *analysis.Pass, fn *ast.FuncDecl, stacked map[types.Object]bool, boundary bool) {
-	ast.Inspect(fn.Body, func(n ast.Node) bool {
-		call, ok := n.(*ast.CallExpr)
-		if !ok || pkgErrorsCallName(pass, call) != "WithStack" || len(call.Args) == 0 {
-			return true
-		}
+func checkRedundantStack(pass *analysis.Pass, calls []*ast.CallExpr, stacked map[types.Object]bool, boundary bool) {
+	for _, call := range calls {
 		arg := call.Args[0]
 		// A static error (model.ErrX, &BigError{}) — WithStack is required (GID-177).
 		if isStaticError(pass, arg) {
-			return true
+			continue
 		}
 		if !hasOwnStack(pass, arg, stacked, boundary) {
-			return true
+			continue
 		}
 		pass.Reportf(call.Pos(),
 			"%s: errors.WithStack of an error that already carries a stack layers a second one. "+
 				"Fix: return the error as is (return err); errors.WithStack is for an error without a stack — "+
 				"a static error or one you just converted (err = model.ErrX; return errors.WithStack(err))",
 			ruleIDRedundantStack)
-		return true
-	})
+	}
 }
 
 // hasOwnStack reports whether expr is known to already carry a stack: a

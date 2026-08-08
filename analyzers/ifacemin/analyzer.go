@@ -23,6 +23,7 @@ import (
 
 	"golang.org/x/tools/go/analysis"
 
+	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
 	"github.com/slipros/gid-data-golang-eval/internal/exclude"
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 )
@@ -41,8 +42,9 @@ type Settings struct {
 // NewAnalyzer builds the GID-197 analyzer from the linter settings (.golangci.yml).
 func NewAnalyzer(s Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
-		Name: "gidifacemin",
-		Doc:  ruleID + ": a dependency interface contains only the methods the consumer uses. Fix: remove unused methods from the interface",
+		Name:     "gidifacemin",
+		Doc:      ruleID + ": a dependency interface contains only the methods the consumer uses. Fix: remove unused methods from the interface",
+		Requires: astwalk.Requires,
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, s)
 		},
@@ -155,25 +157,17 @@ func collectUsedMethods(pass *analysis.Pass, ifaces []*ifaceDecl) map[types.Obje
 		}
 	}
 	used := map[types.Object]bool{}
-	for _, file := range pass.Files {
-		if isTestFile(pass, file) {
-			continue
+	skip := func(file *ast.File) bool { return isTestFile(pass, file) }
+	astwalk.NodesOf(pass, skip, func(_ *ast.File, n *ast.Ident) {
+		obj := pass.TypesInfo.Uses[n]
+		if obj == nil {
+			return
 		}
-		ast.Inspect(file, func(n ast.Node) bool {
-			id, ok := n.(*ast.Ident)
-			if !ok {
-				return true
-			}
-			obj := pass.TypesInfo.Uses[id]
-			if obj == nil {
-				return true
-			}
-			if _, ok := cands[obj]; ok {
-				used[obj] = true
-			}
-			return true
-		})
-	}
+		if _, ok := cands[obj]; ok {
+			used[obj] = true
+		}
+	})
+
 	return used
 }
 
@@ -185,39 +179,68 @@ func collectEscapes(pass *analysis.Pass, ifaces []*ifaceDecl) map[*types.TypeNam
 		checked[d.typeName] = true
 	}
 	escaped := map[*types.TypeName]bool{}
-	for _, file := range pass.Files {
-		if isTestFile(pass, file) {
-			continue
+
+	// The classification below asks who encloses an expression. The stack the
+	// shared inspector already carries answers that, so no map of every node to
+	// its parent is built — that map was this rule's largest allocation.
+	insp := astwalk.Inspector(pass)
+	if insp == nil {
+		return escaped
+	}
+
+	insp.WithStack(nil, func(n ast.Node, push bool, stack []ast.Node) bool {
+		if !push {
+			return false
 		}
-		parents := parentMap(file)
-		ast.Inspect(file, func(n ast.Node) bool {
-			e, ok := n.(ast.Expr)
-			if !ok {
-				return true
-			}
-			tv, ok := pass.TypesInfo.Types[e]
-			if !ok {
-				return true
-			}
-			tn := checkedIface(checked, tv.Type)
-			if tn == nil || escaped[tn] {
-				return true
-			}
-			if tv.IsValue() {
-				if !safeContext(pass, parents, e) {
-					escaped[tn] = true
-				}
-				return true
-			}
-			// A type in a generic constraint: calls through a type parameter
-			// resolve to the constraint's object — untrackable.
-			if tv.IsType() && inTypeParams(parents, e) {
+		if file, ok := n.(*ast.File); ok {
+			return !isTestFile(pass, file)
+		}
+		e, ok := n.(ast.Expr)
+		if !ok {
+			return true
+		}
+		tv, ok := pass.TypesInfo.Types[e]
+		if !ok {
+			return true
+		}
+		tn := checkedIface(checked, tv.Type)
+		if tn == nil || escaped[tn] {
+			return true
+		}
+		if tv.IsValue() {
+			if !safeContext(pass, path(stack), e) {
 				escaped[tn] = true
 			}
+
 			return true
-		})
-	}
+		}
+		// A type in a generic constraint: calls through a type parameter
+		// resolve to the constraint's object — untrackable.
+		if tv.IsType() && inTypeParams(path(stack), e) {
+			escaped[tn] = true
+		}
+
+		return true
+	})
+
 	return escaped
+}
+
+// path — the chain of nodes from the file down to the node under
+// classification, as the shared inspector reports it. It answers the same
+// "who encloses this" questions the rule used to ask a per-file parent map;
+// every node it is asked about is an ancestor of the current one, so it is
+// always on the stack.
+type path []ast.Node
+
+func (pp path) parent(n ast.Node) ast.Node {
+	for i := len(pp) - 1; i > 0; i-- {
+		if pp[i] == n {
+			return pp[i-1]
+		}
+	}
+
+	return nil
 }
 
 func checkedIface(checked map[*types.TypeName]bool, t types.Type) *types.TypeName {
@@ -231,36 +254,18 @@ func checkedIface(checked map[*types.TypeName]bool, t types.Type) *types.TypeNam
 	return nil
 }
 
-// parentMap — the parent of every node in the file.
-func parentMap(file *ast.File) map[ast.Node]ast.Node {
-	parents := map[ast.Node]ast.Node{}
-	var stack []ast.Node
-	ast.Inspect(file, func(n ast.Node) bool {
-		if n == nil {
-			stack = stack[:len(stack)-1]
-			return true
-		}
-		if len(stack) > 0 {
-			parents[n] = stack[len(stack)-1]
-		}
-		stack = append(stack, n)
-		return true
-	})
-	return parents
-}
-
 // safeContext: the interface value is used so that the consumption of its
 // methods stays visible (a method call, storing/passing under the same
 // type, a comparison). Any unrecognized context is not safe.
-func safeContext(pass *analysis.Pass, parents map[ast.Node]ast.Node, e ast.Expr) bool {
-	p := parents[e]
+func safeContext(pass *analysis.Pass, parents path, e ast.Expr) bool {
+	p := parents.parent(e)
 	for {
 		pe, ok := p.(*ast.ParenExpr)
 		if !ok {
 			break
 		}
 		e = pe
-		p = parents[pe]
+		p = parents.parent(pe)
 	}
 	eType := pass.TypesInfo.TypeOf(e)
 	switch ctx := p.(type) {
@@ -356,12 +361,12 @@ func valueSpecIdentical(pass *analysis.Pass, vs *ast.ValueSpec, e ast.Expr, eTyp
 
 func keyValueIdentical(
 	pass *analysis.Pass,
-	parents map[ast.Node]ast.Node,
+	parents path,
 	kv *ast.KeyValueExpr,
 	e ast.Expr,
 	eType types.Type,
 ) bool {
-	lit, ok := parents[kv].(*ast.CompositeLit)
+	lit, ok := parents.parent(kv).(*ast.CompositeLit)
 	if !ok {
 		return false
 	}
@@ -415,7 +420,7 @@ func elemIdentical(pass *analysis.Pass, lit *ast.CompositeLit, e ast.Expr, eType
 
 func returnIdentical(
 	pass *analysis.Pass,
-	parents map[ast.Node]ast.Node,
+	parents path,
 	ret *ast.ReturnStmt,
 	e ast.Expr,
 	eType types.Type,
@@ -436,8 +441,8 @@ func returnIdentical(
 	return types.Identical(result.Type(), eType)
 }
 
-func enclosingSignature(pass *analysis.Pass, parents map[ast.Node]ast.Node, n ast.Node) *types.Signature {
-	for cur := parents[n]; cur != nil; cur = parents[cur] {
+func enclosingSignature(pass *analysis.Pass, parents path, n ast.Node) *types.Signature {
+	for cur := parents.parent(n); cur != nil; cur = parents.parent(cur) {
 		switch fn := cur.(type) {
 		case *ast.FuncLit:
 			if sig, ok := pass.TypesInfo.TypeOf(fn).(*types.Signature); ok {
@@ -459,18 +464,18 @@ func enclosingSignature(pass *analysis.Pass, parents map[ast.Node]ast.Node, n as
 }
 
 // inTypeParams: the type is used in a type parameter list (a constraint).
-func inTypeParams(parents map[ast.Node]ast.Node, e ast.Expr) bool {
-	for cur := parents[e]; cur != nil; cur = parents[cur] {
+func inTypeParams(parents path, e ast.Expr) bool {
+	for cur := parents.parent(e); cur != nil; cur = parents.parent(cur) {
 		switch p := cur.(type) {
 		case *ast.FuncDecl:
 			return false
 		case *ast.TypeSpec:
 			return false
 		case *ast.FieldList:
-			if ft, ok := parents[p].(*ast.FuncType); ok && ft.TypeParams == p {
+			if ft, ok := parents.parent(p).(*ast.FuncType); ok && ft.TypeParams == p {
 				return true
 			}
-			if ts, ok := parents[p].(*ast.TypeSpec); ok && ts.TypeParams == p {
+			if ts, ok := parents.parent(p).(*ast.TypeSpec); ok && ts.TypeParams == p {
 				return true
 			}
 		}

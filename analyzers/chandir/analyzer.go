@@ -33,6 +33,7 @@ import (
 	"go/ast"
 	"strings"
 
+	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
 	"golang.org/x/tools/go/analysis"
 )
 
@@ -40,26 +41,24 @@ const ruleID = "GID-189"
 
 // Analyzer — rule GID-189: channel parameters in signatures declare a direction (<-chan/chan<-).
 var Analyzer = &analysis.Analyzer{
-	Name: "gidchandir",
-	Doc:  ruleID + ": channel parameters must declare a direction (<-chan/chan<-). Fix: use <-chan to receive or chan<- to send.",
-	Run:  run,
+	Name:     "gidchandir",
+	Doc:      ruleID + ": channel parameters must declare a direction (<-chan/chan<-). Fix: use <-chan to receive or chan<- to send.",
+	Requires: astwalk.Requires,
+	Run:      run,
 }
 
+var funcFilter = []ast.Node{(*ast.FuncDecl)(nil), (*ast.FuncLit)(nil)}
+
 func run(pass *analysis.Pass) (any, error) {
-	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
-			continue
+	astwalk.Nodes(pass, funcFilter, ast.IsGenerated, func(_ *ast.File, n ast.Node) {
+		switch node := n.(type) {
+		case *ast.FuncDecl:
+			checkParams(pass, node.Type)
+		case *ast.FuncLit:
+			checkParams(pass, node.Type)
 		}
-		ast.Inspect(file, func(n ast.Node) bool {
-			switch node := n.(type) {
-			case *ast.FuncDecl:
-				checkParams(pass, node.Type)
-			case *ast.FuncLit:
-				checkParams(pass, node.Type)
-			}
-			return true
-		})
-	}
+	})
+
 	return nil, nil
 }
 

@@ -16,6 +16,7 @@ import (
 
 	"golang.org/x/tools/go/analysis"
 
+	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
 	"github.com/slipros/gid-data-golang-eval/internal/lgr"
 )
 
@@ -23,28 +24,20 @@ const ruleID = "GID-156"
 
 // Analyzer — rule GID-156: a logger chain of >=2 calls — one call per line.
 var Analyzer = &analysis.Analyzer{
-	Name: "gidlogchain",
-	Doc:  ruleID + ": a logger chain puts each call on its own line, including the first. Fix: break each call onto a new line",
-	Run:  run,
+	Name:     "gidlogchain",
+	Doc:      ruleID + ": a logger chain puts each call on its own line, including the first. Fix: break each call onto a new line",
+	Requires: astwalk.Requires,
+	Run:      run,
 }
 
 func run(pass *analysis.Pass) (any, error) {
-	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
-			continue
+	astwalk.NodesOf(pass, ast.IsGenerated, func(_ *ast.File, call *ast.CallExpr) {
+		if _, ok := lgr.IsTerminal(pass, call); !ok {
+			return
 		}
-		ast.Inspect(file, func(n ast.Node) bool {
-			call, ok := n.(*ast.CallExpr)
-			if !ok {
-				return true
-			}
-			if _, ok := lgr.IsTerminal(pass, call); !ok {
-				return true
-			}
-			checkChain(pass, call)
-			return true
-		})
-	}
+		checkChain(pass, call)
+	})
+
 	return nil, nil
 }
 

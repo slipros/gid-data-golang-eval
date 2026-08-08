@@ -21,6 +21,7 @@ import (
 	"go/ast"
 	"go/types"
 
+	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
 	"github.com/slipros/gid-data-golang-eval/internal/srcfile"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/types/typeutil"
@@ -30,61 +31,69 @@ const ruleID = "GID-136"
 
 // Analyzer — rule GID-136: errors.New (pkg/errors) only in a package-level var.
 var Analyzer = &analysis.Analyzer{
-	Name: "giderrnew",
-	Doc:  ruleID + ": errors.New (pkg/errors) only in a package-level var, not at runtime. Fix: declare a package-level var ErrX",
-	Run:  run,
+	Name:     "giderrnew",
+	Doc:      ruleID + ": errors.New (pkg/errors) only in a package-level var, not at runtime. Fix: declare a package-level var ErrX",
+	Requires: astwalk.Requires,
+	Run:      run,
 }
 
-func run(pass *analysis.Pass) (any, error) {
-	for _, file := range pass.Files {
-		if ast.IsGenerated(file) || srcfile.IsTest(pass, file) {
-			continue
-		}
-		checkFile(pass, file)
-	}
-	return nil, nil
+// bodyFilter — the function shapes that open a runtime scope, the block that
+// is their body, and the calls being judged.
+var bodyFilter = []ast.Node{
+	(*ast.FuncDecl)(nil),
+	(*ast.FuncLit)(nil),
+	(*ast.BlockStmt)(nil),
+	(*ast.CallExpr)(nil),
 }
 
-// checkFile walks the bodies of all functions, methods and func literals in
-// the file and reports calls to errors.New from pkg/errors inside them. Calls
-// outside function bodies (package-level var ErrX = errors.New(...)) are untouched.
+// run reports calls to errors.New from pkg/errors inside the body of a
+// function, method or func literal. Calls outside function bodies
+// (package-level var ErrX = errors.New(...)) are untouched.
 //
 // A func literal body is runtime even when the literal itself is assigned to a
 // package-level var: errors.New there is evaluated when the literal is called.
-func checkFile(pass *analysis.Pass, file *ast.File) {
-	var bodies []*ast.BlockStmt
+func run(pass *analysis.Pass) (any, error) {
+	skip := func(file *ast.File) bool {
+		return ast.IsGenerated(file) || srcfile.IsTest(pass, file)
+	}
 
-	ast.Inspect(file, func(n ast.Node) bool {
+	// depth counts the function bodies open around the traversal; the signature
+	// of a function is not its body, so only the body block opens a level.
+	var (
+		depth  int
+		bodies = map[*ast.BlockStmt]struct{}{}
+	)
+
+	astwalk.Around(pass, bodyFilter, skip, func(_ *ast.File, n ast.Node, push bool) bool {
 		switch node := n.(type) {
 		case *ast.FuncDecl:
-			if node.Body != nil {
-				bodies = append(bodies, node.Body)
+			if push && node.Body != nil {
+				bodies[node.Body] = struct{}{}
 			}
 		case *ast.FuncLit:
-			bodies = append(bodies, node.Body)
-		}
-		return true
-	})
-
-	for _, body := range bodies {
-		ast.Inspect(body, func(n ast.Node) bool {
-			// Do not descend into a nested func literal — its body is walked
-			// in a separate iteration, otherwise the call would be reported twice.
-			if _, ok := n.(*ast.FuncLit); ok {
-				return false
+			if push {
+				bodies[node.Body] = struct{}{}
 			}
-			call, ok := n.(*ast.CallExpr)
-			if !ok {
-				return true
+		case *ast.BlockStmt:
+			if _, ok := bodies[node]; ok {
+				if push {
+					depth++
+				} else {
+					depth--
+				}
 			}
-			if isPkgErrorsNew(pass, call) {
-				pass.Reportf(call.Pos(),
+		case *ast.CallExpr:
+			if push && depth > 0 && isPkgErrorsNew(pass, node) {
+				pass.Reportf(node.Pos(),
 					"%s: errors.New at runtime. Fix: declare a package-level var ErrX (see GID-169: error.go)",
 					ruleID)
 			}
-			return true
-		})
-	}
+		}
+
+		return true
+	})
+
+	return nil, nil
 }
 
 // isPkgErrorsNew reports whether call is a call to errors.New from

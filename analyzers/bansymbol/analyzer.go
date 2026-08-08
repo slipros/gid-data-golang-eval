@@ -21,6 +21,7 @@ import (
 
 	"golang.org/x/tools/go/analysis"
 
+	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 )
 
@@ -83,8 +84,9 @@ func NewAnalyzer(cfg Settings) *analysis.Analyzer {
 		symbols = defaultSymbols
 	}
 	return &analysis.Analyzer{
-		Name: "gidbansymbol",
-		Doc:  ruleID + ": ban specific library symbols (configurable). Fix: replace the banned symbol with the project-approved alternative.",
+		Name:     "gidbansymbol",
+		Doc:      ruleID + ": ban specific library symbols (configurable). Fix: replace the banned symbol with the project-approved alternative.",
+		Requires: astwalk.Requires,
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, symbols)
 		},
@@ -92,36 +94,28 @@ func NewAnalyzer(cfg Settings) *analysis.Analyzer {
 }
 
 func run(pass *analysis.Pass, symbols []Symbol) (any, error) {
-	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
-			continue
+	astwalk.NodesOf(pass, ast.IsGenerated, func(_ *ast.File, sel *ast.SelectorExpr) {
+		obj := pass.TypesInfo.Uses[sel.Sel]
+		if obj == nil || obj.Pkg() == nil {
+			return
 		}
-		ast.Inspect(file, func(n ast.Node) bool {
-			sel, ok := n.(*ast.SelectorExpr)
-			if !ok {
-				return true
+		pkg := obj.Pkg()
+		objPkg := pkg.Path()
+		objName := obj.Name()
+		//nolint:gidallptr // the plugin does not depend on the internal gdhelper library
+		for _, s := range symbols {
+			if s.Name != objName {
+				continue
 			}
-			obj := pass.TypesInfo.Uses[sel.Sel]
-			if obj == nil || obj.Pkg() == nil {
-				return true
+			if !pkgMatches(objPkg, s.Pkg) {
+				continue
 			}
-			pkg := obj.Pkg()
-			objPkg := pkg.Path()
-			objName := obj.Name()
-			//nolint:gidallptr // the plugin does not depend on the internal gdhelper library
-			for _, s := range symbols {
-				if s.Name != objName {
-					continue
-				}
-				if !pkgMatches(objPkg, s.Pkg) {
-					continue
-				}
-				report(pass, sel.Sel.Pos(), s, pkg.Name(), objName)
-				break
-			}
-			return true
-		})
-	}
+			report(pass, sel.Sel.Pos(), s, pkg.Name(), objName)
+
+			break
+		}
+	})
+
 	return nil, nil
 }
 

@@ -26,6 +26,7 @@ import (
 	"go/token"
 	"go/types"
 
+	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
 	"golang.org/x/tools/go/analysis"
 )
 
@@ -33,48 +34,51 @@ const ruleID = "GID-185"
 
 // Analyzer — rule GID-185: return/declare a nil slice instead of an empty literal []T{}. Fix: use nil or var s []T.
 var Analyzer = &analysis.Analyzer{
-	Name: "gidnilslice",
-	Doc:  ruleID + ": return/declare a nil slice instead of an empty literal []T{}. Fix: use nil or var s []T",
-	Run:  run,
+	Name:     "gidnilslice",
+	Doc:      ruleID + ": return/declare a nil slice instead of an empty literal []T{}. Fix: use nil or var s []T",
+	Requires: astwalk.Requires,
+	Run:      run,
+}
+
+// declFilter — the three places an empty slice literal can be introduced.
+var declFilter = []ast.Node{
+	(*ast.ReturnStmt)(nil),
+	(*ast.AssignStmt)(nil),
+	(*ast.ValueSpec)(nil),
 }
 
 func run(pass *analysis.Pass) (any, error) {
-	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
-			continue
-		}
-		ast.Inspect(file, func(n ast.Node) bool {
-			switch node := n.(type) {
-			case *ast.ReturnStmt:
-				for _, res := range node.Results {
-					if isEmptySliceLit(pass, res) {
-						pass.Reportf(res.Pos(),
-							"%s: return nil instead of an empty slice. Fix: a nil slice is valid", ruleID)
-					}
-				}
-			case *ast.AssignStmt:
-				// s := []T{} — a short variable declaration.
-				if node.Tok != token.DEFINE {
-					return true
-				}
-				for _, rhs := range node.Rhs {
-					if isEmptySliceLit(pass, rhs) {
-						pass.Reportf(rhs.Pos(),
-							"%s: declare a zero-value slice. Fix: var s []T", ruleID)
-					}
-				}
-			case *ast.ValueSpec:
-				// var s = []T{} — a var declaration with an initializer.
-				for _, val := range node.Values {
-					if isEmptySliceLit(pass, val) {
-						pass.Reportf(val.Pos(),
-							"%s: declare a zero-value slice. Fix: var s []T", ruleID)
-					}
+	astwalk.Nodes(pass, declFilter, ast.IsGenerated, func(_ *ast.File, n ast.Node) {
+		switch node := n.(type) {
+		case *ast.ReturnStmt:
+			for _, res := range node.Results {
+				if isEmptySliceLit(pass, res) {
+					pass.Reportf(res.Pos(),
+						"%s: return nil instead of an empty slice. Fix: a nil slice is valid", ruleID)
 				}
 			}
-			return true
-		})
-	}
+		case *ast.AssignStmt:
+			// s := []T{} — a short variable declaration.
+			if node.Tok != token.DEFINE {
+				return
+			}
+			for _, rhs := range node.Rhs {
+				if isEmptySliceLit(pass, rhs) {
+					pass.Reportf(rhs.Pos(),
+						"%s: declare a zero-value slice. Fix: var s []T", ruleID)
+				}
+			}
+		case *ast.ValueSpec:
+			// var s = []T{} — a var declaration with an initializer.
+			for _, val := range node.Values {
+				if isEmptySliceLit(pass, val) {
+					pass.Reportf(val.Pos(),
+						"%s: declare a zero-value slice. Fix: var s []T", ruleID)
+				}
+			}
+		}
+	})
+
 	return nil, nil
 }
 

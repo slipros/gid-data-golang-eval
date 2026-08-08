@@ -16,6 +16,7 @@ import (
 
 	"golang.org/x/tools/go/analysis"
 
+	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 )
 
@@ -26,46 +27,44 @@ const (
 
 // Analyzer — the GID rule: see Doc.
 var Analyzer = &analysis.Analyzer{
-	Name: "gidnoptr",
-	Doc:  ruleUUID + "/" + ruleZero + ": forbid *uuid.UUID everywhere, and pointers to simple types (time, numeric, string) in domain/model and event/dto — the zero value checks emptiness itself. Fix: use the value type; escape with //nolint:gidnoptr when unavoidable",
-	Run:  run,
+	Name:     "gidnoptr",
+	Doc:      ruleUUID + "/" + ruleZero + ": forbid *uuid.UUID everywhere, and pointers to simple types (time, numeric, string) in domain/model and event/dto — the zero value checks emptiness itself. Fix: use the value type; escape with //nolint:gidnoptr when unavoidable",
+	Requires: astwalk.Requires,
+	Run:      run,
 }
 
 func run(pass *analysis.Pass) (any, error) {
 	pkgPath := pass.Pkg.Path()
 	inScope := pathseg.HasLayer(pkgPath, "domain", "model") || pathseg.HasLayer(pkgPath, "event", "dto")
-	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
-			continue
-		}
-		checkUUIDPointers(pass, file)
-		if inScope {
+	checkUUIDPointers(pass)
+
+	if inScope {
+		for _, file := range pass.Files {
+			if ast.IsGenerated(file) {
+				continue
+			}
 			checkModelFields(pass, file)
 		}
 	}
+
 	return nil, nil
 }
 
 // checkUUIDPointers — GID-120: *uuid.UUID in any type position.
-func checkUUIDPointers(pass *analysis.Pass, file *ast.File) {
-	ast.Inspect(file, func(n ast.Node) bool {
-		star, ok := n.(*ast.StarExpr)
-		if !ok {
-			return true
-		}
+func checkUUIDPointers(pass *analysis.Pass) {
+	astwalk.NodesOf(pass, ast.IsGenerated, func(_ *ast.File, star *ast.StarExpr) {
 		tv, ok := pass.TypesInfo.Types[star]
 		if !ok || !tv.IsType() {
-			return true // a dereference, not a type
+			return // a dereference, not a type
 		}
 		ptr, ok := tv.Type.(*types.Pointer)
 		if !ok {
-			return true
+			return
 		}
 		if isUUID(ptr.Elem()) {
 			pass.Reportf(star.Pos(),
 				"%s: *uuid.UUID is forbidden. Fix: use uuid.UUID and check emptiness with IsNil()", ruleUUID)
 		}
-		return true
 	})
 }
 

@@ -32,31 +32,27 @@ import (
 	"go/types"
 
 	"golang.org/x/tools/go/analysis"
+
+	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
 )
 
 const ruleID = "GID-183"
 
 // Analyzer — rule GID-183: make(map) without capacity when filled from range; give the len(src) hint. Fix: make(map[K]V, len(src)).
 var Analyzer = &analysis.Analyzer{
-	Name: "gidmapcap",
-	Doc:  ruleID + ": make(map) without capacity when filled from range; give the len(src) hint. Fix: make(map[K]V, len(src))",
-	Run:  run,
+	Name:     "gidmapcap",
+	Doc:      ruleID + ": make(map) without capacity when filled from range; give the len(src) hint. Fix: make(map[K]V, len(src))",
+	Requires: astwalk.Requires,
+	Run:      run,
 }
 
 func run(pass *analysis.Pass) (any, error) {
-	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
-			continue
-		}
-		ast.Inspect(file, func(n ast.Node) bool {
-			fn, ok := n.(*ast.FuncDecl)
-			if !ok || fn.Body == nil {
-				return true
-			}
+	astwalk.NodesOf(pass, ast.IsGenerated, func(_ *ast.File, n *ast.FuncDecl) {
+		if fn := n; fn.Body != nil {
 			checkBlock(pass, fn.Body.List)
-			return true
-		})
-	}
+		}
+	})
+
 	return nil, nil
 }
 

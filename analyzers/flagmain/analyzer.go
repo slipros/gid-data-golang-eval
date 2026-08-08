@@ -25,6 +25,7 @@ import (
 	"go/types"
 	"strings"
 
+	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
 	"golang.org/x/tools/go/analysis"
 )
 
@@ -35,9 +36,10 @@ const flagPkgPath = "flag"
 
 // Analyzer — rule GID-192: flag.* only in package main; flag names in snake_case.
 var Analyzer = &analysis.Analyzer{
-	Name: "gidflagmain",
-	Doc:  ruleID + ": flags are registered only in package main, flag names in snake_case. Fix: register flags in main and use snake_case names",
-	Run:  run,
+	Name:     "gidflagmain",
+	Doc:      ruleID + ": flags are registered only in package main, flag names in snake_case. Fix: register flags in main and use snake_case names",
+	Requires: astwalk.Requires,
+	Run:      run,
 }
 
 func run(pass *analysis.Pass) (any, error) {
@@ -47,42 +49,35 @@ func run(pass *analysis.Pass) (any, error) {
 	}
 	isMain := pass.Pkg.Name() == "main"
 
-	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
-			continue
-		}
-		// *_test.go files are skipped — flag is legitimate in tests.
-		if isTestFile(pass, file) {
-			continue
-		}
-		ast.Inspect(file, func(n ast.Node) bool {
-			call, ok := n.(*ast.CallExpr)
-			if !ok {
-				return true
-			}
-			fn := flagFunc(pass, call)
-			if fn == nil {
-				return true
-			}
-
-			if !isMain {
-				pass.Reportf(call.Pos(),
-					"%s: registering a flag outside package main is forbidden. "+
-						"Fix: declare flags in the binary, let libraries take parameters", ruleID)
-				return true
-			}
-
-			// In package main the flag name is checked for snake_case.
-			pos, name, ok := flagName(pass, fn, call)
-			if !ok {
-				return true
-			}
-			if !isSnakeCase(name) {
-				pass.Reportf(pos, "%s: flag name %q. Fix: use snake_case", ruleID, name)
-			}
-			return true
-		})
+	// *_test.go files are skipped — flag is legitimate in tests.
+	skip := func(file *ast.File) bool {
+		return ast.IsGenerated(file) || isTestFile(pass, file)
 	}
+
+	astwalk.NodesOf(pass, skip, func(_ *ast.File, call *ast.CallExpr) {
+		fn := flagFunc(pass, call)
+		if fn == nil {
+			return
+		}
+
+		if !isMain {
+			pass.Reportf(call.Pos(),
+				"%s: registering a flag outside package main is forbidden. "+
+					"Fix: declare flags in the binary, let libraries take parameters", ruleID)
+
+			return
+		}
+
+		// In package main the flag name is checked for snake_case.
+		pos, name, ok := flagName(pass, fn, call)
+		if !ok {
+			return
+		}
+		if !isSnakeCase(name) {
+			pass.Reportf(pos, "%s: flag name %q. Fix: use snake_case", ruleID, name)
+		}
+	})
+
 	return nil, nil
 }
 

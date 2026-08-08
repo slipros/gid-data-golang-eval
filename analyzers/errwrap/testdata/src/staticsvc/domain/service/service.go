@@ -89,3 +89,31 @@ func (s *Service) goodExcludedCtor() error {
 func (s *Service) noError() int {
 	return 0
 }
+
+// --- Positive: a func literal held by a package-level var is runtime code too ---
+//
+// The renderer table below is a var declaration, so its returns sit in no
+// function DECLARATION at all. They are still returns, and the static error
+// they hand back has no more stack than one returned from a method: the only
+// stack it carries is the package init's, where the sentinel was built.
+
+type renderer func(args []string) (string, error)
+
+var renderers = map[string]renderer{
+	"bad": func(args []string) (string, error) {
+		if len(args) != 0 {
+			return "", errors.WithMessage(model.ErrSnapshotNotFound, "takes no arguments") // want `GID-177: a static error is returned without a stack`
+		}
+
+		return "ok", nil
+	},
+
+	// --- Negative: the same literal wrapping the sentinel properly ---
+	"good": func(args []string) (string, error) {
+		if len(args) != 0 {
+			return "", errors.Wrap(model.ErrSnapshotNotFound, "takes no arguments")
+		}
+
+		return "ok", nil
+	},
+}

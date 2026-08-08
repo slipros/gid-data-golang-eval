@@ -22,29 +22,25 @@ import (
 	"strings"
 
 	"golang.org/x/tools/go/analysis"
+
+	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
 )
 
 const ruleID = "GID-191"
 
 // Analyzer — rule GID-191: subtest names in t.Run without spaces or slashes.
 var Analyzer = &analysis.Analyzer{
-	Name: "gidsubtestname",
-	Doc:  ruleID + ": subtest names in t.Run/b.Run have no spaces or slashes (snake_case). Fix: rename to snake_case",
-	Run:  run,
+	Name:     "gidsubtestname",
+	Doc:      ruleID + ": subtest names in t.Run/b.Run have no spaces or slashes (snake_case). Fix: rename to snake_case",
+	Requires: astwalk.Requires,
+	Run:      run,
 }
 
 func run(pass *analysis.Pass) (any, error) {
-	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
-			continue
-		}
-		ast.Inspect(file, func(n ast.Node) bool {
-			if call, ok := n.(*ast.CallExpr); ok {
-				checkCall(pass, call)
-			}
-			return true
-		})
-	}
+	astwalk.NodesOf(pass, ast.IsGenerated, func(_ *ast.File, n *ast.CallExpr) {
+		checkCall(pass, n)
+	})
+
 	return nil, nil
 }
 

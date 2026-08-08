@@ -21,9 +21,9 @@ package bytesinloop
 
 import (
 	"go/ast"
-	"go/token"
 	"go/types"
 
+	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
 	"golang.org/x/tools/go/analysis"
 )
 
@@ -31,55 +31,59 @@ const ruleID = "GID-182"
 
 // Analyzer — rule GID-182: conversion of a string literal/constant to []byte/[]rune inside a loop.
 var Analyzer = &analysis.Analyzer{
-	Name: "gidbytesinloop",
-	Doc:  ruleID + ": converting a string literal/constant to []byte/[]rune inside a loop. Fix: compute the conversion once before the loop.",
-	Run:  run,
+	Name:     "gidbytesinloop",
+	Doc:      ruleID + ": converting a string literal/constant to []byte/[]rune inside a loop. Fix: compute the conversion once before the loop.",
+	Requires: astwalk.Requires,
+	Run:      run,
+}
+
+// loopFilter — the loop statements, the block that is their body, and the
+// conversions being judged. The bodies of closures declared in a loop are
+// lexically inside that body and so count as "in the loop", exactly as before.
+var loopFilter = []ast.Node{
+	(*ast.ForStmt)(nil),
+	(*ast.RangeStmt)(nil),
+	(*ast.BlockStmt)(nil),
+	(*ast.CallExpr)(nil),
 }
 
 func run(pass *analysis.Pass) (any, error) {
-	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
-			continue
+	// depth counts the loop bodies currently open around the traversal. The
+	// loop header (init/cond/post, or the ranged expression) is not part of the
+	// body, so only the body block itself opens a level.
+	var (
+		depth      int
+		loopBodies = map[*ast.BlockStmt]struct{}{}
+	)
+
+	astwalk.Around(pass, loopFilter, ast.IsGenerated, func(_ *ast.File, n ast.Node, push bool) bool {
+		switch node := n.(type) {
+		case *ast.ForStmt:
+			if push {
+				loopBodies[node.Body] = struct{}{}
+			}
+		case *ast.RangeStmt:
+			if push {
+				loopBodies[node.Body] = struct{}{}
+			}
+		case *ast.BlockStmt:
+			if _, ok := loopBodies[node]; ok {
+				if push {
+					depth++
+				} else {
+					depth--
+				}
+			}
+		case *ast.CallExpr:
+			if push && depth > 0 {
+				checkConversion(pass, node)
+			}
 		}
 
-		// Collect the positional ranges of all loop bodies (for/range).
-		// Nested blocks and the bodies of closures declared in the loop are
-		// lexically inside this range — and therefore count as "in the loop".
-		var loopBodies []*ast.BlockStmt
-		ast.Inspect(file, func(n ast.Node) bool {
-			switch node := n.(type) {
-			case *ast.ForStmt:
-				loopBodies = append(loopBodies, node.Body)
-			case *ast.RangeStmt:
-				loopBodies = append(loopBodies, node.Body)
-			}
-			return true
-		})
+		return true
+	})
 
-		ast.Inspect(file, func(n ast.Node) bool {
-			call, ok := n.(*ast.CallExpr)
-			if !ok {
-				return true
-			}
-			if !insideAnyLoop(call.Pos(), loopBodies) {
-				return true
-			}
-			checkConversion(pass, call)
-			return true
-		})
-	}
 	return nil, nil
-}
-
-// insideAnyLoop reports whether the position pos lies inside the body of at least one loop.
-func insideAnyLoop(pos token.Pos, bodies []*ast.BlockStmt) bool {
-	for _, b := range bodies {
-		// Lbrace < pos < Rbrace — the position is strictly inside the body's braces.
-		if pos > b.Lbrace && pos < b.Rbrace {
-			return true
-		}
-	}
-	return false
 }
 
 // checkConversion: if call is a []byte(X)/[]rune(X) conversion where X is

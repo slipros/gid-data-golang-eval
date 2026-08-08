@@ -27,6 +27,8 @@ import (
 	"path/filepath"
 
 	"golang.org/x/tools/go/analysis"
+
+	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
 )
 
 const ruleID = "GID-190"
@@ -40,9 +42,10 @@ var errorFiles = map[string]bool{
 
 // Analyzer — rule GID-190: error is the last result, concrete error types are not returned.
 var Analyzer = &analysis.Analyzer{
-	Name: "giderrlast",
-	Doc:  ruleID + ": error must be the last result, and the error interface (not a concrete type) is returned. Fix: move error last and return the error interface",
-	Run:  run,
+	Name:     "giderrlast",
+	Doc:      ruleID + ": error must be the last result, and the error interface (not a concrete type) is returned. Fix: move error last and return the error interface",
+	Requires: astwalk.Requires,
+	Run:      run,
 }
 
 func run(pass *analysis.Pass) (any, error) {
@@ -53,22 +56,18 @@ func run(pass *analysis.Pass) (any, error) {
 		return nil, nil
 	}
 
+	// Whether a file is an error-constructor file depends on its name alone,
+	// so it is decided once per file rather than once per declaration.
+	inErrorFile := make(map[*ast.File]bool, len(pass.Files))
 	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
-			continue
-		}
 		tokenFile := pass.Fset.File(file.Pos())
-		inErrorFile := errorFiles[filepath.Base(tokenFile.Name())]
-
-		ast.Inspect(file, func(n ast.Node) bool {
-			fn, ok := n.(*ast.FuncDecl)
-			if !ok {
-				return true
-			}
-			checkResults(pass, fn, errIface, inErrorFile)
-			return true
-		})
+		inErrorFile[file] = tokenFile != nil && errorFiles[filepath.Base(tokenFile.Name())]
 	}
+
+	astwalk.NodesOf(pass, ast.IsGenerated, func(file *ast.File, n *ast.FuncDecl) {
+		checkResults(pass, n, errIface, inErrorFile[file])
+	})
+
 	return nil, nil
 }
 

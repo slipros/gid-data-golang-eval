@@ -15,43 +15,37 @@ import (
 	"go/types"
 
 	"golang.org/x/tools/go/analysis"
+
+	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
 )
 
 const ruleID = "GID-004"
 
 // Analyzer — rule GID-004: iterate over a slice of structs via gdhelper.AllPtr.
 var Analyzer = &analysis.Analyzer{
-	Name: "gidallptr",
-	Doc:  ruleID + ": iterate over a slice of structs via gdhelper.AllPtr. Fix: range over gdhelper.AllPtr(items) to get pointers instead of copies.",
-	Run:  run,
+	Name:     "gidallptr",
+	Doc:      ruleID + ": iterate over a slice of structs via gdhelper.AllPtr. Fix: range over gdhelper.AllPtr(items) to get pointers instead of copies.",
+	Requires: astwalk.Requires,
+	Run:      run,
 }
 
 func run(pass *analysis.Pass) (any, error) {
 	const helperPkg = "gitlab.gid.team/gid-data/tech/golang/libs/helper.git"
-	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
-			continue
+	astwalk.NodesOf(pass, ast.IsGenerated, func(_ *ast.File, rng *ast.RangeStmt) {
+		// No value variable — no element is copied, and AllPtr yields
+		// pointers, not indices, so the suggested fix would not even
+		// compile in place of such a loop.
+		if rng.Value == nil {
+			return
 		}
-		ast.Inspect(file, func(n ast.Node) bool {
-			rng, ok := n.(*ast.RangeStmt)
-			if !ok {
-				return true
-			}
-			// No value variable — no element is copied, and AllPtr yields
-			// pointers, not indices, so the suggested fix would not even
-			// compile in place of such a loop.
-			if rng.Value == nil {
-				return true
-			}
-			if isStructSlice(pass.TypesInfo.TypeOf(rng.X)) {
-				pass.Reportf(rng.X.Pos(),
-					"%s: ranging over a slice of structs copies each element. "+
-						"Fix: range over gdhelper.AllPtr(items) (%s) to iterate pointers.",
-					ruleID, helperPkg)
-			}
-			return true
-		})
-	}
+		if isStructSlice(pass.TypesInfo.TypeOf(rng.X)) {
+			pass.Reportf(rng.X.Pos(),
+				"%s: ranging over a slice of structs copies each element. "+
+					"Fix: range over gdhelper.AllPtr(items) (%s) to iterate pointers.",
+				ruleID, helperPkg)
+		}
+	})
+
 	return nil, nil
 }
 

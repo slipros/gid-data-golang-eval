@@ -25,6 +25,7 @@ import (
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/types/typeutil"
 
+	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 )
 
@@ -34,51 +35,58 @@ const gofrsUUID = "github.com/gofrs/uuid"
 
 // TimeNowAnalyzer — GID-001.
 var TimeNowAnalyzer = &analysis.Analyzer{
-	Name: "gidtimenow",
-	Doc:  "GID-001: time.Now() must not be called directly. Fix: use gdhelper.StdTime.Now() instead of time.Now().",
-	Run:  runTimeNow,
+	Name:     "gidtimenow",
+	Doc:      "GID-001: time.Now() must not be called directly. Fix: use gdhelper.StdTime.Now() instead of time.Now().",
+	Requires: astwalk.Requires,
+	Run:      runTimeNow,
 }
 
 // UUIDNilAnalyzer — GID-002.
 var UUIDNilAnalyzer = &analysis.Analyzer{
-	Name: "giduuidnil",
-	Doc:  `GID-002: do not compare a UUID with uuid.UUID{}. Fix: replace "id == uuid.UUID{}" with "id.IsNil()".`,
-	Run:  runUUIDNil,
+	Name:     "giduuidnil",
+	Doc:      `GID-002: do not compare a UUID with uuid.UUID{}. Fix: replace "id == uuid.UUID{}" with "id.IsNil()".`,
+	Requires: astwalk.Requires,
+	Run:      runUUIDNil,
 }
 
 // UUIDVersionAnalyzer — GID-003.
 var UUIDVersionAnalyzer = &analysis.Analyzer{
-	Name: "giduuidversion",
-	Doc:  "GID-003: UUIDs must be generated uniformly. Fix: use uuid.Must(uuid.NewV7()) instead of uuid.NewV1/3/4/5/6().",
-	Run:  runUUIDVersion,
+	Name:     "giduuidversion",
+	Doc:      "GID-003: UUIDs must be generated uniformly. Fix: use uuid.Must(uuid.NewV7()) instead of uuid.NewV1/3/4/5/6().",
+	Requires: astwalk.Requires,
+	Run:      runUUIDVersion,
 }
 
 // NewDerefAnalyzer — GID-005.
 var NewDerefAnalyzer = &analysis.Analyzer{
-	Name: "gidnewderef",
-	Doc:  `GID-005: avoid the new() builtin. Fix: use "&T{}" for structs or "var x T" instead of "new(T)".`,
-	Run:  runNewDeref,
+	Name:     "gidnewderef",
+	Doc:      `GID-005: avoid the new() builtin. Fix: use "&T{}" for structs or "var x T" instead of "new(T)".`,
+	Requires: astwalk.Requires,
+	Run:      runNewDeref,
 }
 
 // YodaAnalyzer — GID-006.
 var YodaAnalyzer = &analysis.Analyzer{
-	Name: "gidyoda",
-	Doc:  `GID-006: yoda condition — the literal must be on the right. Fix: write "x == 0" instead of "0 == x".`,
-	Run:  runYoda,
+	Name:     "gidyoda",
+	Doc:      `GID-006: yoda condition — the literal must be on the right. Fix: write "x == 0" instead of "0 == x".`,
+	Requires: astwalk.Requires,
+	Run:      runYoda,
 }
 
 // QuoteVerbAnalyzer — GID-007.
 var QuoteVerbAnalyzer = &analysis.Analyzer{
-	Name: "gidquoteverb",
-	Doc:  `GID-007: do not escape quotes around %s/%v by hand. Fix: use %q instead of \"%s\".`,
-	Run:  runQuoteVerb,
+	Name:     "gidquoteverb",
+	Doc:      `GID-007: do not escape quotes around %s/%v by hand. Fix: use %q instead of \"%s\".`,
+	Requires: astwalk.Requires,
+	Run:      runQuoteVerb,
 }
 
 // DeepEqualAnalyzer — GID-008.
 var DeepEqualAnalyzer = &analysis.Analyzer{
-	Name: "giddeepequal",
-	Doc:  "GID-008: avoid reflect.DeepEqual. Fix: use require/cmp in tests or explicit field comparison in code.",
-	Run:  runDeepEqual,
+	Name:     "giddeepequal",
+	Doc:      "GID-008: avoid reflect.DeepEqual. Fix: use require/cmp in tests or explicit field comparison in code.",
+	Requires: astwalk.Requires,
+	Run:      runDeepEqual,
 }
 
 // uuidVersionFuncs — generator functions banned in favour of NewV7.
@@ -130,34 +138,20 @@ func calleePkgPath(pass *analysis.Pass, call *ast.CallExpr) (pkgPath, funcName s
 	return pkg.Path(), fn.Name()
 }
 
-// inspectCalls walks every non-generated file calling fn for each CallExpr.
+// inspectCalls calls fn for each CallExpr of every non-generated file, in
+// source order — runUUIDVersion depends on an outer call being seen before its
+// arguments, which the shared inspector preserves.
 func inspectCalls(pass *analysis.Pass, fn func(*ast.CallExpr)) {
-	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
-			continue
-		}
-		ast.Inspect(file, func(n ast.Node) bool {
-			if call, ok := n.(*ast.CallExpr); ok {
-				fn(call)
-			}
-			return true
-		})
-	}
+	astwalk.NodesOf(pass, ast.IsGenerated, func(_ *ast.File, call *ast.CallExpr) {
+		fn(call)
+	})
 }
 
-// inspectBinary walks every non-generated file calling fn for each BinaryExpr.
+// inspectBinary calls fn for each BinaryExpr of every non-generated file.
 func inspectBinary(pass *analysis.Pass, fn func(*ast.BinaryExpr)) {
-	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
-			continue
-		}
-		ast.Inspect(file, func(n ast.Node) bool {
-			if be, ok := n.(*ast.BinaryExpr); ok {
-				fn(be)
-			}
-			return true
-		})
-	}
+	astwalk.NodesOf(pass, ast.IsGenerated, func(_ *ast.File, be *ast.BinaryExpr) {
+		fn(be)
+	})
 }
 
 func runTimeNow(pass *analysis.Pass) (any, error) {

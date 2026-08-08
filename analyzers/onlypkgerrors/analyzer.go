@@ -34,6 +34,7 @@ import (
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/types/typeutil"
 
+	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
 	"github.com/slipros/gid-data-golang-eval/internal/srcfile"
 )
 
@@ -51,45 +52,45 @@ var forbidden = map[string]map[string]struct{}{
 
 // Analyzer — rule GID-146: errors are handled only through github.com/pkg/errors.
 var Analyzer = &analysis.Analyzer{
-	Name: "gidonlypkgerrors",
-	Doc:  ruleID + ": errors are created and inspected only through " + allowedPkg,
-	Run:  run,
+	Name:     "gidonlypkgerrors",
+	Doc:      ruleID + ": errors are created and inspected only through " + allowedPkg,
+	Requires: astwalk.Requires,
+	Run:      run,
 }
 
 func run(pass *analysis.Pass) (any, error) {
+	// The import already carries the whole file's fix — reporting the calls
+	// inside it on top of that would repeat one diagnostic N times. Imports are
+	// read off file.Imports, so this costs no traversal.
+	importReported := make(map[*ast.File]bool, len(pass.Files))
 	for _, file := range pass.Files {
 		if ast.IsGenerated(file) {
 			continue
 		}
-		// The import already carries the whole file's fix — reporting the calls
-		// inside it on top of that would repeat one diagnostic N times.
-		importReported := reportStdImport(pass, file)
-		ast.Inspect(file, func(n ast.Node) bool {
-			call, ok := n.(*ast.CallExpr)
-			if !ok {
-				return true
-			}
-			f, ok := typeutil.Callee(pass.TypesInfo, call).(*types.Func)
-			if !ok || f.Pkg() == nil {
-				return true
-			}
-			fPkg := f.Pkg()
-			names, ok := forbidden[fPkg.Path()]
-			if !ok {
-				return true
-			}
-			if _, ok := names[f.Name()]; !ok {
-				return true
-			}
-			if importReported && fPkg.Path() == stdErrorsPkg {
-				return true
-			}
-			pass.Reportf(call.Pos(),
-				"%s: %s.%s is forbidden. Fix: use only %s for errors",
-				ruleID, fPkg.Name(), f.Name(), allowedPkg)
-			return true
-		})
+		importReported[file] = reportStdImport(pass, file)
 	}
+
+	astwalk.NodesOf(pass, ast.IsGenerated, func(file *ast.File, n *ast.CallExpr) {
+		f, ok := typeutil.Callee(pass.TypesInfo, n).(*types.Func)
+		if !ok || f.Pkg() == nil {
+			return
+		}
+		fPkg := f.Pkg()
+		names, ok := forbidden[fPkg.Path()]
+		if !ok {
+			return
+		}
+		if _, ok := names[f.Name()]; !ok {
+			return
+		}
+		if importReported[file] && fPkg.Path() == stdErrorsPkg {
+			return
+		}
+		pass.Reportf(n.Pos(),
+			"%s: %s.%s is forbidden. Fix: use only %s for errors",
+			ruleID, fPkg.Name(), f.Name(), allowedPkg)
+	})
+
 	return nil, nil
 }
 

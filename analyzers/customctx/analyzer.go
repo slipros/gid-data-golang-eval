@@ -10,20 +10,25 @@ import (
 	"go/types"
 
 	"golang.org/x/tools/go/analysis"
+
+	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
 )
 
 const ruleID = "GID-188"
 
 // Analyzer — rule GID-188: custom context types are banned — only context.Context.
 var Analyzer = &analysis.Analyzer{
-	Name: "gidcustomctx",
-	Doc:  ruleID + ": custom context types are forbidden, use context.Context. Fix: pass context.Context and store data via context.WithValue.",
-	Run:  run,
+	Name:     "gidcustomctx",
+	Doc:      ruleID + ": custom context types are forbidden, use context.Context. Fix: pass context.Context and store data via context.WithValue.",
+	Requires: astwalk.Requires,
+	Run:      run,
 }
 
 func run(pass *analysis.Pass) (any, error) {
 	ctxIface := lookupContextInterface(pass)
 
+	// Top-level declarations are read straight off file.Decls: the rule judges
+	// package-level types and functions, so there is nothing to search for.
 	for _, file := range pass.Files {
 		if ast.IsGenerated(file) {
 			continue
@@ -36,60 +41,71 @@ func run(pass *analysis.Pass) (any, error) {
 				checkFuncParams(pass, d.Type)
 			}
 		}
-
-		// Parameters of function literals and function types are checked too.
-		ast.Inspect(file, func(n ast.Node) bool {
-			if lit, ok := n.(*ast.FuncLit); ok {
-				checkFuncParams(pass, lit.Type)
-			}
-			return true
-		})
 	}
+
+	// Parameters of function literals are checked too — those sit inside bodies.
+	astwalk.NodesOf(pass, ast.IsGenerated, func(_ *ast.File, n *ast.FuncLit) {
+		checkFuncParams(pass, n.Type)
+	})
+
 	return nil, nil
 }
 
 // lookupContextInterface returns the underlying interface of the stdlib type
 // context.Context if the context package is imported (directly or
 // transitively). Otherwise nil — checks 1 and 2 are not applicable.
+//
+// The search stops at the first hit instead of materializing the whole
+// transitive import set: "context" is a direct import of nearly every package
+// that could break this rule, while the full set of a service package runs into
+// thousands of entries and was the single most expensive step of this rule.
 func lookupContextInterface(pass *analysis.Pass) *types.Interface {
-	for _, imp := range allImports(pass.Pkg) {
-		if imp.Path() != "context" {
-			continue
-		}
-		scope := imp.Scope()
-		obj := scope.Lookup("Context")
-		if obj == nil {
-			return nil
-		}
-		named, ok := obj.Type().(*types.Named)
-		if !ok {
-			return nil
-		}
-		iface, ok := named.Underlying().(*types.Interface)
-		if !ok {
-			return nil
-		}
-		return iface
+	imp := findImport(pass.Pkg, "context")
+	if imp == nil {
+		return nil
 	}
-	return nil
+
+	scope := imp.Scope()
+	obj := scope.Lookup("Context")
+	if obj == nil {
+		return nil
+	}
+	named, ok := obj.Type().(*types.Named)
+	if !ok {
+		return nil
+	}
+	iface, ok := named.Underlying().(*types.Interface)
+	if !ok {
+		return nil
+	}
+
+	return iface
 }
 
-func allImports(pkg *types.Package) []*types.Package {
-	seen := map[string]bool{}
-	var out []*types.Package
-	var walk func(p *types.Package)
-	walk = func(p *types.Package) {
-		for _, imp := range p.Imports() {
-			if seen[imp.Path()] {
-				continue
-			}
-			seen[imp.Path()] = true
-			out = append(out, imp)
-			walk(imp)
+// findImport looks for path among the transitive imports of pkg, breadth first
+// so that direct imports — where the answer almost always is — are seen before
+// the graph is entered.
+func findImport(pkg *types.Package, path string) *types.Package {
+	seen := make(map[*types.Package]bool)
+	queue := pkg.Imports()
+
+	for len(queue) > 0 {
+		imp := queue[0]
+		queue = queue[1:]
+
+		if seen[imp] {
+			continue
 		}
+		seen[imp] = true
+
+		if imp.Path() == path {
+			return imp
+		}
+
+		queue = append(queue, imp.Imports()...)
 	}
-	walk(pkg)
-	return out
+
+	return nil
 }
 
 // isStdlibContext reports whether the type is exactly the stdlib context.Context.

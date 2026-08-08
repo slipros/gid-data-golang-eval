@@ -21,6 +21,7 @@ import (
 
 	"golang.org/x/tools/go/analysis"
 
+	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
 	"github.com/slipros/gid-data-golang-eval/internal/lgr"
 )
 
@@ -44,8 +45,9 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 		minCalls = defaultMinCalls
 	}
 	return &analysis.Analyzer{
-		Name: "gidchainperline",
-		Doc:  ruleID + ": a call chain must put each call on its own line, including the first. Fix: break the chain so every .Method() starts a new line.",
+		Name:     "gidchainperline",
+		Doc:      ruleID + ": a call chain must put each call on its own line, including the first. Fix: break the chain so every .Method() starts a new line.",
+		Requires: astwalk.Requires,
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, minCalls)
 		},
@@ -53,35 +55,32 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 }
 
 func run(pass *analysis.Pass, minCalls int) (any, error) {
-	for _, file := range pass.Files {
-		if ast.IsGenerated(file) || isTestFile(pass, file) {
-			continue
-		}
-		// Links of already-processed chains do not form their own chains;
-		// their arguments are still checked independently.
-		visited := map[*ast.CallExpr]struct{}{}
-		ast.Inspect(file, func(n ast.Node) bool {
-			call, ok := n.(*ast.CallExpr)
-			if !ok {
-				return true
-			}
-			if _, ok := visited[call]; ok {
-				return true
-			}
-			sels, base, links := chain(pass, call)
-			for _, link := range links {
-				visited[link] = struct{}{}
-			}
-			if len(sels) < minCalls {
-				return true
-			}
-			if isLogrusChain(pass, sels) {
-				return true // the domain of GID-156
-			}
-			checkLines(pass, sels, base)
-			return true
-		})
+	skip := func(file *ast.File) bool {
+		return ast.IsGenerated(file) || isTestFile(pass, file)
 	}
+
+	// Links of already-processed chains do not form their own chains;
+	// their arguments are still checked independently. A chain never spans
+	// files, so one map per package is the same set as one map per file.
+	visited := map[*ast.CallExpr]struct{}{}
+
+	astwalk.NodesOf(pass, skip, func(_ *ast.File, call *ast.CallExpr) {
+		if _, ok := visited[call]; ok {
+			return
+		}
+		sels, base, links := chain(pass, call)
+		for _, link := range links {
+			visited[link] = struct{}{}
+		}
+		if len(sels) < minCalls {
+			return
+		}
+		if isLogrusChain(pass, sels) {
+			return // the domain of GID-156
+		}
+		checkLines(pass, sels, base)
+	})
+
 	return nil, nil
 }
 
