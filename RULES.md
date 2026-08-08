@@ -237,7 +237,10 @@ Name quality · verb-first naming of operations (verb-first-naming: a verb dicti
 2. Specification — a `.feature` following the `rule_template.feature` template (4 case classes).
 3. Implementation: an analyzer in `analyzers/<slug>/` (simple AST patterns go into the `analyzers/patterns` package).
 4. **Eval is mandatory**: testdata with `// want`, all 4 case classes, `go test ./...` green.
-5. Enable in `.golangci.yml`, update the status here.
+5. Enable it in all three configs — `.golangci.yml` (self-lint), `gid-golangci.yml`
+   (distributable) and `gid-golangci-rules.yml` (the `--gid-rules-only` profile);
+   the gates are `TestDefaultConfigEnablesRegisteredLinters` and
+   `TestRulesOnlyConfigMatchesDefault`. Update the status here.
 
 ### Test files
 

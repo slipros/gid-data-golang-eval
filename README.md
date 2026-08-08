@@ -36,6 +36,9 @@ the linter does that deterministically.
   `internal/defaultconfig`) and is what a plain run uses — nothing to copy,
   nothing to keep in sync;
   based on the production config of consent-api (UDMP/backend-go) with GID layers on top
+- `gid-golangci-rules.yml` — the second embedded config: the `gid*` rules
+  **only**, no stock linters and no formatter, selected with `--gid-rules-only`
+  (see [Running alongside your own golangci-lint](#running-alongside-your-own-golangci-lint))
 
 ## Quick start
 
@@ -97,11 +100,12 @@ Just run it: `custom-gcl run ./...` (option A) or `./bin/custom-gcl run ./...`
 runs with the config it carries.
 
 The distributable [gid-golangci.yml](gid-golangci.yml) is compiled into the
-binary. On every run it is written to `~/.cache/gid-golangci/gid-golangci.yml`
-and passed as `--config` — the run says so on stderr. That file is refreshed
-whenever the binary carries a different config, so an upgrade updates it by
-itself; it is a run detail, not something to edit or point at. The binary and
-its ruleset are therefore always the same revision.
+binary. On every run it is written to
+`~/.cache/gid-golangci/gid-golangci-<content hash>.yml` and passed as `--config`
+— the run says so on stderr. The name is the hash of the config itself, so each
+config gets its own file and an upgrade simply writes a new one; it is a run
+detail, not something to edit or point at. The binary and its ruleset are
+therefore always the same revision.
 
 A `.golangci.yml` lying in the repository is **not** picked up by itself —
 unlike regular golangci-lint, which would read it and then run without a single
@@ -124,6 +128,37 @@ custom-gcl gid-config > .golangci.yml     # prints the built-in config
 Then enable the `gid*` linters you need and configure exceptions
 (`settings.exclude`, `settings.tree`, `settings.tags`, …) — and run with
 `--config`.
+
+### Running alongside your own golangci-lint
+
+A service that already runs a stock `golangci-lint` with its own
+`.golangci.yml` ends up running most of the work twice: the distributable
+config enables ~40 stock linters on top of the gid rules, and in such a
+repository nearly all of them are enabled a second time — `staticcheck`,
+`gocritic`, `gosec`, `revive`, `unparam` and the `goimports` formatter among
+them. `--gid-rules-only` selects the second embedded config: the `gid*` rules
+and nothing else.
+
+```sh
+custom-gcl run --gid-rules-only ./...        # only the gid rules
+custom-gcl gid-config --gid-rules-only       # print that config
+```
+
+Measured on a 1681-file service: **41.7 s for the full config against 1.33 s
+for this one**, with byte-identical gid diagnostics (2717 of them).
+
+It keeps three stock linters a service config almost never enables —
+`depguard` (GID-137, the uuid-fork ban), `musttag` and `perfsprint` (GID-208) —
+and drops three that carry gid tuning: `staticcheck` `checks: [all]`
+(GID-206), the `revive` rule list (GID-207) and the `ireturn` allow-list
+(GID-208). Move those into the repository config, or lose the rules.
+
+> **Check what your repository config actually reports before switching.** The
+> saving is only real if the stock run covers those linters, and the two
+> settings that routinely stop it are `run.tests: false` (the gid rules judge
+> tests, the stock linters then would not) and `issues.max-issues-per-linter` /
+> `max-same-issues` capping the output. On the service measured above those two
+> turned 2461 findings into 3.
 
 ## IDE
 
@@ -158,4 +193,5 @@ Two levels (details in [RULES.md](RULES.md)):
 ## Adding a new rule
 
 The process is at the end of [RULES.md](RULES.md): registry row → `.feature` spec →
-implementation → **mandatory eval** (analysistest, 4 case classes) → enable in the config.
+implementation → **mandatory eval** (analysistest, 4 case classes) → enable it in all
+three configs (`.golangci.yml`, `gid-golangci.yml`, `gid-golangci-rules.yml`).
