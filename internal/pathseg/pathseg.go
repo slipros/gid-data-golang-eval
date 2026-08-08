@@ -4,7 +4,10 @@
 // prefix.
 package pathseg
 
-import "strings"
+import (
+	"strings"
+	"sync"
+)
 
 // layerPairs — the canonical layer/sublayer pairs of a service (ARCHITECTURE.md,
 // the same tree giddirtree keeps for internal/). A pair is the only marker of
@@ -16,6 +19,13 @@ var layerPairs = map[string]map[string]struct{}{
 	"domain": {"model": {}, "service": {}, "usecase": {}},
 	"server": {"grpc": {}, "http": {}},
 }
+
+// layerSegmentsCache — import path -> its layer segments. Splitting the path
+// allocates, and HasLayer is the hottest call in the rule set: every layer rule
+// asks it for every package and, in the import rules, for every import of every
+// file. The same handful of paths is asked about again and again within a run,
+// so the split happens once per distinct path.
+var layerSegmentsCache sync.Map
 
 // Index returns the index of the first occurrence of seq as consecutive
 // path segments, or -1.
@@ -77,7 +87,22 @@ func HasLayer(path string, seq ...string) bool {
 // /pkg/<module>/ segment (application-module layout — module.md), then
 // (non-standard layout, e.g. testdata) the first path segment as the module
 // root.
+//
+// The returned slice is shared between callers and must not be modified.
 func LayerSegments(path string) []string {
+	if v, ok := layerSegmentsCache.Load(path); ok {
+		if segs, isSlice := v.([]string); isSlice {
+			return segs
+		}
+	}
+
+	segs := layerSegments(path)
+	layerSegmentsCache.Store(path, segs)
+
+	return segs
+}
+
+func layerSegments(path string) []string {
 	const internalSeg = "/internal/"
 	if _, rest, ok := strings.Cut(path, internalSeg); ok {
 		return nonEmpty(Segments(rest))
@@ -87,6 +112,7 @@ func LayerSegments(path string) []string {
 		return nonEmpty(Segments(rest))
 	}
 	_, rest, _ := strings.Cut(path, "/")
+
 	return nonEmpty(Segments(rest))
 }
 

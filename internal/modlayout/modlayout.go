@@ -39,6 +39,14 @@ import (
 // cache — module root -> verdict, so the directory walk runs once per module.
 var cache sync.Map
 
+// rootOf — package directory -> the module root above it. Without this the
+// walk re-ran for every package of every rule that asks: eight rules across a
+// module of sixty packages meant hundreds of repeated stat/read syscalls, and
+// re-reading the whole go.mod each time was the single largest allocation of
+// those rules. Every directory the walk passes through is memoized, so the
+// ancestors shared by sibling packages are resolved once.
+var rootOf sync.Map
+
 // IsServiceModule reports whether the package under analysis belongs to a
 // module laid out as a service: one holding a composition root (app/), or both
 // a business and a data layer (domain/ + dal/). A library module gets false,
@@ -100,20 +108,54 @@ func fileName(pass *analysis.Pass, file *ast.File) string {
 	return tokenFile.Name()
 }
 
+// moduleResult — the memoized answer of moduleRoot for one directory.
+type moduleResult struct {
+	root    string
+	modPath string
+	ok      bool
+}
+
 // moduleRoot walks up from dir to the nearest directory holding a go.mod,
 // returning that directory and the module path declared inside it.
 func moduleRoot(dir string) (root, modPath string, ok bool) {
+	// visited — the directories walked past before the answer was known; they
+	// all share it, so one walk fills the cache for the whole branch.
+	var visited []string
+
 	for {
-		if path, found := modulePath(filepath.Join(dir, "go.mod")); found {
-			return dir, path, true
+		if v, cached := rootOf.Load(dir); cached {
+			res, isResult := v.(moduleResult)
+			if isResult {
+				storeAll(visited, res)
+
+				return res.root, res.modPath, res.ok
+			}
 		}
+
+		if path, found := modulePath(filepath.Join(dir, "go.mod")); found {
+			res := moduleResult{root: dir, modPath: path, ok: true}
+			rootOf.Store(dir, res)
+			storeAll(visited, res)
+
+			return res.root, res.modPath, res.ok
+		}
+
+		visited = append(visited, dir)
 
 		parent := filepath.Dir(dir)
 		if parent == dir {
+			storeAll(visited, moduleResult{})
+
 			return "", "", false
 		}
 
 		dir = parent
+	}
+}
+
+func storeAll(dirs []string, res moduleResult) {
+	for _, dir := range dirs {
+		rootOf.Store(dir, res)
 	}
 }
 
