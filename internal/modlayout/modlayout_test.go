@@ -1,18 +1,31 @@
 package modlayout
 
 import (
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"go/types"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"golang.org/x/tools/go/analysis"
 )
 
 const (
 	svcModule  = "example.com/svc"
 	svcPkgPath = "svc/domain/service"
 
-	dirDomain = "internal/domain"
-	dirLogger = "pkg/logger"
+	dirDomain     = "internal/domain"
+	dirLogger     = "pkg/logger"
+	dirPrometheus = "pkg/prometheus"
+
+	caseFlatLibrary = "flat library"
 )
+
+// goModContents — built once: converting the same string to []byte inside the
+// table loop repeats the allocation (GID-182).
+var goModContents = []byte("module " + svcModule + "\n\ngo 1.24\n")
 
 func TestHasServiceDirs(t *testing.T) {
 	tests := []struct {
@@ -118,4 +131,89 @@ func TestModuleRoot(t *testing.T) {
 			t.Errorf("moduleRoot() reported a root for a directory outside any module")
 		}
 	})
+}
+
+// TestIsServiceModule builds a pass over a real directory tree: the verdict is
+// read off the module root found above the package, so the go.mod and the layer
+// directories have to exist on disk.
+func TestIsServiceModule(t *testing.T) {
+	tests := []struct {
+		name    string
+		dirs    []string
+		pkgDir  string
+		pkgPath string
+		want    bool
+	}{
+		{
+			name:    "service module",
+			dirs:    []string{dirDomain + "/service", "internal/dal/repository"},
+			pkgDir:  dirDomain + "/service",
+			pkgPath: svcModule + "/" + dirDomain + "/service",
+			want:    true,
+		},
+		{
+			name:    caseFlatLibrary,
+			dirs:    []string{dirLogger, dirPrometheus},
+			pkgDir:  dirLogger,
+			pkgPath: svcModule + "/" + dirLogger,
+			want:    false,
+		},
+		{
+			name:    "package of another module than the go.mod found above it",
+			dirs:    []string{dirLogger},
+			pkgDir:  dirLogger,
+			pkgPath: "other.example.com/lib/logger",
+			want:    true, // nothing reliable to read: the pre-existing behaviour is kept
+		},
+	}
+
+	for _, tt := range tests { //nolint:gidallptr // the plugin does not depend on the internal gdhelper library
+		t.Run(tt.name, func(t *testing.T) {
+			root := t.TempDir()
+			for _, dir := range tt.dirs {
+				if err := os.MkdirAll(filepath.Join(root, filepath.FromSlash(dir)), 0o755); err != nil {
+					t.Fatalf("mkdir %s: %v", dir, err)
+				}
+			}
+			if err := os.WriteFile(filepath.Join(root, "go.mod"), goModContents, 0o600); err != nil {
+				t.Fatalf("write go.mod: %v", err)
+			}
+
+			pass := newPass(t, filepath.Join(root, filepath.FromSlash(tt.pkgDir)), tt.pkgPath)
+			if got := IsServiceModule(pass); got != tt.want {
+				t.Errorf("IsServiceModule() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestIsServiceModuleNoFiles — a pass with no files at all has no directory to
+// inspect, and the rule that asks must not be switched off by that.
+func TestIsServiceModuleNoFiles(t *testing.T) {
+	pass := &analysis.Pass{
+		Fset: token.NewFileSet(),
+		Pkg:  types.NewPackage(svcPkgPath, "service"),
+	}
+
+	if !IsServiceModule(pass) {
+		t.Error("IsServiceModule() = false, want true for a pass with no files")
+	}
+}
+
+// newPass builds a minimal pass whose single file sits in pkgDir.
+func newPass(t *testing.T, pkgDir, pkgPath string) *analysis.Pass {
+	t.Helper()
+
+	fset := token.NewFileSet()
+
+	file, err := parser.ParseFile(fset, filepath.Join(pkgDir, "pkg.go"), "package pkg\n", parser.SkipObjectResolution)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+
+	return &analysis.Pass{
+		Fset:  fset,
+		Files: []*ast.File{file},
+		Pkg:   types.NewPackage(pkgPath, "pkg"),
+	}
 }

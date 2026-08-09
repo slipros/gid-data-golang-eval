@@ -175,6 +175,8 @@ linters:
     - gidconvpure      # GID-235
     - gidstorageplace  # GID-249
     - gidtestpackage   # GID-250
+    - gidhastest       # GID-263
+    - gidhttprouter    # GID-264/265
     - gidloggerplace   # GID-251
     - gidserviceentity # GID-236
     - gidserviceorch   # GID-260
@@ -854,6 +856,28 @@ linters:
         #   suffixes:
         #     - 'Options'
         #     - 'Params'
+      gidhttprouter:
+        type: module
+        description: 'GID-264: application routes reach the http server through the application router (gdhttpserver.NewApplicationRouter), registered as a separate argument of NewServer next to the system router — a router passed to NewServer bare, or nested in the system router, is served with no panic recovery, no sentry, no tracing, no metrics and no access log; GID-265: that router is given real metrics, not nil (the library substitutes a dummy that counts nothing). A service wrapper handed the metrics increment function is recognised automatically; others go in settings.application-routers'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # A fork of the http library, and the service's own application router
+        # when it takes no metrics function of its own:
+        # settings:
+        #   packages:
+        #     - 'gitlab.gid.team/gid-data/tech/golang/libs/http.git/server'
+        #   application-routers:
+        #     - 'router.NewApplication'
+      gidhastest:
+        type: module
+        description: 'GID-263: a non-trivial exported function is exercised by a test of its own package (GID-250 keeps the test there) — the symbol must be mentioned by a _test.go the pass holds. Trivial bodies (a getter, an enum String, a one-line delegation or constructor) are never candidates, and neither are generated files, package main, /app/**, or a helper declared in a _test.go. The analyzer never reads the file system: a package whose tests the pass does not hold is left alone, so under run.tests: false the rule reports nothing at all'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # Code whose test lives elsewhere (a black-box suite of its own) or that
+        # is generated into the tree:
+        # settings:
+        #   exclude:
+        #     - 'Segment.Rebuild'   # Method | Type.Method
+        #   exclude-paths:
+        #     - 'internal/generated'
       gidtestpackage:
         type: module
         description: 'GID-250: a test lives in the same package as the code under test — package <pkg>, not <pkg>_test'

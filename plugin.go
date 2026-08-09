@@ -61,7 +61,9 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/fsmmap"
 	"github.com/slipros/gid-data-golang-eval/analyzers/grpcinservice"
 	"github.com/slipros/gid-data-golang-eval/analyzers/handlershape"
+	"github.com/slipros/gid-data-golang-eval/analyzers/hastest"
 	"github.com/slipros/gid-data-golang-eval/analyzers/httperrors"
+	"github.com/slipros/gid-data-golang-eval/analyzers/httprouter"
 	"github.com/slipros/gid-data-golang-eval/analyzers/ifacemin"
 	"github.com/slipros/gid-data-golang-eval/analyzers/ifacenaming"
 	"github.com/slipros/gid-data-golang-eval/analyzers/ifaceplace"
@@ -214,6 +216,8 @@ func init() {
 	register.Plugin("gideventctor", newConfigurablePlugin(eventctor.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidbansymbol", newConfigurablePlugin(bansymbol.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidhandlershape", newConfigurablePlugin(handlershape.NewAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidhastest", newConfigurablePlugin(hastest.NewAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidhttprouter", newConfigurablePlugin(httprouter.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidfsmmap", newSingleAnalyzerPlugin(fsmmap.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidprotorequired", newConfigurablePlugin(protorequired.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidenumcast", newSingleAnalyzerPlugin(enumcast.Analyzer, register.LoadModeTypesInfo))

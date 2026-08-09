@@ -152,6 +152,8 @@ linters:
     - gidconvpure
     - gidstorageplace
     - gidtestpackage
+    - gidhastest
+    - gidhttprouter
     - gidloggerplace
     - gidserviceentity
     - gidserviceorch
@@ -788,6 +790,14 @@ linters:
         #   suffixes:
         #     - 'Options'
         #     - 'Params'
+      gidhttprouter:
+        type: module
+        description: 'GID-264: application routes reach the http server through the application router (gdhttpserver.NewApplicationRouter), registered as a separate argument of NewServer next to the system router — a router passed to NewServer bare, or nested in the system router, is served with no panic recovery, no sentry, no tracing, no metrics and no access log; GID-265: that router is given real metrics, not nil (the library substitutes a dummy that counts nothing). A service wrapper handed the metrics increment function is recognised automatically; others go in settings.application-routers'
+        original-url: github.com/slipros/gid-data-golang-eval
+      gidhastest:
+        type: module
+        description: 'GID-263: a non-trivial exported function is exercised by a test of its own package (GID-250 keeps the test there) — the symbol must be mentioned by a _test.go the pass holds. Trivial bodies (a getter, an enum String, a one-line delegation or constructor) are never candidates, and neither are generated files, package main, /app/**, or a helper declared in a _test.go. The analyzer never reads the file system: a package whose tests the pass does not hold is left alone, so under run.tests: false the rule reports nothing at all'
+        original-url: github.com/slipros/gid-data-golang-eval
       gidtestpackage:
         type: module
         description: 'GID-250: a test lives in the same package as the code under test — package <pkg>, not <pkg>_test'

@@ -120,3 +120,105 @@ func TestPkgModuleRoot(t *testing.T) {
 		}
 	}
 }
+
+func TestIndex(t *testing.T) {
+	tests := []struct {
+		name string
+		path string
+		seq  []string
+		want int
+	}{
+		{"single segment", "mod/internal/dal/entity", []string{"dal"}, 2},
+		{"pair of segments", "mod/internal/dal/entity", []string{"dal", "entity"}, 2},
+		{"first occurrence wins", "mod/dal/x/dal/y", []string{"dal"}, 1},
+		{"segment matched whole, not by prefix", "mod/internal/events/dto", []string{"event"}, -1},
+		{"pair broken by order", "mod/internal/entity/dal", []string{"dal", "entity"}, -1},
+		{"absent", "mod/internal/domain/model", []string{"dal"}, -1},
+		{"empty seq", "mod/internal/dal", nil, -1},
+		{"seq longer than the path", "dal", []string{"dal", "entity"}, -1},
+	}
+
+	for _, tt := range tests { //nolint:gidallptr // the plugin does not depend on the internal gdhelper library
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Index(tt.path, tt.seq...); got != tt.want {
+				t.Errorf("Index(%q, %q) = %d, want %d", tt.path, tt.seq, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestContains(t *testing.T) {
+	tests := []struct {
+		name string
+		path string
+		seq  []string
+		want bool
+	}{
+		{"segment in the middle", "mod/internal/dal/entity", []string{"dal"}, true},
+		{"pair of segments", "mod/internal/dal/entity/filter", []string{"dal", "entity"}, true},
+		{"nested layer still counts for Contains", "mod/internal/connect/client/x", []string{"client"}, true},
+		{"not a prefix match", "mod/internal/dalstats", []string{"dal"}, false},
+		{"absent", "mod/internal/domain", []string{"dal"}, false},
+		{"empty seq", "mod/internal/dal", nil, false},
+	}
+
+	for _, tt := range tests { //nolint:gidallptr // the plugin does not depend on the internal gdhelper library
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Contains(tt.path, tt.seq...); got != tt.want {
+				t.Errorf("Contains(%q, %q) = %v, want %v", tt.path, tt.seq, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestEndsWith(t *testing.T) {
+	tests := []struct {
+		name string
+		path string
+		seq  []string
+		want bool
+	}{
+		{"layer root", "mod/internal/dal/repository", []string{"dal", "repository"}, true},
+		{"last segment", "mod/internal/domain/model", []string{"model"}, true},
+		{"subpackage of the layer is not its root", "mod/internal/dal/repository/build", []string{"dal", "repository"}, false},
+		{"segment matched whole", "mod/internal/repositories", []string{"repository"}, false},
+		{"seq longer than the path", "dal", []string{"internal", "dal"}, false},
+		{"empty seq ends everything", "mod/internal/dal", nil, true},
+	}
+
+	for _, tt := range tests { //nolint:gidallptr // the plugin does not depend on the internal gdhelper library
+		t.Run(tt.name, func(t *testing.T) {
+			if got := EndsWith(tt.path, tt.seq...); got != tt.want {
+				t.Errorf("EndsWith(%q, %q) = %v, want %v", tt.path, tt.seq, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSameLibrary(t *testing.T) {
+	const uuidLib = "github.com/gofrs/uuid"
+
+	tests := []struct {
+		name       string
+		importPath string
+		library    string
+		want       bool
+	}{
+		{"exact match", uuidLib, uuidLib, true},
+		{"major version suffix", uuidLib + "/v5", uuidLib, true},
+		{"two-digit major version", uuidLib + "/v11", uuidLib, true},
+		{"subpackage is not the library", uuidLib + "/namespace", uuidLib, false},
+		{"subpackage of a versioned module", uuidLib + "/v5/namespace", uuidLib, false},
+		{"empty version suffix", uuidLib + "/v", uuidLib, false},
+		{"another library", "github.com/google/uuid", uuidLib, false},
+		{"prefix but not a segment boundary", uuidLib + "x", uuidLib, false},
+	}
+
+	for _, tt := range tests { //nolint:gidallptr // the plugin does not depend on the internal gdhelper library
+		t.Run(tt.name, func(t *testing.T) {
+			if got := SameLibrary(tt.importPath, tt.library); got != tt.want {
+				t.Errorf("SameLibrary(%q, %q) = %v, want %v", tt.importPath, tt.library, got, tt.want)
+			}
+		})
+	}
+}
