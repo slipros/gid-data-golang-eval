@@ -16,11 +16,17 @@ const (
 	svcModule  = "example.com/svc"
 	svcPkgPath = "svc/domain/service"
 
-	dirDomain     = "internal/domain"
-	dirLogger     = "pkg/logger"
-	dirPrometheus = "pkg/prometheus"
+	dirDomain        = "internal/domain"
+	dirDomainModel   = "domain/model"
+	dirLogger        = "pkg/logger"
+	dirPrometheus    = "pkg/prometheus"
+	dirAppAPI        = "internal/app/api"
+	dirDALRepository = "internal/dal/repository"
+	dirServerHTTP    = "internal/server/http"
 
 	caseFlatLibrary = "flat library"
+	caseEmptyModule = "empty module"
+	caseOtherModule = "package of another module than the go.mod found above it"
 )
 
 // goModContents — built once: converting the same string to []byte inside the
@@ -33,8 +39,8 @@ func TestHasServiceDirs(t *testing.T) {
 		dirs []string
 		want bool
 	}{
-		{name: "service under internal", dirs: []string{dirDomain + "/service", "internal/app/api"}, want: true},
-		{name: "service at the top level", dirs: []string{"domain/model", "dal/repository"}, want: true},
+		{name: "service under internal", dirs: []string{dirDomain + "/service", dirAppAPI}, want: true},
+		{name: "service at the top level", dirs: []string{dirDomainModel, "dal/repository"}, want: true},
 		{name: "only the composition root", dirs: []string{"internal/app"}, want: true},
 		{name: "domain and dal without an app", dirs: []string{dirDomain, "internal/dal"}, want: true},
 		{name: "flat library", dirs: []string{dirLogger, "pkg/prometheus", "example"}, want: false},
@@ -42,7 +48,7 @@ func TestHasServiceDirs(t *testing.T) {
 		{name: "transport library with a server and a client", dirs: []string{"server/middleware", "client/serde", dirLogger}, want: false},
 		{name: "library with a domain but no dal", dirs: []string{dirDomain, "client/interceptor"}, want: false},
 		{name: "library publishing its own app package", dirs: []string{"app", "errors", "mapper"}, want: false},
-		{name: "empty module", want: false},
+		{name: caseEmptyModule, want: false},
 	}
 
 	for _, tt := range tests { //nolint:gidallptr // the plugin does not depend on the internal gdhelper library
@@ -56,6 +62,38 @@ func TestHasServiceDirs(t *testing.T) {
 
 			if got := hasServiceDirs(root); got != tt.want {
 				t.Errorf("hasServiceDirs() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestHasDataDirs(t *testing.T) {
+	tests := []struct {
+		name string
+		dirs []string
+		want bool
+	}{
+		{name: "dal under internal", dirs: []string{dirDALRepository, dirDomain + "/service"}, want: true},
+		{name: "dal at the top level", dirs: []string{"dal/entity", dirDomainModel}, want: true},
+		{name: "a dal holding entities only", dirs: []string{"internal/dal/entity"}, want: true},
+		{name: "a repository without a dal", dirs: []string{"internal/repository", dirDomain}, want: true},
+		{name: "bff: a service and a transport, no data layer", dirs: []string{dirDomain + "/service", dirServerHTTP, dirAppAPI}, want: false},
+		{name: "a repository nested below another layer is not the data layer", dirs: []string{"internal/server/grpc/repository"}, want: false},
+		{name: caseFlatLibrary, dirs: []string{dirLogger, dirPrometheus}, want: false},
+		{name: caseEmptyModule, want: false},
+	}
+
+	for _, tt := range tests { //nolint:gidallptr // the plugin does not depend on the internal gdhelper library
+		t.Run(tt.name, func(t *testing.T) {
+			root := t.TempDir()
+			for _, dir := range tt.dirs {
+				if err := os.MkdirAll(filepath.Join(root, filepath.FromSlash(dir)), 0o755); err != nil {
+					t.Fatalf("mkdir %s: %v", dir, err)
+				}
+			}
+
+			if got := hasDataDirs(root); got != tt.want {
+				t.Errorf("hasDataDirs() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -146,7 +184,7 @@ func TestIsServiceModule(t *testing.T) {
 	}{
 		{
 			name:    "service module",
-			dirs:    []string{dirDomain + "/service", "internal/dal/repository"},
+			dirs:    []string{dirDomain + "/service", dirDALRepository},
 			pkgDir:  dirDomain + "/service",
 			pkgPath: svcModule + "/" + dirDomain + "/service",
 			want:    true,
@@ -159,7 +197,7 @@ func TestIsServiceModule(t *testing.T) {
 			want:    false,
 		},
 		{
-			name:    "package of another module than the go.mod found above it",
+			name:    caseOtherModule,
 			dirs:    []string{dirLogger},
 			pkgDir:  dirLogger,
 			pkgPath: "other.example.com/lib/logger",
@@ -197,6 +235,59 @@ func TestIsServiceModuleNoFiles(t *testing.T) {
 
 	if !IsServiceModule(pass) {
 		t.Error("IsServiceModule() = false, want true for a pass with no files")
+	}
+}
+
+// TestHasDataLayer builds a pass the same way: a BFF module — a service and a
+// transport and no data layer — gets false, and a module with a dal gets true.
+func TestHasDataLayer(t *testing.T) {
+	tests := []struct {
+		name    string
+		dirs    []string
+		pkgDir  string
+		pkgPath string
+		want    bool
+	}{
+		{
+			name:    "service module with a dal",
+			dirs:    []string{dirDomain + "/service", dirDALRepository},
+			pkgDir:  dirDomain + "/service",
+			pkgPath: svcModule + "/" + dirDomain + "/service",
+			want:    true,
+		},
+		{
+			name:    "bff without a data layer",
+			dirs:    []string{dirDomain + "/service", dirServerHTTP, dirAppAPI},
+			pkgDir:  dirDomain + "/service",
+			pkgPath: svcModule + "/" + dirDomain + "/service",
+			want:    false,
+		},
+		{
+			name:    caseOtherModule,
+			dirs:    []string{dirDomain + "/service"},
+			pkgDir:  dirDomain + "/service",
+			pkgPath: "other.example.com/lib/service",
+			want:    true, // nothing reliable to read: the rule keeps judging
+		},
+	}
+
+	for _, tt := range tests { //nolint:gidallptr // the plugin does not depend on the internal gdhelper library
+		t.Run(tt.name, func(t *testing.T) {
+			root := t.TempDir()
+			for _, dir := range tt.dirs {
+				if err := os.MkdirAll(filepath.Join(root, filepath.FromSlash(dir)), 0o755); err != nil {
+					t.Fatalf("mkdir %s: %v", dir, err)
+				}
+			}
+			if err := os.WriteFile(filepath.Join(root, "go.mod"), goModContents, 0o600); err != nil {
+				t.Fatalf("write go.mod: %v", err)
+			}
+
+			pass := newPass(t, filepath.Join(root, filepath.FromSlash(tt.pkgDir)), tt.pkgPath)
+			if got := HasDataLayer(pass); got != tt.want {
+				t.Errorf("HasDataLayer() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 

@@ -18,6 +18,9 @@ Feature: GID-160 — a service calls gRPC through a repository (gidgrpcinservice
   # Exceptions: //nolint:gidgrpcinservice pointwise, settings.exclude (a list
   # of import paths) centrally.
   # Generated code (ast.IsGenerated) is skipped.
+  # The module is asked first (internal/modlayout.HasDataLayer): the fix of the
+  # rule names a repository, so a module holding no /dal (and no bare
+  # /repository) is not judged at all.
 
   # --- Class 1: positive ---
 
@@ -88,6 +91,16 @@ Feature: GID-160 — a service calls gRPC through a repository (gidgrpcinservice
     Given a file carrying the "Code generated … DO NOT EDIT." header
     When the gidgrpcinservice analyzer checks the file
     Then no diagnostic is reported
+
+  Scenario: non-applicability — a module without a data layer (a BFF)
+    Given a module holding /domain/service and /server/http and no /dal
+    And "google.golang.org/grpc" and a pb stub imported in /domain/service
+    When the gidgrpcinservice analyzer checks the file
+    Then no diagnostic is reported
+    # Calling other services over gRPC and shaping the answer for the frontend
+    # is the business logic of a BFF (lk-api): there is no data layer to move
+    # the call into, so the rule has no fix to offer. The verdict is per module
+    # and cached per module root; adding a /dal turns the rule back on.
 
 # --- Checklist when adding a new rule ---
 #  [x] ID and description are recorded in the registry (RULES.md, GID-160)

@@ -6,6 +6,14 @@
 //   - packages that themselves import google.golang.org/grpc —
 //     this catches generated pb stubs and gRPC clients.
 //
+// The rule is only asked in a module that owns a data layer (modlayout.HasDataLayer):
+// its fix is "move the call into a repository", and a module without a /dal has
+// no repository to move it into. That is the shape of a BFF — lk-api holds
+// /domain/service and /server/http and nothing below them, because calling
+// other services over gRPC and shaping the answer for the frontend IS its
+// business logic. Introducing a data layer flips the verdict and the rule
+// starts judging the module.
+//
 // This rule has exceptions — sometimes gRPC is called directly
 // in a service:
 //   - pointwise: //nolint:gidgrpcinservice
@@ -27,6 +35,7 @@ import (
 
 	"golang.org/x/tools/go/analysis"
 
+	"github.com/slipros/gid-data-golang-eval/internal/modlayout"
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 	"github.com/slipros/gid-data-golang-eval/internal/srcfile"
 )
@@ -62,7 +71,7 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 }
 
 func run(pass *analysis.Pass, s Settings) (any, error) {
-	if !inScope(pass.Pkg.Path()) {
+	if !inScope(pass.Pkg.Path()) || !modlayout.HasDataLayer(pass) {
 		return nil, nil
 	}
 	grpcBacked := grpcBackedImports(pass.Pkg)

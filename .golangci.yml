@@ -511,6 +511,8 @@ linters:
         type: module
         description: 'GID-160: a service calls gRPC through a repository'
         original-url: github.com/slipros/gid-data-golang-eval
+        # A module without a data layer (no /dal, no /repository) is not judged:
+        # a BFF has no repository to move the call into.
         # Exclusions (sometimes gRPC is called directly in service):
         # settings:
         #   exclude:

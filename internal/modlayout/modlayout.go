@@ -36,8 +36,11 @@ import (
 //
 // Single directories are deliberately NOT markers: server/, client/ or domain/
 // on their own are ordinary package names in a transport library.
-// cache — module root -> verdict, so the directory walk runs once per module.
-var cache sync.Map
+// serviceCache — module root -> verdict, so the directory walk runs once per module.
+var serviceCache sync.Map
+
+// dataCache — module root -> "the module owns a data layer", cached the same way.
+var dataCache sync.Map
 
 // rootOf — package directory -> the module root above it. Without this the
 // walk re-ran for every package of every rule that asks: eight rules across a
@@ -52,6 +55,30 @@ var rootOf sync.Map
 // a business and a data layer (domain/ + dal/). A library module gets false,
 // and the layer rules skip it.
 func IsServiceModule(pass *analysis.Pass) bool {
+	return moduleVerdict(pass, &serviceCache, hasServiceDirs)
+}
+
+// HasDataLayer reports whether the module under analysis owns a data layer at
+// all — /dal (the styleguide layout) or a bare /repository (a service that
+// never grew a dal). A rule whose fix is "move this into a repository" has
+// nothing to point at in a module without one, and must ask before reporting.
+//
+// The case this exists for is a BFF (lk-api): its whole job is to call other
+// services over gRPC and shape the answer for the frontend, so it holds
+// /domain/service and /server/http and no data layer whatsoever. Demanding a
+// repository there is demanding a layer the service does not have — the ~106
+// GID-160 diagnostics it produced were all of that kind.
+//
+// A module with no go.mod above it (an analysistest fixture, a package built
+// outside a module) gets true, the same fallback as IsServiceModule: without a
+// root to read, the rule keeps the behaviour it had before this check existed.
+func HasDataLayer(pass *analysis.Pass) bool {
+	return moduleVerdict(pass, &dataCache, hasDataDirs)
+}
+
+// moduleVerdict answers a question about the layout of the module the package
+// belongs to, caching the answer per module root.
+func moduleVerdict(pass *analysis.Pass, cache *sync.Map, inspect func(root string) bool) bool {
 	dir := packageDir(pass)
 	if dir == "" {
 		return true // nothing to inspect: keep the pre-existing behaviour
@@ -71,7 +98,7 @@ func IsServiceModule(pass *analysis.Pass) bool {
 		}
 	}
 
-	verdict := hasServiceDirs(root)
+	verdict := inspect(root)
 	cache.Store(root, verdict)
 
 	return verdict
@@ -207,6 +234,20 @@ func hasServiceDirs(root string) bool {
 	}
 
 	return hasLayerDir(root, rootDomain) && hasLayerDir(root, rootDAL)
+}
+
+// hasDataDirs reports whether the module root holds a data layer: /dal, the
+// layout of the styleguide, or a bare /repository for a service laid out
+// without one. The presence of the layer is what matters, not what is inside
+// it — a dal holding only entities today is where the repository goes
+// tomorrow, so the rules that ask for a repository keep working there.
+func hasDataDirs(root string) bool {
+	const (
+		rootDAL        = "dal"
+		rootRepository = "repository"
+	)
+
+	return hasLayerDir(root, rootDAL) || hasLayerDir(root, rootRepository)
 }
 
 // hasLayerDir reports whether the layer directory sits at the module root or
