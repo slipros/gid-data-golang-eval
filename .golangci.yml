@@ -171,6 +171,7 @@ linters:
     - gidtestpackage   # GID-250
     - gidhastest       # GID-263
     - gidhttprouter    # GID-264/265
+    - gidmappedfields  # GID-266
     - gidloggerplace   # GID-251
     - gidconvpolicy    # GID-247
     - gidserviceentity # GID-236
@@ -868,6 +869,15 @@ linters:
         #     - 'gitlab.gid.team/gid-data/tech/golang/libs/http.git/server'
         #   application-routers:
         #     - 'router.NewApplication'
+      gidmappedfields:
+        type: module
+        description: 'GID-266: in a BFF (a module laid out as a service that owns no data layer) a gRPC client call carries a MappedFields option: without it a ValidationError of the callee reaches the frontend naming the fields of the foreign contract, and an empty mapping (WithMappedFields(nil)) is reported the same way — the interceptor returns early on it. Judged in /domain/service and /domain/usecase, on a call whose signature ends in opts ...grpc.CallOption; a call spreading a prepared slice is left alone'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # An RPC whose errors need no mapping (the CALLED method, not the caller):
+        # settings:
+        #   exclude:
+        #     - 'Ping'                        # Method | Client.Method
+        #     - 'HealthClient.Check'
       gidhastest:
         type: module
         description: 'GID-263: a non-trivial exported function is exercised by a test of its own package (GID-250 keeps the test there) — the symbol must be mentioned by a _test.go the pass holds. Trivial bodies (a getter, an enum String, a one-line delegation or constructor) are never candidates, and neither are generated files, package main, /app/**, or a helper declared in a _test.go. The analyzer never reads the file system: a package whose tests the pass does not hold is left alone, so under run.tests: false the rule reports nothing at all'

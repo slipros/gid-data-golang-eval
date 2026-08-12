@@ -154,6 +154,7 @@ linters:
     - gidtestpackage
     - gidhastest
     - gidhttprouter
+    - gidmappedfields
     - gidloggerplace
     - gidserviceentity
     - gidserviceorch
@@ -795,6 +796,10 @@ linters:
       gidhttprouter:
         type: module
         description: 'GID-264: application routes reach the http server through the application router (gdhttpserver.NewApplicationRouter), registered as a separate argument of NewServer next to the system router — a router passed to NewServer bare, or nested in the system router, is served with no panic recovery, no sentry, no tracing, no metrics and no access log; GID-265: that router is given real metrics, not nil (the library substitutes a dummy that counts nothing). A service wrapper handed the metrics increment function is recognised automatically; others go in settings.application-routers'
+        original-url: github.com/slipros/gid-data-golang-eval
+      gidmappedfields:
+        type: module
+        description: 'GID-266: in a BFF (a module laid out as a service that owns no data layer) a gRPC client call carries a MappedFields option: without it a ValidationError of the callee reaches the frontend naming the fields of the foreign contract, and an empty mapping (WithMappedFields(nil)) is reported the same way — the interceptor returns early on it. Judged in /domain/service and /domain/usecase, on a call whose signature ends in opts ...grpc.CallOption; a call spreading a prepared slice is left alone'
         original-url: github.com/slipros/gid-data-golang-eval
       gidhastest:
         type: module

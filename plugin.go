@@ -80,6 +80,7 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/loggerplace"
 	"github.com/slipros/gid-data-golang-eval/analyzers/mapcap"
 	"github.com/slipros/gid-data-golang-eval/analyzers/mapout"
+	"github.com/slipros/gid-data-golang-eval/analyzers/mappedfields"
 	"github.com/slipros/gid-data-golang-eval/analyzers/metricstruct"
 	"github.com/slipros/gid-data-golang-eval/analyzers/modelmethod"
 	"github.com/slipros/gid-data-golang-eval/analyzers/modulealias"
@@ -218,6 +219,7 @@ func init() {
 	register.Plugin("gidhandlershape", newConfigurablePlugin(handlershape.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidhastest", newConfigurablePlugin(hastest.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidhttprouter", newConfigurablePlugin(httprouter.NewAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidmappedfields", newConfigurablePlugin(mappedfields.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidfsmmap", newSingleAnalyzerPlugin(fsmmap.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidprotorequired", newConfigurablePlugin(protorequired.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidenumcast", newSingleAnalyzerPlugin(enumcast.Analyzer, register.LoadModeTypesInfo))
