@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 )
 
 // The pieces every command line in this test is built from.
@@ -172,6 +173,100 @@ func TestInjectSeparatesDifferentConfigs(t *testing.T) {
 
 	if len(entries) != 2 {
 		t.Errorf("the cache directory holds %d files, want one per config", len(entries))
+	}
+}
+
+// TestInjectSweepsStaleConfigs — a content-addressed name means an upgraded
+// binary writes a new file and leaves the old one behind; nothing ever reads it
+// again, and seven revisions had piled up in a real cache before anybody
+// looked. A run collects them, and leaves alone everything it must: the config
+// it is about to use, a config of the same age (the --gid-rules-only one, in
+// daily use next to it) and files that are not ours.
+func TestInjectSweepsStaleConfigs(t *testing.T) {
+	sandbox(t)
+
+	_, path, err := Inject([]string{bin, commandRun}, builtIn)
+	if err != nil {
+		t.Fatalf("Inject error: %v", err)
+	}
+
+	dir := filepath.Dir(path)
+	stale := filepath.Join(dir, cachePrefix+"0123456789abcdef.yml")
+	leftover := filepath.Join(dir, cachePrefix+"0123456789abcdef.yml.tmp42")
+	foreign := filepath.Join(dir, "notes.txt")
+
+	for _, name := range []string{stale, leftover, foreign} {
+		if writeErr := os.WriteFile(name, builtIn, 0o600); writeErr != nil {
+			t.Fatalf("seed %s: %v", name, writeErr)
+		}
+
+		//nolint:gidtimenow // the plugin does not depend on the internal gdhelper library
+		old := time.Now().Add(-cacheGrace - time.Hour)
+		if chErr := os.Chtimes(name, old, old); chErr != nil {
+			t.Fatalf("age %s: %v", name, chErr)
+		}
+	}
+
+	// A second config of the same binary, materialized just now: fresh, and it
+	// must survive the sweep the first one performs.
+	fresh := []byte("version: \"2\"\nlinters:\n  enable:\n    - gidtimenow\n")
+
+	_, freshPath, err := Inject([]string{bin, commandRun}, fresh)
+	if err != nil {
+		t.Fatalf("Inject of the second config error: %v", err)
+	}
+
+	if _, statErr := os.Stat(stale); !os.IsNotExist(statErr) {
+		t.Errorf("the config of an earlier binary survived the sweep: %v", statErr)
+	}
+
+	if _, statErr := os.Stat(leftover); !os.IsNotExist(statErr) {
+		t.Errorf("a temporary of an interrupted write survived the sweep: %v", statErr)
+	}
+
+	for _, name := range []string{path, freshPath, foreign} {
+		if _, statErr := os.Stat(name); statErr != nil {
+			t.Errorf("the sweep removed %s, which is in use or not ours: %v", name, statErr)
+		}
+	}
+}
+
+// TestInjectKeepsConfigInDailyUse — a config older than the grace period is
+// still the one this run needs, so it is kept and its age reset. Without the
+// reset a binary in daily use would have its own config swept out from under
+// the next run the moment it crossed the grace period.
+func TestInjectKeepsConfigInDailyUse(t *testing.T) {
+	sandbox(t)
+
+	_, path, err := Inject([]string{bin, commandRun}, builtIn)
+	if err != nil {
+		t.Fatalf("first Inject error: %v", err)
+	}
+
+	//nolint:gidtimenow // the plugin does not depend on the internal gdhelper library
+	old := time.Now().Add(-cacheGrace - time.Hour)
+	if chErr := os.Chtimes(path, old, old); chErr != nil {
+		t.Fatalf("age the config: %v", chErr)
+	}
+
+	_, again, err := Inject([]string{bin, commandRun}, builtIn)
+	if err != nil {
+		t.Fatalf("second Inject error: %v", err)
+	}
+
+	if again != path {
+		t.Fatalf("the config path changed between runs: %q then %q", path, again)
+	}
+
+	assertContent(t, path, builtIn)
+
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat the config: %v", err)
+	}
+
+	if !info.ModTime().After(old) {
+		t.Error("the config in use kept its old timestamp — the next sweep would delete it")
 	}
 }
 

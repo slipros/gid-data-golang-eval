@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 )
@@ -38,6 +39,31 @@ const (
 	flagConfig      = "--config"
 	flagConfigShort = "-c"
 	flagNoConfig    = "--no-config"
+)
+
+const (
+	// cacheDirName — the subdirectory of the user cache directory holding the
+	// materialized configs, and the stem of every file in it.
+	cacheDirName = "gid-golangci"
+
+	// cachePrefix — what a materialized config (and a temporary of
+	// writeAtomic) is named with, so the sweep can tell this binary's files
+	// from anything else that might sit in the directory.
+	cachePrefix = cacheDirName + "-"
+
+	// cacheGrace — how long an unused config survives in the cache. A content
+	// addressed name means an upgraded binary writes a new file and never
+	// touches the previous one, so the directory only grew: seven revisions had
+	// piled up by the time anybody looked. They are pure garbage — a config no
+	// binary embeds any more can never be passed to a run again.
+	//
+	// The delay is what makes the sweep safe. Deleting is only dangerous for a
+	// file another process has already put behind its --config and not yet
+	// opened, and that gap is milliseconds; a day of grace is many orders of
+	// magnitude beyond it. It also covers the second config of the same binary:
+	// a run with --gid-rules-only materializes a different digest into the same
+	// directory, and its file stays alive because every run marks the one it uses.
+	cacheGrace = 24 * time.Hour
 )
 
 // configExts — the extensions golangci-lint accepts for its config file.
@@ -150,18 +176,11 @@ func insertConfigFlag(args []string, path string) []string {
 }
 
 // materialize writes the built-in config into the user cache directory and
-// returns its path. One fixed file, rewritten whenever the binary carries a
-// different config — an upgraded binary replaces it rather than leaving the
-// previous revision behind. Anyone who needs a particular config passes
-// --config with its own path and never touches this one.
+// returns its path. The configs of earlier binaries are swept out on the way —
+// see sweep. Anyone who needs a particular config passes --config with its own
+// path and never touches these.
 func materialize(config []byte) (string, error) {
-	const (
-		// cacheDirName — the subdirectory of the user cache directory holding
-		// the materialized config, and the name of the file itself.
-		cacheDirName = "gid-golangci"
-
-		dirPerm = 0o755
-	)
+	const dirPerm = 0o755
 
 	dir, err := os.UserCacheDir()
 	if err != nil {
@@ -180,9 +199,12 @@ func materialize(config []byte) (string, error) {
 	// still swapping the config out from under a run that already pointed
 	// --config at it. A content-addressed name gives each config its own file,
 	// written once and never rewritten.
-	path := filepath.Join(dir, cacheDirName+"-"+digest(config)+".yml")
+	path := filepath.Join(dir, cachePrefix+digest(config)+".yml")
 
 	if current, readErr := os.ReadFile(path); readErr == nil && bytes.Equal(current, config) {
+		markUsed(path)
+		sweep(dir, path)
+
 		return path, nil
 	}
 
@@ -190,7 +212,67 @@ func materialize(config []byte) (string, error) {
 		return "", writeErr
 	}
 
+	sweep(dir, path)
+
 	return path, nil
+}
+
+// markUsed refreshes the modification time of a config that was already on
+// disk, so that a config in daily use is never swept out from under it. Writing
+// one sets the time anyway; this is the branch that does not write.
+//
+// Best effort: a config that cannot be touched is still a valid config, and
+// failing a lint run over cache housekeeping would be absurd. The worst a
+// failure costs is a later sweep collecting the file and the next run writing
+// it again.
+func markUsed(path string) {
+	//nolint:gidtimenow // the plugin does not depend on the internal gdhelper library
+	now := time.Now()
+
+	//nolint:errcheck // best effort, see the doc comment
+	os.Chtimes(path, now, now)
+}
+
+// sweep removes the materialized configs of earlier binaries, keeping the one
+// this run uses and anything younger than cacheGrace. Leftover temporaries of
+// writeAtomic (a run killed mid-write) are collected by the same pass — they
+// carry the same prefix.
+//
+// Best effort, like markUsed: every error is ignored, including the directory
+// being unreadable. The caller already holds a usable config, and the sweep is
+// housekeeping — it must never be the reason a lint run fails.
+func sweep(dir, keep string) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+
+	//nolint:gidtimenow // the plugin does not depend on the internal gdhelper library
+	now := time.Now()
+	deadline := now.Add(-cacheGrace)
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasPrefix(entry.Name(), cachePrefix) {
+			continue
+		}
+
+		path := filepath.Join(dir, entry.Name())
+		if path == keep {
+			continue
+		}
+
+		info, infoErr := entry.Info()
+		if infoErr != nil {
+			continue
+		}
+
+		modTime := info.ModTime()
+		if modTime.After(deadline) {
+			continue
+		}
+
+		_ = os.Remove(path)
+	}
 }
 
 // digest — a short content hash, enough to tell the built-in configs and the
