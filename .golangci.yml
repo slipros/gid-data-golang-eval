@@ -254,7 +254,7 @@ linters:
     # depguard — only module-independent library bans (full import path).
     # Cross-layer bans cannot be expressed here: deny is prefix matching and
     # would require hardcoding the module path in every service. Layer
-    # direction is covered by gidlayerimports (GID-132/170/172/224…229).
+    # direction is covered by gidlayerimports (GID-132/170/172/224…229/267).
     depguard:
       rules:
         uuid:
@@ -379,7 +379,7 @@ linters:
         original-url: github.com/slipros/gid-data-golang-eval
       gidlayerimports:
         type: module
-        description: 'GID-132/170/172/224…229/241: layer isolation matrix (dal/domain/server/schedule/validate/event/job/client/metric/app); repository imports are allow-listed to app and the repository layer'
+        description: 'GID-132/170/172/224…229/241/267: layer isolation matrix (dal/domain/server/schedule/validate/event/job/client/metric/app); repository imports are allow-listed to app and the repository layer; the domain reaches a client through a repository, a BFF excepted'
         original-url: github.com/slipros/gid-data-golang-eval
         # Relaxing the built-in matrix and adding custom rules:
         # settings:
