@@ -15,9 +15,20 @@ import (
 //   - GID-226: metric is standalone, domain/dal do not import metric;
 //   - GID-227: domain/model is the pure vocabulary;
 //   - GID-228: domain/usecase does not import client;
-//   - GID-229: client is isolated from the service layers.
+//   - GID-229: client is isolated from the service layers;
+//   - GID-267: domain/service does not import client either.
 func TestAnalyzer(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), Analyzer, "svc/...")
+}
+
+// TestAnalyzerBFF — GID-267 is not asked in a module without a data layer
+// (testdata/src/bff): its fix names a repository, and a BFF has none, because
+// calling other services and shaping the answer for the frontend IS its
+// business logic. The fixture imports the client layer from /domain/service
+// and carries no // want. The rest of the matrix keeps working there — the
+// gate is per rule, not per module.
+func TestAnalyzerBFF(t *testing.T) {
+	analysistest.Run(t, analysistest.TestData(), Analyzer, "bff/...")
 }
 
 // TestAnalyzerPkgModuleLayout — the pkg/<module> application-module layout

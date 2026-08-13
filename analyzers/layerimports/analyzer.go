@@ -45,11 +45,21 @@
 //   - /domain/model does not import any service layer — it is the pure
 //     vocabulary; the subpackages /domain/model/* are a full-fledged model layer.
 //
-// GID-228 (no-direct-client):
-//   - /domain/usecase does not import /client/** — a client is used by a
-//     repository (client models are converted to entity in dal/repository/convert)
-//     or directly by a service (the service converts model <-> client models;
-//     its API always takes and returns model); /domain/model is shielded by GID-227.
+// GID-228 (usecase-no-client):
+//   - /domain/usecase does not import /client/** — usecase orchestrates
+//     services and does not touch data sources at all; /domain/model is
+//     shielded by GID-227.
+//
+// GID-267 (service-no-client):
+//   - /domain/service does not import /client/** either — the chain is
+//     client -> repository -> service: the client returns its own models, the
+//     repository converts them to entity in dal/repository/convert, and the
+//     service works with the repository through an interface.
+//   - The rule is only asked in a module that owns a data layer
+//     (modlayout.HasDataLayer), the same gate GID-160 uses: its fix names a
+//     repository, and a BFF has none. In a BFF calling other services and
+//     shaping the answer for the frontend IS the business logic, so there the
+//     service reaches a client directly and the rule stays silent.
 //
 // GID-229 (client-isolated):
 //   - /client/** does not import service layers (including all of /domain) —
@@ -98,6 +108,7 @@ import (
 
 	"golang.org/x/tools/go/analysis"
 
+	"github.com/slipros/gid-data-golang-eval/internal/modlayout"
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 	"github.com/slipros/gid-data-golang-eval/internal/srcfile"
 )
@@ -239,7 +250,15 @@ var layerRules = []layerRule{
 		id:     "GID-228",
 		scope:  []string{"domain", "usecase"},
 		banned: [][]string{{"client"}},
-		reason: "usecase orchestrates services; a client is used by a repository or directly by a service",
+		reason: "usecase orchestrates services and does not touch data sources — a client is reached by a repository",
+	},
+	{
+		id:     "GID-267",
+		scope:  []string{"domain", "service"},
+		banned: [][]string{{"client"}},
+		reason: "call the client from dal/repository and convert its models to entity in dal/repository/convert, " +
+			"then depend on that repository through an interface next to the service",
+		needsDataLayer: true,
 	},
 	{
 		id:     "GID-225",
@@ -300,10 +319,11 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 	}
 	return &analysis.Analyzer{
 		Name: "gidlayerimports",
-		Doc: "GID-132/GID-170/GID-172/GID-224…229/GID-241: dependency direction " +
+		Doc: "GID-132/GID-170/GID-172/GID-224…229/GID-241/GID-267: dependency direction " +
 			"between layers (isolation matrix: dal/domain/server/schedule/" +
 			"validate/event/job/client/metric/app; repository imports are " +
-			"allow-listed to app and the repository layer itself)",
+			"allow-listed to app and the repository layer itself; the domain " +
+			"reaches a client through a repository, a BFF excepted)",
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, rules, checkRepo)
 		},
@@ -317,6 +337,10 @@ type layerRule struct {
 	scope  []string
 	banned [][]string
 	reason string
+	// needsDataLayer marks a rule whose fix names a repository: it is asked
+	// only in a module that owns a data layer, and stays silent in a BFF that
+	// has none (modlayout.HasDataLayer — the gate GID-160 introduced).
+	needsDataLayer bool
 }
 
 // effectiveRules — the built-in matrix minus settings.disable plus
@@ -367,12 +391,26 @@ func segments(path string) []string {
 
 func run(pass *analysis.Pass, rules []layerRule, checkRepo bool) (any, error) {
 	pkgPath := pass.Pkg.Path()
+	// dataLayer — the modlayout verdict, asked at most once per package and only
+	// when a gated rule is otherwise in scope: the answer costs a walk up to the
+	// module root, and most packages hold no gated rule at all.
+	var dataLayer *bool
 	var scoped []layerRule
 	//nolint:gidallptr // the plugin does not depend on the internal gdhelper library
 	for _, rule := range rules {
-		if pathseg.HasLayer(pkgPath, rule.scope...) {
-			scoped = append(scoped, rule)
+		if !pathseg.HasLayer(pkgPath, rule.scope...) {
+			continue
 		}
+		if rule.needsDataLayer {
+			if dataLayer == nil {
+				verdict := modlayout.HasDataLayer(pass)
+				dataLayer = &verdict
+			}
+			if !*dataLayer {
+				continue
+			}
+		}
+		scoped = append(scoped, rule)
 	}
 	if len(scoped) == 0 && !checkRepo {
 		return nil, nil

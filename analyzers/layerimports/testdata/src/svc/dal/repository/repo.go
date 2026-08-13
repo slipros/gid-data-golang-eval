@@ -18,6 +18,6 @@ func (s *Snapshot) Snapshot(id string) (entity.Snapshot, error) {
 // Positive above: model is forbidden in the dal layer.
 func (s *Snapshot) leak(in *model.Snapshot) {}
 
-// Negative (GID-228): a repository is allowed to call a client directly and
-// convert its models to entity in dal/repository/convert.
+// Negative (GID-228/GID-267): the repository is the one layer allowed to call a
+// client — it converts the client's models to entity in dal/repository/convert.
 func (s *Snapshot) leakClient(c *billing.Client) {}

@@ -2,7 +2,7 @@
 package usecase
 
 import (
-	"svc/client/billing" // want `GID-228: package "svc/domain/usecase" must not import "svc/client/billing"\. Fix: usecase orchestrates services; a client is used by a repository or directly by a service`
+	"svc/client/billing" // want `GID-228: package "svc/domain/usecase" must not import "svc/client/billing"\. Fix: usecase orchestrates services and does not touch data sources — a client is reached by a repository`
 	"svc/dal/entity"     // want `GID-132: package "svc/domain/usecase" must not import "svc/dal/entity"\. Fix: usecase works only with model and talks to DAL through services`
 	"svc/dal/repository" // want `GID-132: package "svc/domain/usecase" must not import "svc/dal/repository"\. Fix: usecase works only with model and talks to DAL through services`
 
