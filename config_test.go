@@ -1,6 +1,8 @@
 package gidrules
 
 import (
+	"os"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -8,6 +10,11 @@ import (
 	"github.com/golangci/plugin-module-register/register"
 	"gopkg.in/yaml.v3"
 )
+
+// notShipped — registered linters deliberately kept out of the built-in
+// configs. A rule parked here needs a reason: the default is that a registered
+// rule ships, because a rule nobody runs is a rule that does not exist.
+var notShipped = map[string]string{}
 
 // enabledLinters reads linters.enable out of a built-in config.
 func enabledLinters(t *testing.T, config []byte, name string) []string {
@@ -68,6 +75,67 @@ func TestDefaultConfigEnablesRegisteredLinters(t *testing.T) {
 			t.Errorf("the built-in config enables %q, but no such plugin is registered in plugin.go — "+
 				"every run of the binary would abort. Fix: register the linter or drop it from gid-golangci.yml",
 				name)
+		}
+	}
+}
+
+// registeredPlugins reads the gid* linter names out of plugin.go — the
+// register package keeps its map private, so the registration source itself is
+// the list. A name only reaches a user of the binary through a config, so this
+// is the one place that knows what the binary *could* run.
+func registeredPlugins(t *testing.T) []string {
+	t.Helper()
+
+	src, err := os.ReadFile("plugin.go")
+	if err != nil {
+		t.Fatalf("cannot read plugin.go: %v", err)
+	}
+
+	matches := regexp.MustCompile(`register\.Plugin\("(gid[a-z]+)"`).FindAllStringSubmatch(string(src), -1)
+	if len(matches) == 0 {
+		t.Fatal("no register.Plugin(\"gid…\") calls found in plugin.go — the pattern went stale")
+	}
+
+	out := make([]string, 0, len(matches))
+	for _, m := range matches {
+		out = append(out, m[1])
+	}
+
+	return out
+}
+
+// TestBuiltinConfigsShipEveryRegisteredLinter closes the direction the other
+// two gates leave open. TestDefaultConfigEnablesRegisteredLinters checks that
+// everything *enabled* is registered, and TestRulesOnlyConfigMatchesDefault
+// compares the two built-in configs *to each other* — so a linter registered in
+// plugin.go and enabled only in the repository's own .golangci.yml passes both:
+// it lints this repository via `make lint-fast` and silently never runs for
+// anybody using the binary.
+//
+// That is not hypothetical. GID-246 (gidapproot) was registered and enabled in
+// .golangci.yml on the day it was written and never added to either built-in
+// config; it produced zero diagnostics on advertising-api, which holds eleven
+// adapter structs, and the gap went unnoticed until 2026-08-13 — together with
+// nine other rules in the same state.
+func TestBuiltinConfigsShipEveryRegisteredLinter(t *testing.T) {
+	configs := map[string][]string{
+		"gid-golangci.yml":       enabledLinters(t, DefaultConfig(), "gid-golangci.yml"),
+		"gid-golangci-rules.yml": enabledLinters(t, RulesOnlyConfig(), "gid-golangci-rules.yml"),
+	}
+
+	for _, name := range registeredPlugins(t) {
+		if reason, parked := notShipped[name]; parked {
+			t.Logf("%s is deliberately not shipped: %s", name, reason)
+
+			continue
+		}
+
+		for config, enabled := range configs {
+			if !slices.Contains(enabled, name) {
+				t.Errorf("plugin.go registers %q, but %s does not enable it — the rule ships in the binary "+
+					"and never runs. Fix: add it to %s (RULES.md, step 5 of the process), or park it in "+
+					"notShipped with a reason", name, config, config)
+			}
 		}
 	}
 }

@@ -167,6 +167,16 @@ linters:
     - giderrname
     - giderrmapfunc
     - giderrzeroret
+    - gidconstexpr
+    - gidconvpolicy
+    - giddocref
+    - giderrtext
+    - gidmapout
+    - giderrswallow
+    - gidsentinelwrap
+    - gidscanrow
+    - gidapproot
+    - gidclientwiring
   settings:
     dupl:
       threshold: 100
@@ -934,6 +944,88 @@ linters:
         type: module
         description: 'GID-243: on error, non-error results in a multi-value return must be nil/zero'
         original-url: github.com/slipros/gid-data-golang-eval
+
+      gidconstexpr:
+        type: module
+        description: 'GID-254: a local variable initialized with a constant string expression (a concatenation of constants) must be a const — the value is folded at compile time; lone literals and numeric expressions are out of scope'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # No settings; pinpoint exclusions via //nolint:gidconstexpr.
+      gidconvpolicy:
+        type: module
+        description: 'GID-247: a convert function must not branch on its input to select a raw constant value — that is business policy, not mapping (move the decision to /domain/model)'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # Converter functions exempt from the rule (a function name or Type.Method):
+        # settings:
+        #   exclude:
+        #     - asrFormatFromSource
+      giddocref:
+        type: module
+        description: 'GID-262: a comment must explain the code, not reference the development documentation — ARD/PRD/backlog names, requirement ids (@ФТ-11), document codes (Р-11, B-48), sections (§12), task numbers, BDD tags. _test.go is not judged (the id next to the test name is the trace the map is built from; settings.include-tests turns it on). A requirement id is not deleted but moved into the requirement map — a file of its own linked from the README (ФТ-15 → TestCreate_DuplicateTitle_AlreadyExists)'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # patterns replace the built-in marker list, extra is appended to it
+        # (a project's tracker key). Pinpoint exclusions — //nolint:giddocref:
+        # settings:
+        #   extra:
+        #     - '\bUDMP-\d+\b'
+        #   include-tests: true  # once the requirement map lives in a file of its own
+      giderrtext:
+        type: module
+        description: 'GID-256: the text of an error (err.Error()) must not be passed into an error constructor — flattening it into a string cuts the chain and drops the stack; put the cause in the chain, and carry a stable class in a typed error with Unwrap'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # Exclusions ("Function" | "Type.Method") — a functional requirement, or
+        # legacy that cannot be rewritten right now:
+        # settings:
+        #   exclude:
+        #     - 'Client.legacyConfirm'
+      gidmapout:
+        type: module
+        description: 'GID-257: a map received as a parameter must not be filled in — the result is missing from the signature; return the map instead. A map parameter is for data going IN'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # Exclusions ("Function" | "Type.Method"):
+        # settings:
+        #   exclude:
+        #     - 'Resolver.legacyResolveChunk'
+      giderrswallow:
+        type: module
+        description: 'GID-258: in /domain/**, a function that checks an error must be able to return one — logging it and moving on hides the failure from the caller; add error to the results'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # Exclusions ("Function" | "Type.Method") — soft degradation as a stated
+        # functional requirement:
+        # settings:
+        #   exclude:
+        #     - 'Resolver.degradeSilently'
+      gidsentinelwrap:
+        type: module
+        description: 'GID-244: map a boundary error to a sentinel by reassign-then-wrap-once, not by wrapping the sentinel in a guard branch that duplicates the outer errors.Wrap'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # Exclusions ("Method" | "Type.Method"):
+        # settings:
+        #   exclude:
+        #     - 'Repo.excludedMethod'
+      gidscanrow:
+        type: module
+        description: 'GID-245: an epgx Select into a one-field struct reads a single column — use ScanRow with the column pointer directly'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # Exclusions ("Method" | "Type.Method"):
+        # settings:
+        #   exclude:
+        #     - 'Repo.excludedMethod'
+      gidapproot:
+        type: module
+        description: 'GID-246: a struct named *Adapter is banned — an adapter only converts data between layers, and that mapping belongs in the layer''s convert subpackage (domain/service/convert, dal/repository/convert), not a standalone adapter type'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # Escape hatch for a concrete proven case (legacy that can't be rewritten
+        # now) — not a blessing for a whole layer. By directory or by type name:
+        # settings:
+        #   exclude-paths:
+        #     - internal/legacy
+        #   exclude:
+        #     - LegacyAdapter
+      gidclientwiring:
+        type: module
+        description: 'GID-255: a package in /client/** with constructors but no method declares no client — it is wiring (a connection factory), and wiring lives in the composition root /app/**'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # No settings; pinpoint exclusions via //nolint:gidclientwiring on the package clause.
 
   exclusions:
     generated: lax
