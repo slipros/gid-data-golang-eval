@@ -38,6 +38,7 @@ linters:
     - bodyclose
     - contextcheck
     - copyloopvar
+    - dupl
     - durationcheck
     - err113
     - errcheck
@@ -1121,6 +1122,15 @@ linters:
       - path: (^|/)validate/
         linters:
           - goconst
+      # --- tests ---
+      # dupl is off in tests: a table-driven test repeats its scaffolding by
+      # design (same arrange/assert shape per case), and folding that into a
+      # helper hides what each case actually asserts. The linter is here for
+      # production code, where a copied block is the agent's cheapest way out
+      # of reusing an existing function.
+      - path: _test\.go$
+        linters:
+          - dupl
       # --- specifics of this repository ---
       # AST analyzers compare identifier names and signature arities —
       # string and numeric literals are legitimate here. internal/pathseg is
