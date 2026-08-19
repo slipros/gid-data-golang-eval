@@ -35,7 +35,7 @@ const ruleID = "GID-185"
 // Analyzer — rule GID-185: return/declare a nil slice instead of an empty literal []T{}. Fix: use nil or var s []T.
 var Analyzer = &analysis.Analyzer{
 	Name:     "gidnilslice",
-	Doc:      ruleID + ": return/declare a nil slice instead of an empty literal []T{}. Fix: use nil or var s []T",
+	Doc:      ruleID + ": return/declare a nil slice instead of an empty literal []T{}. Fix: use nil or var s []T; a non-nil empty slice (JSON `[]`, not `null`) is make([]T, 0)",
 	Requires: astwalk.Requires,
 	Run:      run,
 }
@@ -54,7 +54,7 @@ func run(pass *analysis.Pass) (any, error) {
 			for _, res := range node.Results {
 				if isEmptySliceLit(pass, res) {
 					pass.Reportf(res.Pos(),
-						"%s: return nil instead of an empty slice. Fix: a nil slice is valid", ruleID)
+						"%s: return nil instead of an empty slice. Fix: a nil slice is valid; if the caller needs a non-nil empty slice (JSON `[]` rather than `null`), use make([]T, 0)", ruleID)
 				}
 			}
 		case *ast.AssignStmt:
@@ -65,7 +65,7 @@ func run(pass *analysis.Pass) (any, error) {
 			for _, rhs := range node.Rhs {
 				if isEmptySliceLit(pass, rhs) {
 					pass.Reportf(rhs.Pos(),
-						"%s: declare a zero-value slice. Fix: var s []T", ruleID)
+						"%s: declare a zero-value slice. Fix: var s []T; if a non-nil empty slice is required (JSON `[]` rather than `null`), use make([]T, 0)", ruleID)
 				}
 			}
 		case *ast.ValueSpec:
@@ -73,7 +73,7 @@ func run(pass *analysis.Pass) (any, error) {
 			for _, val := range node.Values {
 				if isEmptySliceLit(pass, val) {
 					pass.Reportf(val.Pos(),
-						"%s: declare a zero-value slice. Fix: var s []T", ruleID)
+						"%s: declare a zero-value slice. Fix: var s []T; if a non-nil empty slice is required (JSON `[]` rather than `null`), use make([]T, 0)", ruleID)
 				}
 			}
 		}

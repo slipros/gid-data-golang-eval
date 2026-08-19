@@ -5,20 +5,20 @@ package nilslice
 
 // return with an empty slice literal.
 func retEmptyInt() []int {
-	return []int{} // want `GID-185: return nil instead of an empty slice\. Fix: a nil slice is valid`
+	return []int{} // want `GID-185: return nil instead of an empty slice\. Fix: a nil slice is valid; if the caller needs a non-nil empty slice \(JSON .\[\]. rather than .null.\), use make\(\[\]T, 0\)`
 }
 
 // initialization via := with an empty literal.
 func defineEmpty() {
-	s := []string{} // want `GID-185: declare a zero-value slice\. Fix: var s \[\]T`
+	s := []string{} // want `GID-185: declare a zero-value slice\. Fix: var s \[\]T; if a non-nil empty slice is required \(JSON .\[\]. rather than .null.\), use make\(\[\]T, 0\)`
 	_ = s
 }
 
 // initialization via var = with an empty literal.
-var pkgEmpty = []byte{} // want `GID-185: declare a zero-value slice\. Fix: var s \[\]T`
+var pkgEmpty = []byte{} // want `GID-185: declare a zero-value slice\. Fix: var s \[\]T; if a non-nil empty slice is required \(JSON .\[\]. rather than .null.\), use make\(\[\]T, 0\)`
 
 func varEmptyLocal() {
-	var s = []float64{} // want `GID-185: declare a zero-value slice\. Fix: var s \[\]T`
+	var s = []float64{} // want `GID-185: declare a zero-value slice\. Fix: var s \[\]T; if a non-nil empty slice is required \(JSON .\[\]. rather than .null.\), use make\(\[\]T, 0\)`
 	_ = s
 }
 
