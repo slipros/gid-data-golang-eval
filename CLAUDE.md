@@ -13,8 +13,8 @@ make lint-fast     # check the repository code with the built binary
 go test ./analyzers/<slug>/...   # eval of a single rule
 ```
 
-The build requires golangci-lint **v2.13.0** — the version is pinned in `.custom-gcl.yml`.
-Dependency versions are pinned to golangci v2.13.0 — do not upgrade without verifying the build.
+The build requires golangci-lint **v2.13.1** — the version is pinned in `.custom-gcl.yml`.
+Dependency versions are pinned to golangci v2.13.1 — do not upgrade without verifying the build.
 
 ## Structure
 
