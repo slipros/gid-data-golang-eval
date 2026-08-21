@@ -1,4 +1,4 @@
-// Command custom-gcl is a full golangci-lint v2.13.0 with the gid* linters
+// Command custom-gcl is a full golangci-lint v2.13.1 with the gid* linters
 // of this repository built in.
 //
 // It is an alternative to building via `golangci-lint custom` (.custom-gcl.yml):
@@ -26,7 +26,7 @@
 // `issues.max-issues-per-linter` routinely make that run cover far less than it
 // looks (see gid-golangci-rules.yml).
 //
-// The golangci-lint version is pinned in go.mod (v2.13.0) — it must match
+// The golangci-lint version is pinned in go.mod (v2.13.1) — it must match
 // the version in .custom-gcl.yml.
 package main
 
