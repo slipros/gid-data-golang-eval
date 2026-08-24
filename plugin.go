@@ -35,6 +35,7 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/dbtags"
 	"github.com/slipros/gid-data-golang-eval/analyzers/dirtree"
 	"github.com/slipros/gid-data-golang-eval/analyzers/docref"
+	"github.com/slipros/gid-data-golang-eval/analyzers/dupdep"
 	"github.com/slipros/gid-data-golang-eval/analyzers/embedmutex"
 	"github.com/slipros/gid-data-golang-eval/analyzers/entitygroup"
 	"github.com/slipros/gid-data-golang-eval/analyzers/entitymethod"
@@ -231,6 +232,7 @@ func init() {
 	register.Plugin("giderrtext", newConfigurablePlugin(errtext.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("giderrswallow", newConfigurablePlugin(errswallow.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidmapout", newConfigurablePlugin(mapout.NewAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("giddupdep", newConfigurablePlugin(dupdep.NewAnalyzer, register.LoadModeTypesInfo))
 	// Layer 1 (former ruleguard) — simple AST patterns, now native analyzers.
 	register.Plugin("gidtimenow", newSingleAnalyzerPlugin(patterns.TimeNowAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("giduuidnil", newSingleAnalyzerPlugin(patterns.UUIDNilAnalyzer, register.LoadModeTypesInfo))

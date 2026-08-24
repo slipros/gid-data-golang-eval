@@ -190,6 +190,7 @@ linters:
     - giderrtext       # GID-256
     - gidmapout        # GID-257
     - giderrswallow    # GID-258
+    - giddupdep        # GID-268
     - gidsentinelwrap  # GID-244
     - gidscanrow       # GID-245
     - gidapproot       # GID-246
@@ -1040,6 +1041,14 @@ linters:
         # settings:
         #   exclude:
         #     - 'Resolver.legacyResolveChunk'
+      giddupdep:
+        type: module
+        description: 'GID-268: a constructor takes the same dependency twice under two different interfaces — one entity passed under several roles overstates the collaborator count. Fix: merge the interfaces into one and take the dependency as a single parameter'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # Exclusions ("NewModule" | "marketplace.NewModule"):
+        # settings:
+        #   exclude:
+        #     - 'NewLegacyModule'
       giderrswallow:
         type: module
         description: 'GID-258: in /domain/**, a function that checks an error must be able to return one — logging it and moving on hides the failure from the caller; add error to the results'
