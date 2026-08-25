@@ -1,5 +1,5 @@
-// Package ifaceplace implements rule GID-134 (interface-near-consumer):
-// interfaces live where they are used.
+// Package ifaceplace implements rules GID-134 (interface-near-consumer) and
+// GID-269 (no-inline-interface-field).
 //
 // The check: if a named interface type is used in struct fields or in the
 // parameters/results of a function (method) of the package, we look at the
@@ -15,8 +15,10 @@
 //     or /domain/usecase layer; for other consumers it is a violation;
 //   - any other "own" package — a violation.
 //
-// Untouched: anonymous interfaces, error, any/interface{},
-// generic constraints. Generated code is skipped.
+// GID-134 leaves anonymous interfaces untouched. GID-269 reports a non-empty
+// anonymous interface used directly as a struct field type. Empty interface{}
+// fields, error, any/interface{}, and generic constraints are untouched.
+// Generated code is skipped.
 //
 // LoadMode: TypesInfo is needed — we detect types.Interface and the
 // declaring package via Named.Obj().Pkg().
@@ -51,7 +53,10 @@ import (
 	"github.com/slipros/gid-data-golang-eval/internal/srcfile"
 )
 
-const ruleID = "GID-134"
+const (
+	ruleID                = "GID-134"
+	inlineInterfaceRuleID = "GID-269"
+)
 
 // layerSegments — path segments by which a package is recognized as the
 // service's "own" layer (rather than stdlib/an external library).
@@ -59,12 +64,13 @@ var layerSegments = []string{
 	"dal", "domain", "client", "server", "event", "app", "metric",
 }
 
-// Analyzer — rule GID-134: interfaces live where they are used.
+// Analyzer checks interface placement rules GID-134 and GID-269.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidifaceplace",
 	Doc: ruleID + ": interfaces live where they are used; " +
 		"define the interface next to its consumer (exceptions: libraries, /domain/model for service/usecase, " +
-		"and a _test.go helper's parameters/results dictated by a production constructor)",
+		"and a _test.go helper's parameters/results dictated by a production constructor); " +
+		inlineInterfaceRuleID + ": struct fields use named interfaces instead of inline declarations",
 	Run: run,
 }
 
@@ -106,6 +112,12 @@ func checkTypeDecl(pass *analysis.Pass, consumer *types.Package, gd *ast.GenDecl
 			continue
 		}
 		for _, field := range st.Fields.List {
+			if iface, ok := field.Type.(*ast.InterfaceType); ok && iface.Methods != nil && len(iface.Methods.List) > 0 {
+				pass.Reportf(field.Type.Pos(),
+					"%s: anonymous interface is declared in a struct field. "+
+						"Fix: declare a named interface next to the struct and use it as the field type",
+					inlineInterfaceRuleID)
+			}
 			checkExpr(pass, consumer, field.Type)
 		}
 	}

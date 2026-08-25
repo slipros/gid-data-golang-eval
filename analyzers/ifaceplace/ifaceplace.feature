@@ -21,8 +21,10 @@ Feature: GID-134 — interfaces live where they are used
       only if the consumer is in /domain/service or /domain/usecase;
     - any other "own" package — violation.
 
-  Not affected: anonymous interfaces, error, any/interface{},
-  generic constraints. Generated code (ast.IsGenerated) is skipped.
+  For GID-134, anonymous interfaces remain outside this package-placement check.
+  GID-269 separately rejects non-empty anonymous interfaces used directly as
+  struct field types. error, any/interface{}, generic constraints, and generated
+  code (ast.IsGenerated) are not affected.
 
   Test files (srcfile.IsTest): a _test.go helper's parameters/results are a
   *use* of the interface, forced by the production constructor it wires up
@@ -91,7 +93,7 @@ Feature: GID-134 — interfaces live where they are used
     When the analyzer checks the file
     Then no diagnostic is reported
 
-  Scenario: an anonymous interface{ Foo() } in a parameter — not named, skipped
+  Scenario: an anonymous interface{ Foo() } in a parameter — outside both rules
     Given a method takes "interface{ Foo() }"
     When the analyzer checks the file
     Then no diagnostic is reported
@@ -131,10 +133,32 @@ Feature: GID-134 — interfaces live where they are used
     When the analyzer checks the file
     Then a "GID-134" diagnostic is reported (the _test.go exception does not leak into production code)
 
-# --- Checklist when adding a new rule ---
-#  [x] ID and description are recorded in the registry (RULES.md, GID-134)
-#  [x] Layer chosen: go/analysis (TypesInfo — interface types and the declaration package are needed)
-#  [x] Severity and message are defined ("GID-134: ...")
+  # --- GID-269: no inline interface declarations in struct fields ---
+
+  Scenario: a struct field declares a non-empty anonymous interface — violation
+    Given a struct field has the type "interface{ Resolve() error }"
+    When the analyzer checks the file
+    Then a "GID-269" diagnostic tells the developer to declare a named interface next to the struct
+
+  Scenario: a struct field uses a named local interface — clean
+    Given a struct field has the type "LocalRepository"
+    When the analyzer checks the file
+    Then no "GID-269" diagnostic is reported
+
+  Scenario: an empty interface struct field — boundary excluded
+    Given a struct field has the type "interface{}"
+    When the analyzer checks the file
+    Then no "GID-269" diagnostic is reported
+
+  Scenario: an anonymous interface outside a struct field — not applicable
+    Given a method parameter has the type "interface{ Foo() }"
+    When the analyzer checks the file
+    Then no "GID-269" diagnostic is reported
+
+# --- Checklist when adding the rules ---
+#  [x] IDs and descriptions are recorded in the registry (RULES.md, GID-134 and GID-269)
+#  [x] Layer chosen: go/analysis (AST shape and TypesInfo are needed)
+#  [x] Severity and messages are defined ("GID-134: ...", "GID-269: ...")
 #  [x] Case classes covered: positive, negative, boundary, non-applicability
 #  [x] testdata with // want for analysistest
-#  [ ] Rule enabled in .golangci.yml (outside the scope of this task)
+#  [x] Rules enabled through gidifaceplace in both embedded configs and .golangci.yml

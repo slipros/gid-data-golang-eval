@@ -67,6 +67,7 @@ Statuses: ✅ done · 🛠 in progress · 🔜 todo · ⛔ not portable (stays o
 | GID-210 | op-struct-fields | Operational Create structs are minimal: in `/domain/model`, `Create<X>` does not contain `ID`/`CreatedAt`/`UpdatedAt` (they are generated in service/convert); in `/dal/entity`, `Create<X>` does not contain `UpdatedAt` — INSERT fields only (ID and CreatedAt are legitimate in entity) (linter `gidopstruct`) | model.md, entity.md | ✅ | ✅ |
 | GID-211 | enum-location | A DAL-layer enum (a named string type with const values) lives only in `/dal/entity/enum` — a separate file per entity; in model, an enum lives directly in the model layer (see GID-132); aliases (`type X = string`) are GID-123's territory (linter `gidenumplace`) | entity.md | ✅ | ✅ |
 | GID-231 | fsm-map-unexported | An FSM transition map in `/domain/model` (`map[E][]E` / `map[E]map[E]struct{}` / `map[E]map[E]bool` over a local string enum) must be an unexported package-level var — consumers go through `CanTransitionTo` (linter `gidfsmmap`) | model.md#enum-and-state-machine-fsm | ✅ | ✅ |
+| GID-269 | no-inline-interface-field | A struct field does not declare a non-empty anonymous interface inline (`resolver interface { Resolve() error }`). Declare a named interface next to the struct and use that type for the field. Empty `interface{}`/`any` fields and anonymous interfaces outside struct fields are not affected (linter `gidifaceplace`) | owner requirement 2026-08-25 | ✅ | ✅ |
 
 ### File and package structure
 

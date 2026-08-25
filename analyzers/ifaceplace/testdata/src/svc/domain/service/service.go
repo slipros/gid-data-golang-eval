@@ -1,13 +1,14 @@
-// Eval for GID-134 (interface-near-consumer). The consumer is the
-// /domain/service layer.
+// Eval for GID-134 (interface-near-consumer) and GID-269
+// (no-inline-interface-field). The consumer is the /domain/service layer.
 package service
 
 import (
 	"io"
 
-	"example.com/extlib"
 	"svc/domain/model"
 	"svc/server/grpc"
+
+	"example.com/extlib"
 )
 
 // LocalRepository — an interface declared in this same package next to the
@@ -22,6 +23,10 @@ type LocalRepository interface {
 type Service struct {
 	notifier grpc.Notifier // want `GID-134: interface Notifier is declared in svc/server/grpc\. Fix: define the interface next to its consumer \(exceptions: libraries and /domain/model for service/usecase\)`
 	local    LocalRepository
+	resolver interface { // want `GID-269: anonymous interface is declared in a struct field\. Fix: declare a named interface next to the struct and use it as the field type`
+		Resolve() error
+	}
+	opaque interface{}
 }
 
 // A function parameter: an interface from a foreign server package.
@@ -49,7 +54,7 @@ func (s *Service) Encode(e extlib.Encoder) {}
 // error — untouched (no declaring package).
 func (s *Service) Do() error { return nil }
 
-// An anonymous interface — not named, untouched.
+// An anonymous interface in a parameter is outside GID-269's scope.
 func (s *Service) Anon(x interface{ Foo() }) {}
 
 // any / interface{} — untouched.
