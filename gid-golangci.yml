@@ -198,6 +198,7 @@ linters:
     - gidmapout         # GID-257
     - giderrswallow     # GID-258
     - giddupdep         # GID-268
+    - gidarglimit       # GID-272
     - gidsentinelwrap   # GID-244
     - gidscanrow        # GID-245
     - gidapproot        # GID-246
@@ -1080,6 +1081,16 @@ linters:
         # settings:
         #   exclude:
         #     - 'NewLegacyModule'
+      gidarglimit:
+        type: module
+        description: 'GID-272: a function or method in /domain/** takes at most 3 substantive arguments (context.Context and a receiver do not count, a variadic tail is one) — a function with more stopped being a conversion and became assembly. Fix: split it or introduce a type that carries the related fields'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # The threshold (default 3 — a violation begins at 4), and exceptions
+        # ("Function" | "Type.Method"; pinpoint — //nolint:gidarglimit):
+        # settings:
+        #   max-args: 3
+        #   exclude:
+        #     - 'WebhooksTriggersV2FromConsentEventV2'
       giderrswallow:
         type: module
         description: 'GID-258: in /domain/**, a function that checks an error must be able to return one — logging it and moving on hides the failure from the caller; add error to the results'
