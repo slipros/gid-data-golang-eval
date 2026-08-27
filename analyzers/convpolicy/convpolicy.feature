@@ -28,6 +28,39 @@ Feature: GID-247 — convert-no-policy: a converter maps, it does not decide
     When the analyzer checks the file
     Then no diagnostic is reported
 
+  Scenario: an enum constant is picked by a length check — violation (consent-webhook-trigger incident)
+    Given the convert function "EmptyReasonFromEvent" initializes "reason" with the enum constant WebhookTriggerV2EmptyReasonContactsFiltered
+    And reassigns it to WebhookTriggerV2EmptyReasonNoIdentifiers inside "if len(event.UserIdentifiers) == 0"
+    And reassigns it to WebhookTriggerV2EmptyReasonWhitelist inside "if len(identifiers) == 0 && len(source) > 0"
+    When the analyzer checks the file
+    Then a "GID-247" diagnostic is reported on the first in-branch assignment to "reason"
+
+  Scenario: an enum constant is picked by a bool flag — violation
+    Given the convert function "FlagPickedReason" reassigns "reason" to a different enum constant inside "if whitelisted"
+    When the analyzer checks the file
+    Then a "GID-247" diagnostic is reported on the in-branch assignment to "reason"
+
+  Scenario: enum→enum mapping through if/else on the enum value — ok
+    Given the convert function "ReasonFromKindIf" branches on "kind == KindFiltered" and assigns "reason" different enum constants
+    When the analyzer checks the file
+    Then no diagnostic is reported
+
+  Scenario: enum→enum mapping through a switch on the enum value — ok
+    Given the convert function "ReasonFromKindSwitch" switches on "kind" and assigns "reason" different enum constants
+    When the analyzer checks the file
+    Then no diagnostic is reported
+
+  Scenario: a mixed condition reads an enum AND a non-enum value — violation
+    Given the convert function "ReasonFromKindAndSize" branches on "kind == KindFiltered && len(ids) == 0"
+    And the branches assign "reason" two different enum constants
+    When the analyzer checks the file
+    Then a "GID-247" diagnostic is reported on the in-branch assignment to "reason"
+
+  Scenario: the same enum constant in every branch — a single distinct value, not a selection — ok
+    Given the convert function "SameReason" assigns "reason" the same enum constant in the default and in the length-checked branch
+    When the analyzer checks the file
+    Then no diagnostic is reported
+
   Scenario: the branch condition tests a local value, not an input parameter — ok
     Given the convert function "LocalBranch" branches on a locally computed "n", not on the parameter
     When the analyzer checks the file
@@ -40,6 +73,11 @@ Feature: GID-247 — convert-no-policy: a converter maps, it does not decide
 
   Scenario: the same policy pattern in a non-convert package — the rule does not apply
     Given the function "pickChannels" lives in package "svc/domain/service" (not a convert package)
+    When the analyzer checks the file
+    Then no diagnostic is reported
+
+  Scenario: the enum-policy pattern in a _test.go file — the rule does not apply
+    Given the _test.go file of the convert package reproduces the length-checked enum selection in a test double
     When the analyzer checks the file
     Then no diagnostic is reported
 

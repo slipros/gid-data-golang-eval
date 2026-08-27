@@ -1039,7 +1039,7 @@ linters:
         # No settings; pinpoint exclusions via //nolint:gidconstexpr.
       gidconvpolicy:
         type: module
-        description: 'GID-247: a convert function must not branch on its input to select a raw constant value — that is business policy, not mapping (move the decision to /domain/model)'
+        description: 'GID-247: a convert function must not branch on its input to select a constant — a raw basic-typed value, or a named enum constant picked by a non-enum condition (length/emptiness/flag/predicate); a condition reading only enum values is enum→enum mapping and stays silent (move the decision to /domain/model)'
         original-url: github.com/slipros/gid-data-golang-eval
         # Converter functions exempt from the rule (a function name or Type.Method):
         # settings:
