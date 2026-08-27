@@ -73,7 +73,7 @@ func run(pass *analysis.Pass, s Settings) (any, error) {
 	}
 	structName := layerStructName
 	if isClient {
-		structName = clientStructName(pkgPath)
+		structName = newClientStructName(pkgPath)
 	}
 	for _, file := range pass.Files {
 		if ast.IsGenerated(file) {
@@ -140,7 +140,7 @@ func layerStructName(t types.Type) (string, bool) {
 	return "", false
 }
 
-// clientStructName builds a struct-name check for the client scope: a
+// newClientStructName builds a struct-name check for the client scope: a
 // client has no dedicated model/entity tree, so any same-module named
 // struct (the client's own request/response type, wherever it is declared)
 // counts as its input/output data. A struct from a foreign module
@@ -148,7 +148,7 @@ func layerStructName(t types.Type) (string, bool) {
 // Same-module membership is decided by the module root (pathseg.ModuleRoot),
 // not by the first path segment — for real import paths every
 // github.com/<org>/<repo> package shares the segment "github.com".
-func clientStructName(pkgPath string) func(types.Type) (string, bool) {
+func newClientStructName(pkgPath string) func(types.Type) (string, bool) {
 	modRoot := pathseg.ModuleRoot(pkgPath)
 	return func(t types.Type) (string, bool) {
 		named, ok := t.(*types.Named)
