@@ -577,14 +577,20 @@ linters:
         original-url: github.com/slipros/gid-data-golang-eval
       giddbtags:
         type: module
-        description: 'GID-125: entity struct fields have a mapping tag (db by default)'
+        description: 'GID-125: entity struct fields have a mapping tag (db by default); only judged in a module that actually imports the SQL stack'
         original-url: github.com/slipros/gid-data-golang-eval
         # The list of allowed tags can be extended — e.g. the ClickHouse
-        # library uses ch:
+        # library uses ch; sql-imports replaces the SQL stack the applicability
+        # gate looks for (name an in-house wrapper here when the driver is
+        # hidden behind it):
         # settings:
         #   tags:
         #     - db
         #     - ch
+        #   sql-imports:
+        #     - database/sql
+        #     - github.com/jmoiron/sqlx
+        #     - github.com/jackc/pgx
       gidenumbased:
         type: module
         description: 'GID-123: enum is a named string type, not alias/int/bare const (model/entity/event-dto)'
