@@ -1106,7 +1106,7 @@ linters:
         #     - 'WebhooksTriggersV2FromConsentEventV2'
       gidclosurector:
         type: module
-        description: 'GID-273: a function that builds and returns a closure is an inline constructor of it and carries the New/new prefix (GID-104) — the reader sees at the call site that a thing is being built, not fetched. An accessor handing out a stored callback, the options convention (a With-prefixed builder, an Option/Options/Opt result) and a _test.go helper are not judged'
+        description: 'GID-273: in /domain/**, a function that builds and returns a closure is an inline constructor of it and carries the New/new prefix (GID-104) — the reader sees at the call site that a thing is being built, not fetched. Outside the domain layer (middleware, interceptors, a module Router) the ecosystem convention wins; an accessor handing out a stored callback, the options convention (a With-prefixed builder, an Option/Options/Opt result) and a _test.go helper are not judged'
         original-url: github.com/slipros/gid-data-golang-eval
         # Option-type suffixes whose builders follow the options
         # convention, and exceptions ("Function" | "Type.Method";

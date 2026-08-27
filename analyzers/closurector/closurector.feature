@@ -12,6 +12,11 @@ Feature: GID-273 — a function building a closure is a constructor of it
   Linter: gidclosurector. LoadMode: TypesInfo (a named type over a func type is
   resolved through types.Signature).
 
+  Scope: /domain/** (matched by path segments — internal/domain/... and
+  pkg/<module>/domain/... alike, the GID-272 boundary). The transport layer
+  names its closure factories after the ecosystem it plugs into (chi
+  middleware, a gRPC interceptor, a module's Router) and is out of the rule.
+
   Judged: the result list holds a function type (a bare func type or a named
   type over one) AND the body builds it — a returned function literal, directly
   or through a local variable bound to one. A literal nested inside another
@@ -95,6 +100,11 @@ Feature: GID-273 — a function building a closure is a constructor of it
     Given "usecase_test.go" declares "func setup(scope string) func()"
     When the analyzer checks the file
     Then no diagnostic is reported
+
+  Scenario: a closure builder outside /domain/**
+    Given "/server/http/middleware" declares "func RequestID(header string) func(string) string" returning a literal
+    When the analyzer checks the file
+    Then no diagnostic is reported — the transport layer follows the ecosystem convention
 
   Scenario: generated code
     Given a file with the "Code generated … DO NOT EDIT." marker declares "func genFilter(scope string) func() string"
