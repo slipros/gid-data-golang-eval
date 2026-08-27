@@ -155,8 +155,57 @@ Feature: GID-134 — interfaces live where they are used
     When the analyzer checks the file
     Then no "GID-269" diagnostic is reported
 
+  # --- GID-271: a file of only interfaces with a single consumer ---
+
+  A file whose top-level declarations are only interfaces (imports don't
+  count) is a "port file". Its interfaces are summed over the file; a
+  consumer is a named struct of the same package with a field of the
+  interface type (directly or through a pointer); test and generated files
+  are not counted on either side.
+
+  Scenario: a port file whose interfaces have exactly one consumer — violation
+    Given the file "ports.go" holds only the interfaces "Sender" and "Clock"
+    And the single struct "Trigger" of the package has fields of both types
+    When the analyzer checks the file
+    Then a "GID-271" diagnostic is reported once, naming the consumer and telling the developer to move the interface declaration into the consumer's file
+
+  Scenario: the dependencies.go convention — several consumers — ok
+    Given the file "dependencies.go" holds 3 interfaces used by 3 different structs of the package
+    When the analyzer checks the file
+    Then no diagnostic is reported (2+ consumers is the convention the owner allowed)
+
+  Scenario: boundary — exactly two consumers vs exactly one
+    Given the file "sink_ports.go" holds one interface used by exactly two structs
+    When the analyzer checks the file
+    Then no diagnostic is reported (exactly 1 in ports.go is reported, exactly 2 is not)
+
+  Scenario: a port file with zero consumers — the rule stays silent
+    Given the file "contracts.go" holds an interface no struct of the package has a field of
+    When the analyzer checks the file
+    Then no diagnostic is reported (signatures and public contracts are out of scope)
+
+  Scenario: a _test.go port file — not applicable
+    Given the _test.go file "notifier_ports_test.go" holds only interfaces with a single consumer
+    When the analyzer checks the file
+    Then no diagnostic is reported (GID-250)
+
+  Scenario: a file with a struct next to the interface — not a port file
+    Given the file "ports_mixed.go" holds an interface and a struct using it
+    When the analyzer checks the file
+    Then no diagnostic is reported
+
+  Scenario: a generated port file — not applicable
+    Given the generated file "genports.go" holds only interfaces with a single consumer
+    When the analyzer checks the file
+    Then no diagnostic is reported
+
+  Scenario: a port file excluded by settings.exclude — not applicable
+    Given settings.exclude names the file "ports.go" or the interface "Loader"
+    When the analyzer checks the file
+    Then no diagnostic is reported (pointwise — //nolint:gidifaceplace)
+
 # --- Checklist when adding the rules ---
-#  [x] IDs and descriptions are recorded in the registry (RULES.md, GID-134 and GID-269)
+#  [x] IDs and descriptions are recorded in the registry (RULES.md, GID-134, GID-269 and GID-271)
 #  [x] Layer chosen: go/analysis (AST shape and TypesInfo are needed)
 #  [x] Severity and messages are defined ("GID-134: ...", "GID-269: ...")
 #  [x] Case classes covered: positive, negative, boundary, non-applicability

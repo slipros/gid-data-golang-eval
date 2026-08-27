@@ -187,7 +187,7 @@ func init() {
 	register.Plugin("gidscanrow", newConfigurablePlugin(scanrow.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidapproot", newConfigurablePlugin(approot.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidclientwiring", newSingleAnalyzerPlugin(clientwiring.Analyzer, register.LoadModeTypesInfo))
-	register.Plugin("gidifaceplace", newSingleAnalyzerPlugin(ifaceplace.Analyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidifaceplace", newConfigurablePlugin(ifaceplace.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidembedmutex", newSingleAnalyzerPlugin(embedmutex.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidchanbuf", newSingleAnalyzerPlugin(chanbuf.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidinitclean", newConfigurablePlugin(initclean.NewAnalyzer, register.LoadModeTypesInfo))
