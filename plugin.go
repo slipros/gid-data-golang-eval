@@ -11,6 +11,7 @@ import (
 
 	"github.com/slipros/gid-data-golang-eval/analyzers/allptr"
 	"github.com/slipros/gid-data-golang-eval/analyzers/approot"
+	"github.com/slipros/gid-data-golang-eval/analyzers/arglimit"
 	"github.com/slipros/gid-data-golang-eval/analyzers/bansymbol"
 	"github.com/slipros/gid-data-golang-eval/analyzers/branchdispatch"
 	"github.com/slipros/gid-data-golang-eval/analyzers/buildsig"
@@ -235,6 +236,7 @@ func init() {
 	register.Plugin("giderrswallow", newConfigurablePlugin(errswallow.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidmapout", newConfigurablePlugin(mapout.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("giddupdep", newConfigurablePlugin(dupdep.NewAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidarglimit", newConfigurablePlugin(arglimit.NewAnalyzer, register.LoadModeTypesInfo))
 	// Layer 1 (former ruleguard) — simple AST patterns, now native analyzers.
 	register.Plugin("gidtimenow", newSingleAnalyzerPlugin(patterns.TimeNowAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("giduuidnil", newSingleAnalyzerPlugin(patterns.UUIDNilAnalyzer, register.LoadModeTypesInfo))
