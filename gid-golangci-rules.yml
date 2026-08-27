@@ -178,6 +178,7 @@ linters:
     - gidscanrow
     - gidapproot
     - gidclientwiring
+    - gidmodelplace
   settings:
     dupl:
       threshold: 100
@@ -1035,6 +1036,20 @@ linters:
         description: 'GID-255: a package in /client/** with constructors but no method declares no client — it is wiring (a connection factory), and wiring lives in the composition root /app/**'
         original-url: github.com/slipros/gid-data-golang-eval
         # No settings; pinpoint exclusions via //nolint:gidclientwiring on the package clause.
+      gidmodelplace:
+        type: module
+        description: 'GID-270: data types live in /domain/model — a convert package (on any layer) declares no types, an exported struct with no methods and no constructor in /domain/service or /domain/usecase is a data model, and no function of those packages returns a struct declared next to it'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # Options-name suffixes and exemptions (the "Struct" form):
+        # settings:
+        #   suffixes:
+        #     - Options
+        #     - Option
+        #     - Config
+        #     - Params
+        #     - Settings
+        #   exclude:
+        #     - 'LegacyDTO'  # the whole struct
 
   exclusions:
     generated: lax

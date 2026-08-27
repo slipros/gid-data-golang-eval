@@ -84,6 +84,7 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/mappedfields"
 	"github.com/slipros/gid-data-golang-eval/analyzers/metricstruct"
 	"github.com/slipros/gid-data-golang-eval/analyzers/modelmethod"
+	"github.com/slipros/gid-data-golang-eval/analyzers/modelplace"
 	"github.com/slipros/gid-data-golang-eval/analyzers/modulealias"
 	"github.com/slipros/gid-data-golang-eval/analyzers/moduleimports"
 	"github.com/slipros/gid-data-golang-eval/analyzers/nilslice"
@@ -146,6 +147,7 @@ func init() {
 	register.Plugin("gidconstscope", newConfigurablePlugin(constscope.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidconstexpr", newSingleAnalyzerPlugin(constexpr.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidmodelmethod", newConfigurablePlugin(modelmethod.NewAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidmodelplace", newConfigurablePlugin(modelplace.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidchainperline", newConfigurablePlugin(chainperline.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidifacemin", newConfigurablePlugin(ifacemin.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidinout", newConfigurablePlugin(inout.NewAnalyzer, register.LoadModeTypesInfo))
