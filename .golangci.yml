@@ -195,6 +195,7 @@ linters:
     - gidscanrow       # GID-245
     - gidapproot       # GID-246
     - gidclientwiring  # GID-255
+    - gidmodelplace    # GID-270
   disable:
     # The disabled list comes from the consent-api base (a deliberate team choice).
     # Some of them would cover GID rules — marked with a comment.
@@ -1099,6 +1100,20 @@ linters:
         description: 'GID-255: a package in /client/** with constructors but no method declares no client — it is wiring (a connection factory), and wiring lives in the composition root /app/**'
         original-url: github.com/slipros/gid-data-golang-eval
         # No settings; pinpoint exclusions via //nolint:gidclientwiring on the package clause.
+      gidmodelplace:
+        type: module
+        description: 'GID-270: data types live in /domain/model — a convert package declares no types, and an exported struct with no methods and no constructor in /domain/service or /domain/usecase is a data model'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # Options-name suffixes and exemptions (the "Struct" form):
+        # settings:
+        #   suffixes:
+        #     - Options
+        #     - Option
+        #     - Config
+        #     - Params
+        #     - Settings
+        #   exclude:
+        #     - 'LegacyDTO'  # the whole struct
 
   exclusions:
     generated: lax
