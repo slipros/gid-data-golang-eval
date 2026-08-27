@@ -1,5 +1,5 @@
-// Package ifaceplace implements rules GID-134 (interface-near-consumer) and
-// GID-269 (no-inline-interface-field).
+// Package ifaceplace implements rules GID-134 (interface-near-consumer),
+// GID-269 (no-inline-interface-field) and GID-271 (iface-file-single-consumer).
 //
 // The check: if a named interface type is used in struct fields or in the
 // parameters/results of a function (method) of the package, we look at the
@@ -37,18 +37,38 @@
 //
 // A struct type *declared* in a _test.go file is a different case: nothing
 // forces its field types. A test picking a foreign "own"-package interface
-// for a struct field chose to — it was never handed that type by a call it
-// has to match. checkTypeDecl (struct fields) therefore keeps checking
-// _test.go files exactly like production ones; only checkFuncDecl
-// (parameters/results) skips them.
+// chose to — it was never handed that type by a call it has to match.
+// checkTypeDecl (struct fields) therefore keeps checking _test.go files
+// exactly like production ones; only checkFuncDecl (parameters/results)
+// skips them.
+//
+// GID-271 judges the FILE, not the package: a file whose top-level
+// declarations are only interfaces (imports don't count) is a "port file".
+// GID-134 stays silent on it — the interfaces do live at the consumer
+// PACKAGE — while the question the owner asked (2026-08-27,
+// consent-webhook-trigger webhook_trigger_v2_ports.go: two interfaces
+// consumed by exactly one struct) is about the file. A port file whose
+// interfaces have exactly one consumer struct in the package (a field of the
+// interface type, directly or through a pointer; different structs summed
+// over all interfaces of the file) is a violation: declare the interface in
+// the file of that one consumer. Two or more consumers is the convention the
+// owner allowed — a dependencies.go shared by several entities. Zero
+// consumers is not judged: the interface may be used only in function
+// signatures or exist as the package's public contract. Generated files and
+// _test.go files are not judged (GID-250); consumers are counted over named
+// structs of non-generated, non-test files of the same package.
 package ifaceplace
 
 import (
 	"go/ast"
+	"go/token"
 	"go/types"
+	"path/filepath"
+	"slices"
 
 	"golang.org/x/tools/go/analysis"
 
+	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 	"github.com/slipros/gid-data-golang-eval/internal/srcfile"
 )
@@ -56,6 +76,7 @@ import (
 const (
 	ruleID                = "GID-134"
 	inlineInterfaceRuleID = "GID-269"
+	portFileRuleID        = "GID-271"
 )
 
 // layerSegments — path segments by which a package is recognized as the
@@ -64,17 +85,36 @@ var layerSegments = []string{
 	"dal", "domain", "client", "server", "event", "app", "metric",
 }
 
-// Analyzer checks interface placement rules GID-134 and GID-269.
-var Analyzer = &analysis.Analyzer{
-	Name: "gidifaceplace",
-	Doc: ruleID + ": interfaces live where they are used; " +
-		"define the interface next to its consumer (exceptions: libraries, /domain/model for service/usecase, " +
-		"and a _test.go helper's parameters/results dictated by a production constructor); " +
-		inlineInterfaceRuleID + ": struct fields use named interfaces instead of inline declarations",
-	Run: run,
+// Analyzer — the analyzer with default settings (no exclusions).
+var Analyzer = NewAnalyzer(Settings{})
+
+// Settings — linter settings from .golangci.yml.
+type Settings struct {
+	// Exclude — port files excluded from GID-271, by file name
+	// ("dependencies.go" — the whole file) or by interface name ("Notifier"
+	// — the interface is dropped from the file's judged set).
+	Exclude []string `json:"exclude"`
 }
 
-func run(pass *analysis.Pass) (any, error) {
+// NewAnalyzer builds the GID-134/GID-269/GID-271 analyzer from the linter
+// settings (.golangci.yml).
+func NewAnalyzer(cfg Settings) *analysis.Analyzer {
+	return &analysis.Analyzer{
+		Name: "gidifaceplace",
+		Doc: ruleID + ": interfaces live where they are used; " +
+			"define the interface next to its consumer (exceptions: libraries, /domain/model for service/usecase, " +
+			"and a _test.go helper's parameters/results dictated by a production constructor); " +
+			inlineInterfaceRuleID + ": struct fields use named interfaces instead of inline declarations; " +
+			portFileRuleID + ": a file of only interfaces with a single consumer struct in the package " +
+			"moves its interfaces into the consumer's file",
+		Requires: astwalk.Requires,
+		Run: func(pass *analysis.Pass) (any, error) {
+			return run(pass, cfg)
+		},
+	}
+}
+
+func run(pass *analysis.Pass, cfg Settings) (any, error) {
 	consumerPkg := pass.Pkg
 	for _, file := range pass.Files {
 		if ast.IsGenerated(file) {
@@ -97,7 +137,167 @@ func run(pass *analysis.Pass) (any, error) {
 			}
 		}
 	}
+	checkPortFiles(pass, cfg)
 	return nil, nil
+}
+
+// portFile — a file whose top-level declarations are only interface types
+// (imports are not declarations of substance). spec points at the first
+// interface declaration — the diagnostic position.
+type portFile struct {
+	spec     *ast.TypeSpec
+	fileName string
+	ifaces   []*types.TypeName
+}
+
+// checkPortFiles implements GID-271: a port file whose interfaces are used by
+// exactly one struct of the package is reported; two or more consumers — the
+// dependencies.go convention — and zero consumers (the interface lives only
+// in signatures or as a public contract) stay silent.
+func checkPortFiles(pass *analysis.Pass, cfg Settings) {
+	var (
+		ports = map[*types.TypeName]*portFile{}
+		order []*portFile
+	)
+	for _, file := range pass.Files {
+		if ast.IsGenerated(file) || srcfile.IsTest(pass, file) {
+			continue
+		}
+		pf := collectPortFile(pass, file, cfg.Exclude)
+		if pf == nil {
+			continue
+		}
+		order = append(order, pf)
+		for _, obj := range pf.ifaces {
+			ports[obj] = pf
+		}
+	}
+	if len(order) == 0 {
+		return
+	}
+
+	// Consumers: named structs of the package with a field typed by one of
+	// the port interfaces (directly or through a pointer). Test files are
+	// skipped: a double or a fixture picking up the interface is test
+	// composition, not the production consumer the rule judges.
+	consumers := make(map[*portFile]map[*ast.TypeSpec]string, len(order))
+	skip := func(file *ast.File) bool {
+		return ast.IsGenerated(file) || srcfile.IsTest(pass, file)
+	}
+	astwalk.NodesOf(pass, skip, func(file *ast.File, ts *ast.TypeSpec) {
+		st, ok := ts.Type.(*ast.StructType)
+		if !ok || st.Fields == nil {
+			return
+		}
+		for _, field := range st.Fields.List {
+			obj := namedInterfaceType(pass, field.Type)
+			if obj == nil {
+				continue
+			}
+			pf, ok := ports[obj]
+			if !ok {
+				continue
+			}
+			if consumers[pf] == nil {
+				consumers[pf] = make(map[*ast.TypeSpec]string)
+			}
+			consumers[pf][ts] = fileNameOf(pass, file)
+		}
+	})
+
+	for _, pf := range order {
+		set := consumers[pf]
+		if len(set) != 1 {
+			continue
+		}
+		var (
+			consumer     *ast.TypeSpec
+			consumerFile string
+		)
+		for ts, fileName := range set {
+			consumer = ts
+			consumerFile = fileName
+		}
+		pass.Reportf(pf.spec.Pos(),
+			"%s: the file declares only interfaces, and exactly one struct (%s) in the package uses them. "+
+				"Fix: move the interface declaration to the file of its consumer (%s)",
+			portFileRuleID, consumer.Name, consumerFile)
+	}
+}
+
+// collectPortFile returns the port-file description for file, or nil when the
+// file is not a port file (it declares anything besides interfaces) or none
+// of its interfaces survive the exclusions.
+func collectPortFile(pass *analysis.Pass, file *ast.File, excludeList []string) *portFile {
+	fileName := fileNameOf(pass, file)
+	if slices.Contains(excludeList, fileName) {
+		return nil
+	}
+	var (
+		ifaces []*types.TypeName
+		first  *ast.TypeSpec
+	)
+	for _, decl := range file.Decls {
+		gd, ok := decl.(*ast.GenDecl)
+		if !ok {
+			return nil // a function or method — the file is not interface-only
+		}
+		if gd.Tok == token.IMPORT {
+			continue
+		}
+		for _, spec := range gd.Specs {
+			ts, ok := spec.(*ast.TypeSpec)
+			if !ok {
+				return nil
+			}
+			if _, ok := ts.Type.(*ast.InterfaceType); !ok {
+				return nil // a struct, a named type, an alias — not a port file
+			}
+			obj, isTypeName := pass.TypesInfo.Defs[ts.Name].(*types.TypeName)
+			if !isTypeName || slices.Contains(excludeList, obj.Name()) {
+				continue
+			}
+			if ifaces == nil {
+				first = ts
+			}
+			ifaces = append(ifaces, obj)
+		}
+	}
+	if len(ifaces) == 0 {
+		return nil
+	}
+	return &portFile{spec: first, fileName: fileName, ifaces: ifaces}
+}
+
+// fileNameOf — the base name of the source file a node came from.
+func fileNameOf(pass *analysis.Pass, file *ast.File) string {
+	tokenFile := pass.Fset.File(file.Pos())
+	if tokenFile == nil {
+		return ""
+	}
+	return filepath.Base(tokenFile.Name())
+}
+
+// namedInterfaceType resolves the type expression of a struct field to the
+// object of a named interface type, through a pointer if needed. Anything
+// else (a basic type, an anonymous interface, error) returns nil.
+func namedInterfaceType(pass *analysis.Pass, expr ast.Expr) *types.TypeName {
+	tv, ok := pass.TypesInfo.Types[expr]
+	if !ok {
+		return nil
+	}
+	t := tv.Type
+	if pt, ok := t.(*types.Pointer); ok {
+		t = pt.Elem()
+	}
+	named, ok := t.(*types.Named)
+	if !ok {
+		return nil
+	}
+	if _, isIface := named.Underlying().(*types.Interface); !isIface {
+		return nil
+	}
+	return named.Obj()
 }
 
 // checkTypeDecl checks the fields of struct types in a type declaration.

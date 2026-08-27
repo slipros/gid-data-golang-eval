@@ -669,8 +669,13 @@ linters:
         #     - 'gderror.NewUnhandledValueError'
       gidifaceplace:
         type: module
-        description: 'GID-134: interfaces live at the consumer; exceptions: libraries, /domain/model for service/usecase, and a _test.go helper param/result forced by the production constructor it calls'
+        description: 'GID-134: interfaces live at the consumer; GID-269: no inline anonymous interfaces in struct fields; GID-271: a file of only interfaces with a single consumer in the package — move the interfaces to the consumer file'
         original-url: github.com/slipros/gid-data-golang-eval
+        # A port file can be excluded by its name or by an interface name:
+        # settings:
+        #   exclude:
+        #     - 'dependencies.go'
+        #     - 'Notifier'
       gidembedmutex:
         type: module
         description: 'GID-178: sync.Mutex is not embedded; use a named field mu'
