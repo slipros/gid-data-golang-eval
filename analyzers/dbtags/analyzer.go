@@ -3,6 +3,12 @@
 //   - GID-125 (giddbtags): fields of entity structs (DAL) have a tag mapping
 //     them to DB columns. By default this is the db tag; the list of allowed
 //     tags is configurable — e.g. the ClickHouse library uses the ch tag.
+//     The rule only judges a module that actually speaks SQL
+//     (internal/sqlstack): a /dal says where a repository WOULD live, not that
+//     there is a database behind it. consent-webhook-trigger implements
+//     /dal/repository over gRPC and fills its entities from protobuf — the 28
+//     diagnostics on entity.Document/Profile/Webhook asked for tags
+//     documenting a mapping that never reaches a database.
 //   - GID-168 (gidmodeltags): db tags on struct fields are forbidden in
 //     /domain/**. A model is a pure business object; mapping to DB columns lives
 //     in entity (DAL). The list of mapping tags is configured by the same Settings
@@ -18,6 +24,7 @@ import (
 	"golang.org/x/tools/go/analysis"
 
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
+	"github.com/slipros/gid-data-golang-eval/internal/sqlstack"
 )
 
 const (
@@ -35,16 +42,23 @@ var ModelAnalyzer = NewModelAnalyzer(Settings{})
 type Settings struct {
 	// Tags — allowed mapping tags (they replace the default ["db"]).
 	Tags []string `json:"tags"`
+	// SQLImports — import paths whose presence means the module speaks SQL
+	// (they replace the default stack of internal/sqlstack). This is where an
+	// in-house wrapper hiding the driver is named. GID-168 does not read it:
+	// a db tag is out of place in /domain whatever the module stores.
+	SQLImports []string `json:"sql-imports"`
 }
 
 // NewAnalyzer builds the GID-125 analyzer from the linter settings (.golangci.yml).
 func NewAnalyzer(s Settings) *analysis.Analyzer {
 	tags := resolveTags(s)
+	sqlImports := s.SQLImports
 	return &analysis.Analyzer{
 		Name: "giddbtags",
-		Doc:  ruleID + ": entity struct fields must have a mapping tag (" + strings.Join(tags, "/") + ")",
+		Doc: ruleID + ": entity struct fields of a module that speaks SQL must have a mapping tag (" +
+			strings.Join(tags, "/") + ")",
 		Run: func(pass *analysis.Pass) (any, error) {
-			return run(pass, tags)
+			return run(pass, tags, sqlImports)
 		},
 	}
 }
@@ -69,8 +83,13 @@ func resolveTags(s Settings) []string {
 	return s.Tags
 }
 
-func run(pass *analysis.Pass, tags []string) (any, error) {
+func run(pass *analysis.Pass, tags, sqlImports []string) (any, error) {
 	if !pathseg.EndsWith(pass.Pkg.Path(), "dal", "entity") {
+		return nil, nil
+	}
+	if !sqlstack.HasStack(pass, sqlImports) {
+		// The module has no database behind its /dal: a tag here would
+		// document a mapping that never reaches one.
 		return nil, nil
 	}
 	for _, file := range pass.Files {

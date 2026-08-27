@@ -76,19 +76,33 @@ func HasDataLayer(pass *analysis.Pass) bool {
 	return moduleVerdict(pass, &dataCache, hasDataDirs)
 }
 
-// moduleVerdict answers a question about the layout of the module the package
-// belongs to, caching the answer per module root.
-func moduleVerdict(pass *analysis.Pass, cache *sync.Map, inspect func(root string) bool) bool {
+// Root returns the root of the module the package under analysis belongs to —
+// the directory holding its go.mod. The second result is false when there is
+// nothing reliable to read: no go.mod above the package, or a go.mod that
+// belongs to another module than the package (a GOPATH-style analysistest
+// fixture sitting inside this repository). A rule reading the module from disk
+// (internal/sqlstack) goes through this instead of walking up on its own — the
+// walk and its cache live here.
+func Root(pass *analysis.Pass) (string, bool) {
 	dir := packageDir(pass)
 	if dir == "" {
-		return true // nothing to inspect: keep the pre-existing behaviour
+		return "", false
 	}
 
 	root, modPath, ok := moduleRoot(dir)
 	if !ok || !belongsTo(pkgPath(pass), modPath) {
-		// No go.mod above the package, or the go.mod found belongs to another
-		// module than the package under analysis (a GOPATH-style analysistest
-		// fixture sitting inside this repository). Nothing reliable to read.
+		return "", false
+	}
+
+	return root, true
+}
+
+// moduleVerdict answers a question about the layout of the module the package
+// belongs to, caching the answer per module root.
+func moduleVerdict(pass *analysis.Pass, cache *sync.Map, inspect func(root string) bool) bool {
+	root, ok := Root(pass)
+	if !ok {
+		// Nothing reliable to read: keep the pre-existing behaviour.
 		return true
 	}
 

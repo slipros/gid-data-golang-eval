@@ -308,3 +308,38 @@ func newPass(t *testing.T, pkgDir, pkgPath string) *analysis.Pass {
 		Pkg:   types.NewPackage(pkgPath, "pkg"),
 	}
 }
+
+// TestRoot — the module root a rule reading the module from disk asks for:
+// found by walking up to the go.mod, and refused when the go.mod above the
+// package belongs to another module (a GOPATH-style analysistest fixture).
+func TestRoot(t *testing.T) {
+	root := t.TempDir()
+	pkgDir := filepath.Join(root, filepath.FromSlash(dirDALRepository))
+
+	if err := os.MkdirAll(pkgDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "go.mod"), goModContents, 0o600); err != nil {
+		t.Fatalf("write go.mod: %v", err)
+	}
+
+	t.Run("a_package_of_the_module", func(t *testing.T) {
+		got, ok := Root(newPass(t, pkgDir, svcModule+"/internal/dal/repository"))
+		if !ok || got != root {
+			t.Errorf("Root() = %q, %v; want %q, true", got, ok, root)
+		}
+	})
+
+	t.Run("a_fixture_of_another_module", func(t *testing.T) {
+		if got, ok := Root(newPass(t, pkgDir, svcPkgPath)); ok {
+			t.Errorf("Root() = %q, true; want false for a package outside the module found", got)
+		}
+	})
+
+	t.Run("a_pass_without_files", func(t *testing.T) {
+		pass := &analysis.Pass{Fset: token.NewFileSet(), Pkg: types.NewPackage(svcPkgPath, "repository")}
+		if got, ok := Root(pass); ok {
+			t.Errorf("Root() = %q, true; want false for a pass with no files", got)
+		}
+	})
+}
