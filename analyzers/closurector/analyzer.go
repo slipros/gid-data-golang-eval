@@ -12,6 +12,17 @@
 // is named newContactFilter: the reader sees at the call site that a thing is
 // being built, not that a value is being fetched.
 //
+// Scope: /domain/** (every package under the layer — internal/domain/... and
+// pkg/<module>/domain/... alike, matched by path segments, the GID-272
+// boundary). The constructor convention is about the domain vocabulary; the
+// transport layer names its closure factories after the ecosystem it plugs
+// into — chi middleware is RequestID(), a gRPC interceptor is
+// UnaryServerInterceptor(), a module publishes Router() — and renaming those
+// would diverge from the library convention, not fix a defect. Measured on six
+// udmp repos: judging every layer gave 52 findings, 24 of them Module.Router
+// and 19 middleware factories, against 2 in /domain/** — both of the shape the
+// rule exists for (DatasetHistory.buildAuthorEmailByID in lk-api).
+//
 // Judged: a function or method whose result list holds a FUNCTION TYPE (a bare
 // func type or a named type over one) AND whose body actually builds it — a
 // return of a function literal, directly or through a local variable bound to
@@ -46,6 +57,7 @@ import (
 
 	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
 	"github.com/slipros/gid-data-golang-eval/internal/exclude"
+	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 	"github.com/slipros/gid-data-golang-eval/internal/srcfile"
 )
 
@@ -78,8 +90,8 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 
 	return &analysis.Analyzer{
 		Name: "gidclosurector",
-		Doc: ruleID + ": a function building and returning a closure is an inline constructor of it " +
-			"and takes the New/new prefix (GID-104). Fix: rename contactFilter to newContactFilter",
+		Doc: ruleID + ": in /domain/**, a function building and returning a closure is an inline " +
+			"constructor of it and takes the New/new prefix (GID-104). Fix: rename contactFilter to newContactFilter",
 		Requires: astwalk.Requires,
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, suffixes, s.Exclude)
@@ -88,6 +100,10 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 }
 
 func run(pass *analysis.Pass, suffixes, excluded []string) (any, error) {
+	if !pathseg.HasLayer(pass.Pkg.Path(), "domain") {
+		return nil, nil
+	}
+
 	skip := func(file *ast.File) bool {
 		return ast.IsGenerated(file) || srcfile.IsTest(pass, file)
 	}
