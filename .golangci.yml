@@ -192,6 +192,7 @@ linters:
     - giderrswallow    # GID-258
     - giddupdep        # GID-268
     - gidarglimit      # GID-272
+    - gidclosurector   # GID-273
     - gidsentinelwrap  # GID-244
     - gidscanrow       # GID-245
     - gidapproot       # GID-246
@@ -1075,6 +1076,20 @@ linters:
         #   max-args: 3
         #   exclude:
         #     - 'WebhooksTriggersV2FromConsentEventV2'
+      gidclosurector:
+        type: module
+        description: 'GID-273: a function that builds and returns a closure is an inline constructor of it and carries the New/new prefix (GID-104) — the reader sees at the call site that a thing is being built, not fetched. An accessor handing out a stored callback, the options convention (a With-prefixed builder, an Option/Options/Opt result) and a _test.go helper are not judged'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # Option-type suffixes whose builders follow the options
+        # convention, and exceptions ("Function" | "Type.Method";
+        # pinpoint — //nolint:gidclosurector):
+        # settings:
+        #   option-suffixes:
+        #     - Options
+        #     - Option
+        #     - Opt
+        #   exclude:
+        #     - 'WebhookTriggerV2.contactFilter'
       giderrswallow:
         type: module
         description: 'GID-258: in /domain/**, a function that checks an error must be able to return one — logging it and moving on hides the failure from the caller; add error to the results'

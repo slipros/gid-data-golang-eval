@@ -22,6 +22,7 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/chandir"
 	"github.com/slipros/gid-data-golang-eval/analyzers/clientwiring"
 	"github.com/slipros/gid-data-golang-eval/analyzers/cliflags"
+	"github.com/slipros/gid-data-golang-eval/analyzers/closurector"
 	"github.com/slipros/gid-data-golang-eval/analyzers/constexpr"
 	"github.com/slipros/gid-data-golang-eval/analyzers/constscope"
 	"github.com/slipros/gid-data-golang-eval/analyzers/constvarorder"
@@ -237,6 +238,7 @@ func init() {
 	register.Plugin("gidmapout", newConfigurablePlugin(mapout.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("giddupdep", newConfigurablePlugin(dupdep.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidarglimit", newConfigurablePlugin(arglimit.NewAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidclosurector", newConfigurablePlugin(closurector.NewAnalyzer, register.LoadModeTypesInfo))
 	// Layer 1 (former ruleguard) — simple AST patterns, now native analyzers.
 	register.Plugin("gidtimenow", newSingleAnalyzerPlugin(patterns.TimeNowAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("giduuidnil", newSingleAnalyzerPlugin(patterns.UUIDNilAnalyzer, register.LoadModeTypesInfo))
