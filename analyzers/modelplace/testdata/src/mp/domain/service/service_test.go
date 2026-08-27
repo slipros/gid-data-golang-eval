@@ -8,3 +8,8 @@ type TestHarness struct {
 }
 
 func (h *TestHarness) boot() {}
+
+// harness — non-applicability: a _test.go file is not judged by part C either.
+func harness() TestHarness {
+	return TestHarness{}
+}

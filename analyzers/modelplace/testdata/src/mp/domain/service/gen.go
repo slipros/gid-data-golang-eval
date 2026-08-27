@@ -7,3 +7,8 @@ package service
 type GenConfig struct {
 	Batch int
 }
+
+// genConfig — non-applicability: generated code is not judged by part C either.
+func genConfig() GenConfig {
+	return GenConfig{}
+}

@@ -1124,7 +1124,7 @@ linters:
         # No settings; pinpoint exclusions via //nolint:gidclientwiring on the package clause.
       gidmodelplace:
         type: module
-        description: 'GID-270: data types live in /domain/model — a convert package declares no types, and an exported struct with no methods and no constructor in /domain/service or /domain/usecase is a data model'
+        description: 'GID-270: data types live in /domain/model — a convert package (on any layer) declares no types, an exported struct with no methods and no constructor in /domain/service or /domain/usecase is a data model, and no function of those packages returns a struct declared next to it'
         original-url: github.com/slipros/gid-data-golang-eval
         # Options-name suffixes and exemptions (the "Struct" form):
         # settings:

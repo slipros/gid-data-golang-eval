@@ -24,3 +24,21 @@ type Plain struct { // want `GID-270: data struct "Plain" is declared in /domain
 type LegacyOptions struct { // want `GID-270: data struct "LegacyOptions" is declared in /domain/service`
 	Batch int
 }
+
+// --- Part C with custom settings ---
+
+// makeLegacy — non-applicability: settings.exclude exempts the type on the
+// return as well as at its declaration.
+func makeLegacy() LegacyDTO {
+	return LegacyDTO{}
+}
+
+// runSpec — an unexported struct with the custom "Spec" suffix: settings.suffixes
+// exempts it in part C too.
+type runSpec struct {
+	retry int
+}
+
+func makeSpec() runSpec {
+	return runSpec{}
+}

@@ -12,3 +12,9 @@ type Extra struct { // want `GID-270: type "Extra" is declared in a convert pack
 	MessageID string
 	Body      string
 }
+
+// makeExempt — non-applicability: settings.exclude works in a convert package
+// on the return path too.
+func makeExempt() Exempt {
+	return Exempt{}
+}

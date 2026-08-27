@@ -7,3 +7,9 @@ package http
 type Request struct {
 	Query string
 }
+
+// Decode — non-applicability: /server/http is neither convert nor a domain
+// layer, so its own structs stay put.
+func Decode(query string) Request {
+	return Request{Query: query}
+}
