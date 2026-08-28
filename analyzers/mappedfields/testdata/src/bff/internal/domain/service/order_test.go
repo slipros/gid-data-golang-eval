@@ -9,9 +9,14 @@ import (
 	"testing"
 
 	"genproto/orderpb"
+	gdmapper "helper/mapper"
 
 	"google.golang.org/grpc"
 )
+
+var testRedundantFields = gdmapper.MappedFields{
+	gdmapper.NewMappedFieldStringEqualWithWholePart("id", "id"),
+}
 
 type orderClientStub struct {
 	order orderpb.Order

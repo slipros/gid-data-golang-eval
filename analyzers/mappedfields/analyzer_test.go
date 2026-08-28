@@ -6,6 +6,26 @@ import (
 	"golang.org/x/tools/go/analysis/analysistest"
 )
 
+func TestNormalizeFieldPath(t *testing.T) {
+	tests := map[string]string{
+		"id":           "id",
+		"User.Profile": "user.profile",
+		"page_size":    "page_size",
+		"PAGE_SIZE":    "page_size",
+		"URLValue":     "urlValue",
+	}
+
+	for input, want := range tests {
+		if got := normalizeFieldPath(input); got != want {
+			t.Errorf("normalizeFieldPath(%q) = %q, want %q", input, got, want)
+		}
+	}
+
+	if normalizeFieldPath("page_size") == normalizeFieldPath("pageSize") {
+		t.Fatal("snake_case and lowerCamel paths must remain distinct")
+	}
+}
+
 // TestAnalyzer — the BFF module: positive, negative and boundary cases, plus
 // the two non-applicability fixtures living inside it (a _test.go file and the
 // transport layer).

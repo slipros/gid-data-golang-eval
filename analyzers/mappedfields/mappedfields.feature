@@ -1,6 +1,6 @@
 # language: en
 
-Feature: GID-266 — a gRPC client call in a BFF carries a MappedFields option (gidmappedfields)
+Feature: GID-266/GID-275 — BFF gRPC calls carry MappedFields and mappings are not redundant (gidmappedfields)
   As a developer of a BFF
   I want every call to another service to carry the mapping of its field names
   onto the names of the request the frontend sent
@@ -180,3 +180,46 @@ Feature: GID-266 — a gRPC client call in a BFF carries a MappedFields option (
     When the gidmappedfields analyzer checks the file
     Then no diagnostic is reported for those two calls
     And the sibling "CreateOrder" call is still reported
+
+  # GID-275 — a redundant identity mapping adds no translation. This check is
+  # repository-wide, including mapping declarations outside a gRPC call. The
+  # mapper receives the service field path first and the frontend field path
+  # second. Only complete literal paths are compared. Normalization lower-camelizes
+  # path segments but keeps underscores, so page_size -> pageSize remains a
+  # meaningful cross-contract mapping.
+
+  # --- GID-275 Class 1: positive ---
+
+  Scenario: positive — identical lowerCamel field paths
+    Given "gdmapper.NewMappedFieldStringEqualWithWholePart(\"id\", \"id\")"
+    When the gidmappedfields analyzer checks the file
+    Then the diagnostic "GID-275: mapped field path \"id\" -> \"id\" is an identity mapping" is reported on the constructor
+
+  Scenario: positive — path spelling differs only by initial case
+    Given "gdmapper.NewMappedFieldStringEqualWithWholePart(\"User.Profile\", \"user.profile\")"
+    When the gidmappedfields analyzer checks the file
+    Then the diagnostic "GID-275: mapped field path \"User.Profile\" -> \"user.profile\" is an identity mapping" is reported on the constructor
+
+  # --- GID-275 Class 2: negative ---
+
+  Scenario: negative — snake_case to lowerCamel is a real mapping
+    Given "gdmapper.NewMappedFieldStringEqualWithWholePart(\"page_size\", \"pageSize\")"
+    When the gidmappedfields analyzer checks the file
+    Then no diagnostic is reported
+
+  # --- GID-275 Class 3: boundary ---
+
+  Scenario: boundary — a field path is not a string literal
+    Given "gdmapper.NewMappedFieldStringEqualWithWholePart(fieldPath, \"id\")"
+    When the gidmappedfields analyzer checks the file
+    Then no diagnostic is reported
+    # The value cannot be compared without following a variable.
+
+  # --- GID-275 Class 4: non-applicability ---
+
+  Scenario: non-applicability — an identity call in a _test.go file
+    Given "gdmapper.NewMappedFieldStringEqualWithWholePart(\"id\", \"id\")" in test scaffolding
+    When the gidmappedfields analyzer checks the file
+    Then no diagnostic is reported
+    # The test double and its mapping are test scaffolding, not production
+    # contract translation.

@@ -1,5 +1,6 @@
-// Package mappedfields implements rule GID-266: in a BFF, a gRPC client call
-// carries a MappedFields option.
+// Package mappedfields implements rules GID-266 and GID-275: in a BFF, a
+// gRPC client call carries a MappedFields option, and a mapper does not carry
+// a redundant identity field mapping.
 //
 // A BFF validates the request it received from the frontend and then forwards
 // it to the service that owns the data. That service validates it again, in its
@@ -66,6 +67,12 @@
 // call, and a project wrapping the constructor in a helper of its own is
 // recognised by the helper's name carrying the same marker.
 //
+// GID-275 also rejects a gdmapper.NewMappedFieldStringEqual*WithWholePart
+// call when both field paths are string literals and normalize to the same
+// lowerCamel path. It applies wherever the mapper is used. Underscores are
+// retained during normalization: a mapping such as page_size -> pageSize is
+// meaningful and is not an identity mapping.
+//
 // A _test.go file is not judged: a double of a client interface repeats its
 // signatures, and a test calling it passes the arguments its assertion needs,
 // not the options production code owes the frontend.
@@ -79,7 +86,9 @@ import (
 	"go/ast"
 	"go/token"
 	"go/types"
+	"strconv"
 	"strings"
+	"unicode"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/types/typeutil"
@@ -92,7 +101,8 @@ import (
 )
 
 const (
-	ruleID = "GID-266"
+	ruleID         = "GID-266"
+	identityRuleID = "GID-275"
 	// optionMarker — the substring identifying the call option carrying the
 	// mapping: gdgrpcerror.MappedFieldsInterceptorCallOption, built by
 	// gdgrpcerror.WithMappedFields.
@@ -140,13 +150,14 @@ func (s Settings) excluded(pass *analysis.Pass, call *ast.CallExpr) bool {
 	return exclude.Match(s.Exclude, recv, sel.Sel.Name)
 }
 
-// NewAnalyzer builds the GID-266 analyzer from the linter settings (.golangci.yml).
+// NewAnalyzer builds the GID-266/GID-275 analyzer from the linter settings (.golangci.yml).
 func NewAnalyzer(s Settings) *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name: "gidmappedfields",
 		Doc: ruleID + ": a gRPC client call in a BFF carries a field mapping, so a validation error of the " +
 			"callee reaches the frontend in the vocabulary of the request it sent. Fix: pass " + fixExample +
-			" among the call options",
+			" among the call options; " + identityRuleID + ": a literal mapper field path does not map to " +
+			"the same lowerCamel path. Fix: remove the redundant NewMappedField call",
 		Requires: astwalk.Requires,
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, s)
@@ -155,16 +166,17 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 }
 
 func run(pass *analysis.Pass, s Settings) (any, error) {
-	if !inScope(pass.Pkg.Path()) || !isBFF(pass) {
-		return nil, nil
-	}
+	judgeGRPCCalls := inScope(pass.Pkg.Path()) && isBFF(pass)
 
 	skip := func(file *ast.File) bool {
 		return ast.IsGenerated(file) || srcfile.IsTest(pass, file)
 	}
 
 	astwalk.NodesOf(pass, skip, func(_ *ast.File, call *ast.CallExpr) {
-		check(pass, call, s)
+		if judgeGRPCCalls {
+			check(pass, call, s)
+		}
+		checkIdentityMappedField(pass, call)
 	})
 
 	return nil, nil
@@ -205,6 +217,130 @@ func check(pass *analysis.Pass, call *ast.CallExpr, s Settings) {
 				"validation error untouched — the same outcome as passing no option. Fix: %s",
 			ruleID, calleeText(call), fixExample)
 	}
+}
+
+// checkIdentityMappedField reports a redundant mapper constructor. The
+// constructor is checked independently of the gRPC call that may consume it,
+// so package-level mapping declarations are covered as well.
+func checkIdentityMappedField(pass *analysis.Pass, call *ast.CallExpr) {
+	fn, from, to, normalized, ok := identityMappedField(pass, call)
+	if !ok {
+		return
+	}
+
+	pass.Reportf(call.Pos(),
+		"%s: mapped field path %q -> %q is an identity mapping after lowerCamel normalization (%q), "+
+			"so the constructor is redundant. Fix: remove gdmapper.%s(%s, %s).",
+		identityRuleID, from, to, normalized, fn.Name(), strconv.Quote(from), strconv.Quote(to))
+}
+
+// identityMappedField extracts the two field paths of a mapper constructor
+// when both are string literals and normalize to the same path.
+func identityMappedField(
+	pass *analysis.Pass,
+	call *ast.CallExpr,
+) (fn *types.Func, from, to, normalized string, ok bool) {
+	fn = typeutil.StaticCallee(pass.TypesInfo, call)
+	if !isMapperFieldEquality(fn) || len(call.Args) < 2 {
+		return nil, "", "", "", false
+	}
+
+	from, ok = stringLiteral(call.Args[0])
+	if !ok {
+		return nil, "", "", "", false
+	}
+
+	to, ok = stringLiteral(call.Args[1])
+	if !ok {
+		return nil, "", "", "", false
+	}
+
+	normalizedFrom := normalizeFieldPath(from)
+	normalizedTo := normalizeFieldPath(to)
+	if normalizedFrom != normalizedTo {
+		return nil, "", "", "", false
+	}
+
+	return fn, from, to, normalizedFrom, true
+}
+
+// isMapperFieldEquality recognises the mapper constructors whose first two
+// arguments are complete field paths. Prefix, suffix, contains and regexp
+// constructors use a pattern as one argument, so equal-looking literals do
+// not prove that their mapping is redundant.
+func isMapperFieldEquality(fn *types.Func) bool {
+	if fn == nil {
+		return false
+	}
+
+	pkg := fn.Pkg()
+	if pkg == nil || pkg.Name() != "mapper" {
+		return false
+	}
+
+	name := fn.Name()
+
+	return strings.HasPrefix(name, "NewMappedFieldStringEqual") && strings.HasSuffix(name, "WithWholePart")
+}
+
+// stringLiteral returns a decoded string literal. Values computed in a
+// variable or expression are deliberately left alone because their paths are
+// not statically known.
+func stringLiteral(expr ast.Expr) (string, bool) {
+	lit, ok := expr.(*ast.BasicLit)
+	if !ok || lit.Kind != token.STRING {
+		return "", false
+	}
+
+	value, err := strconv.Unquote(lit.Value)
+	if err != nil {
+		return "", false
+	}
+
+	return value, true
+}
+
+// normalizeFieldPath canonicalizes the spelling of each path segment to
+// lowerCamel without converting underscores. Keeping snake_case distinct from
+// camelCase is important: page_size -> pageSize is a real cross-contract map.
+func normalizeFieldPath(path string) string {
+	parts := strings.Split(path, ".")
+	for i, part := range parts {
+		parts[i] = normalizeLowerCamelPart(part)
+	}
+
+	return strings.Join(parts, ".")
+}
+
+func normalizeLowerCamelPart(part string) string {
+	words := strings.Split(part, "_")
+	for i, word := range words {
+		words[i] = normalizeLowerCamelWord(word)
+	}
+
+	return strings.Join(words, "_")
+}
+
+func normalizeLowerCamelWord(word string) string {
+	runes := []rune(word)
+	if len(runes) == 0 || !unicode.IsUpper(runes[0]) {
+		return word
+	}
+
+	upperEnd := 1
+	for upperEnd < len(runes) && unicode.IsUpper(runes[upperEnd]) {
+		upperEnd++
+	}
+
+	if upperEnd < len(runes) && upperEnd > 1 && unicode.IsLower(runes[upperEnd]) {
+		upperEnd--
+	}
+
+	for i := 0; i < upperEnd; i++ {
+		runes[i] = unicode.ToLower(runes[i])
+	}
+
+	return string(runes)
 }
 
 // isBFF reports whether the module under analysis is a BFF: laid out as a

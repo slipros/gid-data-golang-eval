@@ -1,4 +1,4 @@
-// Eval for GID-266: a gRPC client call in a BFF carries a MappedFields option.
+// Eval for GID-266/GID-275: BFF calls carry MappedFields and mapper paths are not redundant.
 package service
 
 import (
@@ -14,6 +14,29 @@ import (
 var orderFields = gdmapper.MappedFields{
 	gdmapper.NewMappedFieldStringEqualWithWholePart("segment_id", "segmentId"),
 }
+
+var redundantFields = gdmapper.MappedFields{
+	gdmapper.NewMappedFieldStringEqualWithWholePart(
+		"id",
+		"id",
+	), // want `GID-275: mapped field path "id" -> "id" is an identity mapping`
+	gdmapper.NewMappedFieldStringEqualWithWholePart(
+		"User.Profile",
+		"user.profile",
+	), // want `GID-275: mapped field path "User.Profile" -> "user.profile" is an identity mapping`
+}
+
+// The underscore-to-camelCase conversion is the useful mapping this rule must
+// preserve: the service and frontend use different field-name conventions.
+var meaningfulFields = gdmapper.MappedFields{
+	gdmapper.NewMappedFieldStringEqualWithWholePart("page_size", "pageSize"),
+}
+
+var dynamicFields = gdmapper.MappedFields{
+	gdmapper.NewMappedFieldStringEqualWithWholePart(fieldPath, "id"),
+}
+
+var fieldPath = "id"
 
 // Catalog — a client interface that does not forward the call options: there is
 // nowhere to pass the mapping, so the rule has nothing to ask for.
@@ -39,21 +62,36 @@ func (o *Order) OrderWithOtherOption(ctx context.Context, id string) (*orderpb.O
 }
 
 func (o *Order) CreateNilMapping(ctx context.Context, in *orderpb.CreateOrderRequest) (*orderpb.Order, error) {
-	return o.client.CreateOrder(ctx, in, gdgrpcerror.WithMappedFields(nil)) // want "GID-266: the MappedFields option of the gRPC call CreateOrder is empty"
+	return o.client.CreateOrder(
+		ctx,
+		in,
+		gdgrpcerror.WithMappedFields(nil),
+	) // want "GID-266: the MappedFields option of the gRPC call CreateOrder is empty"
 }
 
 func (o *Order) CreateEmptyMapping(ctx context.Context, in *orderpb.CreateOrderRequest) (*orderpb.Order, error) {
-	return o.client.CreateOrder(ctx, in, gdgrpcerror.WithMappedFields(gdmapper.MappedFields{})) // want "GID-266: the MappedFields option of the gRPC call CreateOrder is empty"
+	return o.client.CreateOrder(
+		ctx,
+		in,
+		gdgrpcerror.WithMappedFields(gdmapper.MappedFields{}),
+	) // want "GID-266: the MappedFields option of the gRPC call CreateOrder is empty"
 }
 
 func (o *Order) CreateEmptyOptionLiteral(ctx context.Context, in *orderpb.CreateOrderRequest) (*orderpb.Order, error) {
-	return o.client.CreateOrder(ctx, in, gdgrpcerror.MappedFieldsInterceptorCallOption{}) // want "GID-266: the MappedFields option of the gRPC call CreateOrder is empty"
+	return o.client.CreateOrder(
+		ctx,
+		in,
+		gdgrpcerror.MappedFieldsInterceptorCallOption{},
+	) // want "GID-266: the MappedFields option of the gRPC call CreateOrder is empty"
 }
 
 // CreateFromLiteral — the request is built in the call and carries a field, so
 // the callee can reject that field by its own name.
 func (o *Order) CreateFromLiteral(ctx context.Context, name string) (*orderpb.Order, error) {
-	return o.client.CreateOrder(ctx, &orderpb.CreateOrderRequest{Name: name}) // want "GID-266: the gRPC call CreateOrder carries no MappedFields option"
+	return o.client.CreateOrder(
+		ctx,
+		&orderpb.CreateOrderRequest{Name: name},
+	) // want "GID-266: the gRPC call CreateOrder carries no MappedFields option"
 }
 
 // --- Class 2: negative ---
