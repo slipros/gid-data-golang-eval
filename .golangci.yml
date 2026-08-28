@@ -193,6 +193,7 @@ linters:
     - giddupdep        # GID-268
     - gidarglimit      # GID-272
     - gidclosurector   # GID-273
+    - gidunhandledswitch # GID-274
     - gidsentinelwrap  # GID-244
     - gidscanrow       # GID-245
     - gidapproot       # GID-246
@@ -1090,6 +1091,10 @@ linters:
         #     - Opt
         #   exclude:
         #     - 'WebhookTriggerV2.contactFilter'
+      gidunhandledswitch:
+        type: module
+        description: 'GID-274: a switch over a named string enum or discriminator must have a default that directly returns errors.WithStack(gderror.NewUnhandledValueError(the switch value)). Fix: add default: return errors.WithStack(gderror.NewUnhandledValueError(value))'
+        original-url: github.com/slipros/gid-data-golang-eval
       giderrswallow:
         type: module
         description: 'GID-258: in /domain/**, a function that checks an error must be able to return one — logging it and moving on hides the failure from the caller; add error to the results'

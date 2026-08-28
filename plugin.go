@@ -115,6 +115,7 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/storageplace"
 	"github.com/slipros/gid-data-golang-eval/analyzers/subtestname"
 	"github.com/slipros/gid-data-golang-eval/analyzers/testpackage"
+	"github.com/slipros/gid-data-golang-eval/analyzers/unhandledswitch"
 	"github.com/slipros/gid-data-golang-eval/analyzers/upwardimport"
 	"github.com/slipros/gid-data-golang-eval/analyzers/utilpkg"
 	"github.com/slipros/gid-data-golang-eval/analyzers/validatorlib"
@@ -239,6 +240,7 @@ func init() {
 	register.Plugin("giddupdep", newConfigurablePlugin(dupdep.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidarglimit", newConfigurablePlugin(arglimit.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidclosurector", newConfigurablePlugin(closurector.NewAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidunhandledswitch", newSingleAnalyzerPlugin(unhandledswitch.Analyzer, register.LoadModeTypesInfo))
 	// Layer 1 (former ruleguard) — simple AST patterns, now native analyzers.
 	register.Plugin("gidtimenow", newSingleAnalyzerPlugin(patterns.TimeNowAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("giduuidnil", newSingleAnalyzerPlugin(patterns.UUIDNilAnalyzer, register.LoadModeTypesInfo))
