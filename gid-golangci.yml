@@ -200,6 +200,7 @@ linters:
     - giddupdep         # GID-268
     - gidarglimit       # GID-272
     - gidclosurector    # GID-273
+    - gidifaceassert    # GID-274
     - gidsentinelwrap   # GID-244
     - gidscanrow        # GID-245
     - gidapproot        # GID-246
@@ -1118,6 +1119,15 @@ linters:
         #     - Opt
         #   exclude:
         #     - 'WebhookTriggerV2.contactFilter'
+      gidifaceassert:
+        type: module
+        description: 'GID-274: a compile-time interface assertion (var _ Iface = (*Type)(nil)) the same package already proves by handing the type over as that interface — a constructor argument, an assignment, a field of a struct literal, a returned value. The conversion is the check the assertion writes out by hand, and every change to the interface now has to be carried in two places. Left alone where the assertion earns its place: a package that converts the type nowhere (a library whose consumer is outside the module) or wires it through a DI container by reflection'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # Exclusions ("Interface" | "Type.Interface";
+        # pinpoint — //nolint:gidifaceassert):
+        # settings:
+        #   exclude:
+        #     - 'DatasetSnapshotRepository'
       giderrswallow:
         type: module
         description: 'GID-258: in /domain/**, a function that checks an error must be able to return one — logging it and moving on hides the failure from the caller; add error to the results'
