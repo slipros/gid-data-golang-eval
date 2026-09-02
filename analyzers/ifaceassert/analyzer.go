@@ -30,9 +30,14 @@
 // FP-safe by construction: the rule reports only when it has found the
 // conversion that makes the assertion redundant, and it names it in the
 // diagnostic. Every context it does not understand is a conversion it does not
-// see, which costs a diagnostic, never a false one. An assertion in a
-// production file is only ever proven by a conversion in a production file: a
-// conversion living in _test.go is checked by `go test`, not by `go build`.
+// see, which costs a diagnostic, never a false one.
+//
+// A _test.go file is out of the rule on both sides. It is not judged: a double
+// is written to satisfy an interface it does not own, and the assertion above
+// it is how the author of the test states which one — the wiring a test builds
+// is scaffolding, not the dependency graph of the service. And it never proves
+// anything either: a conversion living in a test is checked by `go test`, not
+// by `go build`, so a production assertion stays the check the build performs.
 package ifaceassert
 
 import (
@@ -83,7 +88,6 @@ type assertion struct {
 	ifaceStr string     // how both are spelled in the diagnostic
 	valueStr string
 	pos      token.Pos
-	inTest   bool
 	proof    token.Pos // the conversion that makes the assertion redundant
 }
 
@@ -114,11 +118,9 @@ func collect(pass *analysis.Pass, s Settings) []*assertion {
 	var found []*assertion
 
 	for _, file := range pass.Files {
-		if ast.IsGenerated(file) {
+		if ast.IsGenerated(file) || srcfile.IsTest(pass, file) {
 			continue
 		}
-
-		inTest := srcfile.IsTest(pass, file)
 
 		for _, decl := range file.Decls {
 			gen, ok := decl.(*ast.GenDecl)
@@ -132,7 +134,7 @@ func collect(pass *analysis.Pass, s Settings) []*assertion {
 					continue
 				}
 
-				if a := assertionOf(pass, s, file, vs, inTest); a != nil {
+				if a := assertionOf(pass, s, file, vs); a != nil {
 					found = append(found, a)
 				}
 			}
@@ -143,7 +145,7 @@ func collect(pass *analysis.Pass, s Settings) []*assertion {
 }
 
 // assertionOf recognises `var _ Iface = value` and returns it as a candidate.
-func assertionOf(pass *analysis.Pass, s Settings, file *ast.File, vs *ast.ValueSpec, inTest bool) *assertion {
+func assertionOf(pass *analysis.Pass, s Settings, file *ast.File, vs *ast.ValueSpec) *assertion {
 	if len(vs.Names) != 1 || vs.Names[0].Name != "_" || vs.Type == nil || len(vs.Values) != 1 {
 		return nil
 	}
@@ -176,7 +178,6 @@ func assertionOf(pass *analysis.Pass, s Settings, file *ast.File, vs *ast.ValueS
 		ifaceStr: types.TypeString(iface, qualifier(pass, file)),
 		valueStr: types.ExprString(vs.Values[0]),
 		pos:      vs.Pos(),
-		inTest:   inTest,
 	}
 }
 
@@ -184,6 +185,8 @@ func assertionOf(pass *analysis.Pass, s Settings, file *ast.File, vs *ast.ValueS
 // asserted interface — an argument of a call, an assignment, a declaration with
 // an explicit type, a field of a composite literal, a returned value. Each is a
 // place where the compiler performs the check the assertion writes out by hand.
+// A _test.go file is not walked: what it converts is checked by `go test`, and
+// the assertion answers to `go build`.
 func findProofs(pass *analysis.Pass, found []*assertion) {
 	filter := []ast.Node{
 		(*ast.FuncDecl)(nil),
@@ -199,20 +202,15 @@ func findProofs(pass *analysis.Pass, found []*assertion) {
 	// so that a return statement knows what it is converting to.
 	var results []*types.Tuple
 
-	var (
-		curFile *ast.File
-		inTest  bool
-	)
-
 	record := func(value ast.Expr, target types.Type) {
-		recordProof(pass, found, value, target, inTest)
+		recordProof(pass, found, value, target)
 	}
 
-	astwalk.Around(pass, filter, nil, func(file *ast.File, n ast.Node, push bool) bool {
-		if file != curFile {
-			curFile, inTest = file, srcfile.IsTest(pass, file)
-		}
+	skipTests := func(file *ast.File) bool {
+		return srcfile.IsTest(pass, file)
+	}
 
+	astwalk.Around(pass, filter, skipTests, func(_ *ast.File, n ast.Node, push bool) bool {
 		switch node := n.(type) {
 		case *ast.FuncDecl:
 			results = pushPop(results, push, declResults(pass, node))
@@ -252,7 +250,7 @@ func findProofs(pass *analysis.Pass, found []*assertion) {
 // (the method set of *T contains the method set of T), never the other way
 // round. An interface value handed on is not filtered out here: no assertion
 // is ever recorded for one, so it matches nothing.
-func recordProof(pass *analysis.Pass, found []*assertion, value ast.Expr, target types.Type, inTest bool) {
+func recordProof(pass *analysis.Pass, found []*assertion, value ast.Expr, target types.Type) {
 	if value == nil || target == nil {
 		return
 	}
@@ -267,8 +265,8 @@ func recordProof(pass *analysis.Pass, found []*assertion, value ast.Expr, target
 	}
 
 	for _, a := range found {
-		if a.proof.IsValid() || (inTest && !a.inTest) {
-			continue // a conversion in _test.go is checked by go test, not go build
+		if a.proof.IsValid() {
+			continue
 		}
 
 		if types.Identical(a.iface, target) && provesConcrete(a.concrete, concrete) {

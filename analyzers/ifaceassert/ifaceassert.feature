@@ -20,7 +20,9 @@ Feature: GID-274 — no compile-time interface assertion the package already pro
   # is the only compile-time check there is.
   # FP-safe by construction: a context the analyzer does not understand is a
   # conversion it does not see, which costs a diagnostic, never a false one.
-  # Generated code (ast.IsGenerated) is not judged.
+  # Generated code (ast.IsGenerated) is not judged, and a _test.go file
+  # (srcfile.IsTest) is out of the rule on both sides: it is not judged, and it
+  # proves nothing about an assertion in production code either.
 
   # --- Class 1: positive ---
 
@@ -45,12 +47,6 @@ Feature: GID-274 — no compile-time interface assertion the package already pro
   Scenario: positive — the assertion of a value type wired as a value
     Given "var _ usecase.LatestPageStore = latestPageStore{}"
     And "usecase.NewLatestPage(..., latestPageStore{}, ...)" is called in the package
-    When the gidifaceassert analyzer checks the package
-    Then the diagnostic "GID-274: …" is reported
-
-  Scenario: positive — an assertion in a test file proven inside the test file
-    Given "var _ usecase.LatestPageStore = testStore{}" in wiring_test.go
-    And "usecase.NewLatestPage(nil, nil, testStore{}, nil)" is called in wiring_test.go
     When the gidifaceassert analyzer checks the package
     Then the diagnostic "GID-274: …" is reported
 
@@ -112,6 +108,18 @@ Feature: GID-274 — no compile-time interface assertion the package already pro
     And the package converts SnapshotPort to usecase.LatestPageSnapshot
     When the gidifaceassert analyzer checks the package
     Then no diagnostic is reported: the wiring shape the rule is about starts from a concrete type
+
+  Scenario: non-applicability — an assertion in a test file
+    Given "var _ usecase.LatestPageStore = testStore{}" in wiring_test.go
+    And "usecase.NewLatestPage(nil, nil, testStore{}, nil)" is called two lines below it
+    When the gidifaceassert analyzer checks the package
+    Then no diagnostic is reported: the double satisfies an interface it does not own, and the assertion is how the test states which one
+
+  Scenario: non-applicability — an assertion of a production type in a test file
+    Given "var _ usecase.LatestPageStore = latestPageStore{}" in wiring_test.go
+    And the production code converts latestPageStore in wiring.go
+    When the gidifaceassert analyzer checks the package
+    Then no diagnostic is reported: the file the assertion lives in is not judged
 
   Scenario: non-applicability — generated code
     Given "var _ usecase.LatestPageStore = generatedStore{}" in a file with the "Code generated … DO NOT EDIT." header

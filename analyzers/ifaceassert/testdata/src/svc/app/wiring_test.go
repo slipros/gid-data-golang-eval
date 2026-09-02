@@ -7,9 +7,11 @@ import (
 	"svc/usecase"
 )
 
-// The double is asserted and wired in the same test file: the assertion is
-// redundant here for the same reason it is redundant in production code.
-var _ usecase.LatestPageStore = testStore{} // want `GID\-274:\ redundant\ compile\-time\ assertion:\ the\ package\ already\ passes\ this\ value\ as\ usecase\.LatestPageStore\ at\ wiring_test\.go:27,\ so\ the\ compiler\ checks\ the\ contract\ there\.\ Fix:\ delete\ the\ "var\ _\ usecase\.LatestPageStore\ =\ testStore\{\}"\ line`
+// A test file is not judged: the double satisfies an interface it does not own,
+// and the assertion is how the test states which one. The wiring below does not
+// make it redundant — and it proves nothing about the production assertions
+// either, being checked by go test rather than by go build.
+var _ usecase.LatestPageStore = testStore{}
 
 type testStore struct{}
 
@@ -26,3 +28,8 @@ func TestWire(t *testing.T) {
 
 	_ = usecase.NewLatestPage(nil, nil, testStore{}, nil)
 }
+
+// The same holds for an assertion of a production type written in a test file:
+// the file it lives in is not judged, whatever the production code does with
+// the type — here Wire() converts latestPageStore two lines into wiring.go.
+var _ usecase.LatestPageStore = latestPageStore{}

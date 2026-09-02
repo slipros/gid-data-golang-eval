@@ -1035,7 +1035,7 @@ linters:
         #     - 'WebhookTriggerV2.contactFilter'
       gidifaceassert:
         type: module
-        description: 'GID-274: a compile-time interface assertion (var _ Iface = (*Type)(nil)) the same package already proves by handing the type over as that interface — a constructor argument, an assignment, a field of a struct literal, a returned value. The conversion is the check the assertion writes out by hand, and every change to the interface now has to be carried in two places. Left alone where the assertion earns its place: a package that converts the type nowhere (a library whose consumer is outside the module) or wires it through a DI container by reflection'
+        description: 'GID-274: a compile-time interface assertion (var _ Iface = (*Type)(nil)) the same package already proves by handing the type over as that interface — a constructor argument, an assignment, a field of a struct literal, a returned value. The conversion is the check the assertion writes out by hand, and every change to the interface now has to be carried in two places. Left alone where the assertion earns its place: a package that converts the type nowhere (a library whose consumer is outside the module) or wires it through a DI container by reflection. A _test.go file is not judged and proves nothing — what it converts is checked by go test, and the assertion answers to go build'
         original-url: github.com/slipros/gid-data-golang-eval
         # Exclusions ("Interface" | "Type.Interface";
         # pinpoint — //nolint:gidifaceassert):
