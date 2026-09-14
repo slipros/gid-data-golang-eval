@@ -208,6 +208,29 @@ func SameLibrary(importPath, library string) bool {
 	return true
 }
 
+// SharedInternalImport reports whether a package under the pkg/<module>
+// application-module layout (module.md) imports the repository's shared
+// internal/** — the import GID-240 gives a common-prefixed alias. The
+// repository prefix is everything before /pkg/<module> in pkgPath, so
+// importPath is in scope when it starts with "<prefix>/internal/". A package
+// outside pkg/<module> has no such boundary: internal/** importing internal/**
+// is an ordinary same-module import.
+func SharedInternalImport(pkgPath, importPath string) bool {
+	const (
+		pkgSeg      = "/pkg/"
+		internalSeg = "/internal/"
+	)
+	repoPrefix, rest, ok := strings.Cut(pkgPath, pkgSeg)
+	if !ok {
+		return false
+	}
+	if module, _, _ := strings.Cut(rest, "/"); module == "" {
+		return false
+	}
+
+	return strings.HasPrefix(importPath, repoPrefix+internalSeg)
+}
+
 // nonEmpty drops empty segments (from leading/trailing/duplicate slashes).
 func nonEmpty(segs []string) []string {
 	out := segs[:0]

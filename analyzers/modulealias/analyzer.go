@@ -37,6 +37,8 @@ import (
 	"strings"
 
 	"golang.org/x/tools/go/analysis"
+
+	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 )
 
 const ruleID = "GID-240"
@@ -71,37 +73,26 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 }
 
 func run(pass *analysis.Pass, prefix string) (any, error) {
-	repoPrefix, ok := pkgModuleBoundary(pass.Pkg.Path())
-	if !ok {
-		return nil, nil
-	}
 	for _, file := range pass.Files {
 		if ast.IsGenerated(file) {
 			continue
 		}
-		checkImports(pass, file, repoPrefix, prefix)
+		checkImports(pass, file, prefix)
 	}
 	return nil, nil
 }
 
-func checkImports(pass *analysis.Pass, file *ast.File, repoPrefix, prefix string) {
+func checkImports(pass *analysis.Pass, file *ast.File, prefix string) {
 	for _, imp := range file.Imports {
 		path, err := strconv.Unquote(imp.Path.Value)
 		if err != nil {
 			continue
 		}
-		if !isSharedInternal(path, repoPrefix) {
+		if !pathseg.SharedInternalImport(pass.Pkg.Path(), path) {
 			continue
 		}
 		checkAlias(pass, imp, path, prefix)
 	}
-}
-
-// isSharedInternal reports whether path is a same-repository internal/**
-// import: repoPrefix + "/internal/...".
-func isSharedInternal(path, repoPrefix string) bool {
-	const internalSeg = "/internal/"
-	return strings.HasPrefix(path, repoPrefix+internalSeg)
 }
 
 // checkAlias reports GID-240 unless the import already carries a
@@ -136,24 +127,4 @@ func lastSegment(path string) string {
 		return path[i+1:]
 	}
 	return path
-}
-
-// pkgModuleBoundary resolves the pkg/<module> application-module layout
-// boundary for pkgPath (module.md, mirrors analyzers/layerimports):
-// repoPrefix is the repository prefix before /pkg/<module>, used to
-// recognize same-repository internal/** imports. ok is false if pkgPath has
-// no /pkg/<module> segment — the package is then out of GID-240's scope.
-func pkgModuleBoundary(pkgPath string) (repoPrefix string, ok bool) {
-	// The module.md application-module layout marker (mirrors
-	// analyzers/layerimports): pkg/<module>/ repeats the same layered
-	// structure (dal/, domain/, server/) as internal/.
-	const pkgSeg = "/pkg/"
-	before, rest, cut := strings.Cut(pkgPath, pkgSeg)
-	if !cut || rest == "" {
-		return "", false
-	}
-	if module, _, _ := strings.Cut(rest, "/"); module == "" {
-		return "", false
-	}
-	return before, true
 }

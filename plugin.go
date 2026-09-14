@@ -71,6 +71,7 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/ifacemin"
 	"github.com/slipros/gid-data-golang-eval/analyzers/ifacenaming"
 	"github.com/slipros/gid-data-golang-eval/analyzers/ifaceplace"
+	"github.com/slipros/gid-data-golang-eval/analyzers/importalias"
 	"github.com/slipros/gid-data-golang-eval/analyzers/initclean"
 	"github.com/slipros/gid-data-golang-eval/analyzers/inlineconv"
 	"github.com/slipros/gid-data-golang-eval/analyzers/inout"
@@ -241,6 +242,7 @@ func init() {
 	register.Plugin("gidarglimit", newConfigurablePlugin(arglimit.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidclosurector", newConfigurablePlugin(closurector.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidifaceassert", newConfigurablePlugin(ifaceassert.NewAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidimportalias", newConfigurablePlugin(importalias.NewAnalyzer, register.LoadModeTypesInfo))
 	// Layer 1 (former ruleguard) — simple AST patterns, now native analyzers.
 	register.Plugin("gidtimenow", newSingleAnalyzerPlugin(patterns.TimeNowAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("giduuidnil", newSingleAnalyzerPlugin(patterns.UUIDNilAnalyzer, register.LoadModeTypesInfo))

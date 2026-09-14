@@ -177,6 +177,7 @@ linters:
     - gidarglimit
     - gidclosurector
     - gidifaceassert
+    - gidimportalias
     - gidsentinelwrap
     - gidscanrow
     - gidapproot
@@ -1042,6 +1043,14 @@ linters:
         # settings:
         #   exclude:
         #     - 'DatasetSnapshotRepository'
+      gidimportalias:
+        type: module
+        description: 'GID-275: an import of the module''s own package carries an alias only when the file needs it — the package name collides with another import, a package-level declaration, a predeclared name or a local name where the import is used. Not judged: other modules (gd-prefixed libraries, pb packages), the real package name goimports writes, the GID-240 common alias of internal/** inside pkg/<module> and a common-prefixed package from outside that module'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # The borrowed-package alias prefix (as in GID-240) can be replaced
+        # (pinpoint — //nolint:gidimportalias):
+        # settings:
+        #   prefix: common
       giderrswallow:
         type: module
         description: 'GID-258: in /domain/**, a function that checks an error must be able to return one — logging it and moving on hides the failure from the caller; add error to the results'

@@ -195,6 +195,31 @@ func TestEndsWith(t *testing.T) {
 	}
 }
 
+func TestSharedInternalImport(t *testing.T) {
+	tests := []struct {
+		name       string
+		pkgPath    string
+		importPath string
+		want       bool
+	}{
+		{"module imports shared internal", "repo/pkg/billing/domain/usecase", "repo/internal/domain/service", true},
+		{"module root package", "repo/pkg/billing", "repo/internal/domain/model", true},
+		{"module imports its own layer", "repo/pkg/billing/domain/usecase", "repo/pkg/billing/domain/service", false},
+		{"internal imports internal", "repo/internal/domain/usecase", "repo/internal/domain/service", false},
+		{"another repository's internal", "repo/pkg/billing/domain/usecase", "other/internal/domain/service", false},
+		{"empty module segment", "repo/pkg/", "repo/internal/domain/service", false},
+		{"third-party import", "repo/pkg/billing/domain/usecase", "github.com/pkg/errors", false},
+	}
+
+	for _, tt := range tests { //nolint:gidallptr // the plugin does not depend on the internal gdhelper library
+		t.Run(tt.name, func(t *testing.T) {
+			if got := SharedInternalImport(tt.pkgPath, tt.importPath); got != tt.want {
+				t.Errorf("SharedInternalImport(%q, %q) = %v, want %v", tt.pkgPath, tt.importPath, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestSameLibrary(t *testing.T) {
 	const uuidLib = "github.com/gofrs/uuid"
 
