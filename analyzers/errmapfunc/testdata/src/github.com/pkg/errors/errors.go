@@ -25,3 +25,6 @@ func Is(err, target error) bool { return stderrors.Is(err, target) }
 
 // As forwards to the standard library errors.As (pkg/errors v0.9.1+).
 func As(err error, target any) bool { return stderrors.As(err, target) }
+
+// Cause returns the underlying cause of the error.
+func Cause(err error) error { return err }

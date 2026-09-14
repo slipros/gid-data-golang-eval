@@ -38,3 +38,9 @@ func (s *Status) Err() error { return stderrors.New(s.msg) }
 func New(c codes.Code, msg string) *Status {
 	return &Status{code: c, msg: msg}
 }
+
+// Code returns the status code of err.
+func Code(err error) codes.Code { return codes.Unknown }
+
+// FromError returns the status carried by err.
+func FromError(err error) (*Status, bool) { return New(codes.Unknown, ""), err != nil }

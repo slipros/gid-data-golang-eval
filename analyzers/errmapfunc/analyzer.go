@@ -13,7 +13,7 @@
 //
 // Detect: a top-level FuncDecl F such that ALL of
 //   - F has a NAMED parameter of type error (e.g. err error), AND
-//   - F's body CLASSIFIES that parameter, in either of two shapes:
+//   - F's body CLASSIFIES that parameter, in any of three shapes:
 //     (a) errors.Is(<that parameter>, ...) / errors.As(<that parameter>,
 //     &target) — where errors is any of the configured classifier packages
 //     (settings.packages; default: the standard library "errors" and
@@ -28,7 +28,19 @@
 //     such predicates rather than through errors.Is sentinels, so shape (a)
 //     alone let a real mapper through (incident 2026-08-04, resource-registry
 //     repository.MapError). Predicate calls are matched by SIGNATURE, in any
-//     package — including this one, AND
+//     package — including this one;
+//     (c) a BRANCH on a value derived from that parameter: a switch whose tag
+//     mentions it (switch status.Code(errors.Cause(err))), a type switch or
+//     type assertion on it (switch errors.Cause(err).(type), err.(*MyErr)),
+//     or an == / != comparison of it against anything but nil
+//     (errors.Cause(err) == sql.ErrNoRows, status.Code(err) == codes.NotFound).
+//     A gRPC status code carries the classification as a value, so neither
+//     (a) nor (b) saw a method switching on it (incident 2026-09-14,
+//     ad-cabinet-connector Cabinet.classify). err == nil / err != nil asks
+//     whether there is an error at all and classifies nothing.
+//     A local assigned from the parameter counts as the parameter in all
+//     three shapes: st, _ := status.FromError(err); switch st.Code() is the
+//     same mapper spelled in two statements, AND
 //   - F RETURNS something, and that something is NOT a lone bool
 //     (discriminator #1, see below), AND
 //   - F actually PRODUCES a value of its own (discriminator #3, see below).
@@ -63,7 +75,8 @@
 // Discriminator #2 — the PARAMETER vs a local: inline handling inside a
 // handler/interceptor method, where errors.Is branches on a LOCAL variable
 // (the result of an inner call, e.g. res, err := u.Do(...)) rather than on
-// F's own parameter, is NOT reported. The question is always: does errors.Is
+// F's own parameter, is NOT reported. A local DERIVED from the parameter
+// (cause := errors.Cause(err)) is the parameter under another name and counts. The question is always: does errors.Is
 // inspect the function's error PARAMETER, or a value produced inside the body?
 //
 // Discriminator #3 — MAPPING vs merely observing (added 2026-08-04 alongside
@@ -107,6 +120,7 @@ package errmapfunc
 
 import (
 	"go/ast"
+	"go/token"
 	"go/types"
 
 	"golang.org/x/tools/go/analysis"
@@ -155,8 +169,9 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 	}
 	return &analysis.Analyzer{
 		Name: "giderrmapfunc",
-		Doc: ruleID + ": a dedicated error-mapper function (classifies its own error parameter via errors.Is/errors.As " +
-			"or a bool-predicate AND returns anything but a lone bool — error, *status.Status, codes.Code, a message) " +
+		Doc: ruleID + ": a dedicated error-mapper function (classifies its own error parameter via errors.Is/errors.As, " +
+			"a bool-predicate or a branch on it — switch status.Code(err), a type switch, err == ErrX — AND returns " +
+			"anything but a lone bool — error, *status.Status, codes.Code, a message) " +
 			"is forbidden; bool-predicates and wrappers are fine. " +
 			"Fix: remove the function, inline the switch errors.Is(...) into the caller",
 		Run: func(pass *analysis.Pass) (any, error) {
@@ -198,22 +213,35 @@ func checkFunc(pass *analysis.Pass, fn *ast.FuncDecl, classifierPkgs map[string]
 	if !funcReturnsTranslation(pass, fn) {
 		return
 	}
+	classified := derivedFromParams(pass, fn.Body, errParams)
 	classifies := false
 	ast.Inspect(fn.Body, func(n ast.Node) bool {
-		call, ok := n.(*ast.CallExpr)
-		if !ok {
-			return true
-		}
-		if isErrorsClassifyOnParam(pass, call, errParams, classifierPkgs) ||
-			isPredicateOnParam(pass, call, errParams) {
-			classifies = true
+		switch node := n.(type) {
+		case *ast.CallExpr:
+			if isErrorsClassifyOnParam(pass, node, classified, classifierPkgs) ||
+				isPredicateOnParam(pass, node, classified) {
+				classifies = true
+			}
+		case *ast.SwitchStmt:
+			if node.Tag != nil && mentionsParam(pass, node.Tag, classified) {
+				classifies = true
+			}
+		case *ast.TypeAssertExpr:
+			if mentionsParam(pass, node.X, classified) {
+				classifies = true
+			}
+		case *ast.BinaryExpr:
+			if isComparisonOnParam(pass, node, classified) {
+				classifies = true
+			}
 		}
 		return true
 	})
 	if classifies && producesOwnValue(pass, fn, errParams) {
 		pass.Reportf(fn.Name.Pos(),
 			"%s: a dedicated error-mapper function is forbidden — it classifies its own error parameter "+
-				"(errors.Is/errors.As, or a bool-predicate such as IsNoResult(err)) and hands back a translation "+
+				"(errors.Is/errors.As, a bool-predicate such as IsNoResult(err), or a branch on it such as "+
+				"switch status.Code(err)) and hands back a translation "+
 				"of it: an error, a *status.Status, a codes.Code, a message. Map the bounded set of errors inline, "+
 				"at the call site (in the repository method/handler where the error occurs): "+
 				"if IsNoResult(err) { err = entity.ErrNoResult }; return errors.Wrap(err, \"select x\"). "+
@@ -271,6 +299,89 @@ func isPredicateOnParam(pass *analysis.Pass, call *ast.CallExpr, errParams map[t
 		return false
 	}
 	return paramObject(pass, call.Args[0], errParams) != nil
+}
+
+// derivedFromParams returns errParams together with the locals assigned from
+// them, in source order: cause := errors.Cause(err) and st, ok :=
+// status.FromError(err) make cause, st and ok stand for err, and a local
+// assigned from cause stands for it too.
+func derivedFromParams(pass *analysis.Pass, body *ast.BlockStmt, errParams map[types.Object]bool) map[types.Object]bool {
+	derived := make(map[types.Object]bool, len(errParams))
+	for obj := range errParams {
+		derived[obj] = true
+	}
+	mark := func(lhs []*ast.Ident, rhs []ast.Expr) {
+		for _, value := range rhs {
+			if !mentionsParam(pass, value, derived) {
+				continue
+			}
+			for _, id := range lhs {
+				if obj := objectOf(pass, id); obj != nil {
+					derived[obj] = true
+				}
+			}
+			return
+		}
+	}
+	ast.Inspect(body, func(n ast.Node) bool {
+		switch node := n.(type) {
+		case *ast.AssignStmt:
+			mark(identsOf(node.Lhs), node.Rhs)
+		case *ast.ValueSpec:
+			mark(node.Names, node.Values)
+		}
+		return true
+	})
+	return derived
+}
+
+func identsOf(exprs []ast.Expr) []*ast.Ident {
+	out := make([]*ast.Ident, 0, len(exprs))
+	for _, expr := range exprs {
+		if id, ok := expr.(*ast.Ident); ok {
+			out = append(out, id)
+		}
+	}
+	return out
+}
+
+func objectOf(pass *analysis.Pass, id *ast.Ident) types.Object {
+	if obj := pass.TypesInfo.Defs[id]; obj != nil {
+		return obj
+	}
+	return pass.TypesInfo.Uses[id]
+}
+
+// isComparisonOnParam reports whether expr compares a value derived from one of
+// errParams with == or != against anything but nil — shape (c):
+// errors.Cause(err) == sql.ErrNoRows, status.Code(err) != codes.NotFound.
+// err != nil only asks whether there is an error and classifies nothing.
+func isComparisonOnParam(pass *analysis.Pass, expr *ast.BinaryExpr, errParams map[types.Object]bool) bool {
+	if expr.Op != token.EQL && expr.Op != token.NEQ {
+		return false
+	}
+	if isNil(pass, expr.X) || isNil(pass, expr.Y) {
+		return false
+	}
+	return mentionsParam(pass, expr.X, errParams) || mentionsParam(pass, expr.Y, errParams)
+}
+
+// mentionsParam reports whether expr refers to one of errParams anywhere
+// inside it — directly or through the calls deriving a value from it
+// (status.Code(errors.Cause(err))).
+func mentionsParam(pass *analysis.Pass, expr ast.Expr, errParams map[types.Object]bool) bool {
+	found := false
+	ast.Inspect(expr, func(n ast.Node) bool {
+		if id, ok := n.(*ast.Ident); ok && paramObject(pass, id, errParams) != nil {
+			found = true
+		}
+		return !found
+	})
+	return found
+}
+
+func isNil(pass *analysis.Pass, expr ast.Expr) bool {
+	return pass.TypesInfo.Types[expr].IsNil()
 }
 
 // isErrorBoolPredicate reports whether sig is func(error, ...) bool — the

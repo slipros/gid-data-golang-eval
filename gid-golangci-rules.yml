@@ -934,7 +934,7 @@ linters:
         #   prefix: common
       giderrmapfunc:
         type: module
-        description: 'GID-242: a dedicated error-mapper function (classifies its own error parameter via errors.Is/errors.As from stdlib or github.com/pkg/errors, or via a bool-predicate, AND hands back a translation of it — an error, a *status.Status, a codes.Code, an HTTP status, a message) is forbidden — map inline, at the call site; bool-predicates and wrappers are fine'
+        description: 'GID-242: a dedicated error-mapper function (classifies its own error parameter via errors.Is/errors.As from stdlib or github.com/pkg/errors, via a bool-predicate, or by branching on it — switch status.Code(err), a type switch, err == ErrX — AND hands back a translation of it — an error, a *status.Status, a codes.Code, an HTTP status, a message) is forbidden — map inline, at the call site; bool-predicates and wrappers are fine'
         original-url: github.com/slipros/gid-data-golang-eval
         # The classifier packages (whose Is/As calls count) can be replaced —
         # e.g. to add a project-internal errors facade that re-exports Is/As.

@@ -241,6 +241,48 @@ Feature: GID-242 — a dedicated error-mapper function is forbidden
     Then no diagnostic is reported
     # An unnamed parameter has no identifier errors.Is/As could ever branch on inside the body.
 
+  # --- Shape (c): a branch on a value derived from the error parameter ---
+
+  Scenario: positive — a method switching on the gRPC status code of its error parameter
+    Given the method "func (c *Cabinet) classify(err error) error { switch status.Code(errors.Cause(err)) { case codes.NotFound: return errors.WithStack(ErrCabinetNotFound); default: return errors.WithStack(ErrRegistryUnavailable) } }"
+    When the giderrmapfunc analyzer checks the file
+    Then the diagnostic "GID-242: a dedicated error-mapper function is forbidden …" is reported on "classify"
+    # The status code carries the classification as a value: neither errors.Is/As nor a
+    # func(error) bool predicate appears, so shapes (a) and (b) let it through (incident
+    # 2026-09-14, ad-cabinet-connector Cabinet.classify). Every method handles its own errors.
+
+  Scenario: positive — a type switch and an == comparison on the cause of the parameter
+    Given "func mapByTypeSwitch(err error) error { switch errors.Cause(err).(type) { case *CustomErr: return ErrCabinetNotFound }; return err }"
+    And "func mapByComparison(err error) error { if errors.Cause(err) == ErrX { return ErrCabinetNotFound }; return err }"
+    When the giderrmapfunc analyzer checks the file
+    Then the diagnostic "GID-242: …" is reported on both functions
+
+  Scenario: positive — a local derived from the parameter stands for it
+    Given "func mapGRPCPermissionDenied(err error) error { if st, ok := status.FromError(err); ok && st.Code() == codes.PermissionDenied { return ErrCabinetDisabled }; return err }"
+    And a chain "cause := errors.Cause(err); var st, _ = status.FromError(cause); switch st.Code() { … }"
+    And "cause := errors.Cause(err); if errors.Is(cause, ErrX) { … }" and "if isUnavailable(cause) { … }"
+    When the giderrmapfunc analyzer checks the file
+    Then the diagnostic "GID-242: …" is reported on each function
+    # lk-api 2026-09-14: mapGRPCError (switch s.Code() after status.FromError(errors.Cause(err))) and
+    # mapGRPCPermissionDenied copied into three packages — all invisible before derived locals counted.
+
+  Scenario: negative — a nil check classifies nothing
+    Given "func wrapUnlessNil(err error) error { if err == nil { return nil }; if nil != err { return errors.WithStack(err) }; return err }"
+    When the giderrmapfunc analyzer checks the file
+    Then no diagnostic is reported
+
+  Scenario: negative — a bool-predicate and an observer branching on the status code
+    Given "func isNotFoundCode(err error) bool { return status.Code(err) == codes.NotFound }"
+    And "func countByCode(err error) error { switch status.Code(err) { case codes.NotFound: notFoundTotal++ }; return err }"
+    When the giderrmapfunc analyzer checks the file
+    Then no diagnostic is reported
+
+  Scenario: boundary — a branch on a local not derived from the parameter, a tagless switch on a flag
+    Given "func (c *Cabinet) retryOnce(err error) error { res := c.fetch(); if res == ErrX { return ErrRegistryUnavailable }; return errors.WithStack(err) }"
+    And "func (c *Cabinet) pick(err error, disabled bool) error { switch { case disabled: return ErrCabinetDisabled }; return errors.Wrap(err, \"pick\") }"
+    When the giderrmapfunc analyzer checks the file
+    Then no diagnostic is reported
+
   # --- Config: settings.packages adds a project errors facade ---
 
   Scenario: config — a mapper via a project errors facade is flagged only when its package is in settings.packages
