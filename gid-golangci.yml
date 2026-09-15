@@ -107,6 +107,7 @@ linters:
     - gidlogchain       # GID-156
     - gidlogfields      # GID-253
     - gidconstvarorder  # GID-130
+    - gidifacetop       # GID-276
     - gidconstscope     # GID-194
     - gidmodelmethod    # GID-195
     - gidchainperline   # GID-196
@@ -435,6 +436,10 @@ linters:
       gidconstvarorder:
         type: module
         description: 'GID-130: declaration order: import, const, var, then the rest'
+        original-url: github.com/slipros/gid-data-golang-eval
+      gidifacetop:
+        type: module
+        description: 'GID-276: in /domain/service, /domain/usecase, /client and /dal/repository interfaces open the file — every top-level interface is declared above other types and functions, right after import, const and var. Not judged: _test.go and generated code'
         original-url: github.com/slipros/gid-data-golang-eval
       gidconstscope:
         type: module

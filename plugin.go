@@ -71,6 +71,7 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/ifacemin"
 	"github.com/slipros/gid-data-golang-eval/analyzers/ifacenaming"
 	"github.com/slipros/gid-data-golang-eval/analyzers/ifaceplace"
+	"github.com/slipros/gid-data-golang-eval/analyzers/ifacetop"
 	"github.com/slipros/gid-data-golang-eval/analyzers/importalias"
 	"github.com/slipros/gid-data-golang-eval/analyzers/initclean"
 	"github.com/slipros/gid-data-golang-eval/analyzers/inlineconv"
@@ -148,6 +149,7 @@ func init() {
 	register.Plugin("gidlogchain", newSingleAnalyzerPlugin(logchain.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidlogfields", newSingleAnalyzerPlugin(logfields.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidconstvarorder", newSingleAnalyzerPlugin(constvarorder.Analyzer, register.LoadModeSyntax))
+	register.Plugin("gidifacetop", newSingleAnalyzerPlugin(ifacetop.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidconstscope", newConfigurablePlugin(constscope.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidconstexpr", newSingleAnalyzerPlugin(constexpr.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidmodelmethod", newConfigurablePlugin(modelmethod.NewAnalyzer, register.LoadModeTypesInfo))
