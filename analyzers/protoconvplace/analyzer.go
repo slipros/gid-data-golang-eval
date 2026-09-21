@@ -18,9 +18,10 @@
 //     and protobuf/entity conversion belongs in /dal/repository/convert;
 //   - its parameters and results cross generated-protobuf and domain-model or
 //     DAL-entity representation families;
-//   - its body constructs a result-family composite literal with at least two
+//   - its body constructs a result-family struct literal with at least two
 //     elements. The size threshold leaves one-field transport status/outcome
-//     wrappers in handlers.
+//     wrappers in handlers; a slice or map literal only collects values and is
+//     not a field mapping.
 //
 // Generated files and _test.go files are skipped. The gidprotoconvplace identifier
 // supports targeted suppression.
@@ -37,10 +38,11 @@ import (
 	"github.com/slipros/gid-data-golang-eval/internal/srcfile"
 )
 
+const ruleID = "GID-277"
+
 const (
-	ruleID             = "GID-277"
 	familyNone  family = 0
-	familyModel family = 1 << iota
+	familyModel family = 1 << (iota - 1)
 	familyEntity
 	familyProto
 )
@@ -213,7 +215,8 @@ func buildsSubstantialResult(pass *analysis.Pass, body *ast.BlockStmt, results f
 		if !ok || len(lit.Elts) < 2 {
 			return true
 		}
-		if typeFamily(pass.TypesInfo.TypeOf(lit))&results == 0 {
+		litType := pass.TypesInfo.TypeOf(lit)
+		if !isStructLiteral(litType) || typeFamily(litType)&results == 0 {
 			return true
 		}
 		found = true
@@ -222,4 +225,20 @@ func buildsSubstantialResult(pass *analysis.Pass, body *ast.BlockStmt, results f
 	})
 
 	return found
+}
+
+// isStructLiteral reports whether a composite literal of type t builds a
+// struct — that is a field mapping. A slice or map literal only collects
+// values and maps nothing, however many elements it lists. An elided literal
+// inside []*T{{…}} is recorded with the pointer type, so it is dereferenced.
+func isStructLiteral(t types.Type) bool {
+	if t == nil {
+		return false
+	}
+	if ptr, ok := types.Unalias(t).(*types.Pointer); ok {
+		t = ptr.Elem()
+	}
+	_, ok := t.Underlying().(*types.Struct)
+
+	return ok
 }

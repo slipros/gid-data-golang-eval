@@ -12,3 +12,12 @@ func CreateOrderFromProto(req *orderpb.CreateOrderRequest) model.CreateOrder {
 		Status: req.Status,
 	}
 }
+
+// Negative: the reverse direction is allowed there too.
+func OrderToProto(order *model.Order) *orderpb.Order {
+	return &orderpb.Order{
+		ID:     order.ID,
+		Status: order.Status,
+		Title:  order.Title,
+	}
+}

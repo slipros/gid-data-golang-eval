@@ -30,6 +30,30 @@ func responseFromModel(order *model.Order) *orderpb.Response {
 	return &orderpb.Response{Order: &orderpb.Order{ID: order.ID}}
 }
 
+// Boundary: a slice literal only collects values — it maps no fields, however
+// many elements it lists.
+func ordersFromModels(first, second *model.Order) []*orderpb.Order {
+	return []*orderpb.Order{delegatedOrder(first), delegatedOrder(second)}
+}
+
+func delegatedOrder(order *model.Order) *orderpb.Order {
+	return handlerconvert.OrderToProto(order)
+}
+
+// Positive: an elided struct literal inside a slice is still a field mapping.
+func createOrdersFromProto( // want `GID-277: function "createOrdersFromProto" performs substantial cross-representation conversion outside /server/grpc/service/handler/convert\. Fix: move the field mapping to /server/grpc/service/handler/convert and call it from "handler"`
+	req *orderpb.CreateOrderRequest,
+) []model.CreateOrder {
+	return []model.CreateOrder{{Title: req.Title, Status: req.Status}}
+}
+
+// Positive: the same through a pointer-element slice.
+func ordersToProto( // want `GID-277: function "ordersToProto" performs substantial cross-representation conversion outside /server/grpc/service/handler/convert\. Fix: move the field mapping to /server/grpc/service/handler/convert and call it from "handler"`
+	order *model.Order,
+) []*orderpb.Order {
+	return []*orderpb.Order{{ID: order.ID, Title: order.Title}}
+}
+
 // Negative: same-representation construction is not conversion.
 func cloneOrder(order *model.Order) model.Order {
 	return model.Order{
