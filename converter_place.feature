@@ -2,7 +2,7 @@
 Feature: GID-277 — substantial cross-representation conversion lives in convert
   As a service developer
   I want protobuf/model field mapping centralized in leaf convert packages
-  So that transport and event adapters keep boundary ownership explicit
+  So that gRPC and event adapters keep boundary ownership explicit
 
   Scenario: substantial protobuf-to-model mapping in a gRPC handler — violation
     Given a handler helper accepts a generated protobuf request
@@ -27,6 +27,6 @@ Feature: GID-277 — substantial cross-representation conversion lives in conver
     Then a "GID-277" diagnostic is reported on the handler helper
 
   Scenario: test fixture or unrelated package — the rule does not apply
-    Given a cross-representation fixture is in a _test.go file or outside transport and event layers
+    Given a cross-representation fixture is in a _test.go file or outside gRPC and event layers
     When the analyzer checks the package
     Then no diagnostic is reported
