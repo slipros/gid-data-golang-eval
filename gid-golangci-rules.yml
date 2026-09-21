@@ -99,6 +99,7 @@ linters:
     - gidhttperrors
     - giddataresponse
     - gidvalidator
+    - gidvalidationplace
     - gidctxkeys
     - gidreceiver
     - gidctor
@@ -513,6 +514,10 @@ linters:
         # settings:
         #   exclude:
         #     - kafka/consumer/validate  # package path suffix
+      gidvalidationplace:
+        type: module
+        description: 'GID-278: Request and Command transport validation belongs at ingress, not in domain models, services or usecases'
+        original-url: github.com/slipros/gid-data-golang-eval
       gidctxkeys:
         type: module
         description: 'GID-165/166/167: context keys in /domain/model; ContextWith<Name>/<Name>FromContext; type ContextKey string + snake_case'

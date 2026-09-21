@@ -120,6 +120,7 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/testpackage"
 	"github.com/slipros/gid-data-golang-eval/analyzers/upwardimport"
 	"github.com/slipros/gid-data-golang-eval/analyzers/utilpkg"
+	"github.com/slipros/gid-data-golang-eval/analyzers/validationplace"
 	"github.com/slipros/gid-data-golang-eval/analyzers/validatorlib"
 	"github.com/slipros/gid-data-golang-eval/analyzers/validatorshape"
 )
@@ -167,6 +168,7 @@ func init() {
 	register.Plugin("gidhttperrors", newSingleAnalyzerPlugin(httperrors.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("giddataresponse", newConfigurablePlugin(dataresponse.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidvalidator", newConfigurablePlugin(validatorlib.NewAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidvalidationplace", newSingleAnalyzerPlugin(validationplace.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidctxkeys", newSingleAnalyzerPlugin(ctxkeys.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidreceiver", newSingleAnalyzerPlugin(receivernaming.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidctor", newSingleAnalyzerPlugin(ctornaming.Analyzer, register.LoadModeTypesInfo))
