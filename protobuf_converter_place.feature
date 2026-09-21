@@ -4,6 +4,7 @@ Feature: GID-277 — substantial protobuf conversion lives in the boundary-owned
   I want gRPC protobuf/model mapping in /server/grpc/service/handler/convert
   And event protobuf/model mapping in the matching producer/convert or consumer/convert package
   And outbound gRPC-client mapping in /domain/service/convert
+  And protobuf/entity mapping in /dal/repository/convert
   So that gRPC handlers and event adapters keep boundary ownership explicit
 
   Scenario: substantial protobuf-to-model mapping in a gRPC handler — violation
@@ -47,6 +48,16 @@ Feature: GID-277 — substantial protobuf conversion lives in the boundary-owned
 
   Scenario: substantial mapping in domain/service/convert — ok
     Given the same helper is in /domain/service/convert
+    When the analyzer checks the package
+    Then no diagnostic is reported
+
+  Scenario: substantial protobuf/entity mapping in a DAL repository — violation
+    Given a protobuf-to-entity helper is in /dal/repository
+    When the analyzer checks the package
+    Then a "GID-277" diagnostic directs it to /dal/repository/convert
+
+  Scenario: substantial protobuf/entity mapping in dal/repository/convert — ok
+    Given the same helper is in /dal/repository/convert
     When the analyzer checks the package
     Then no diagnostic is reported
 

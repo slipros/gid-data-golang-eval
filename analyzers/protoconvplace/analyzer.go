@@ -1,20 +1,23 @@
 // Package protoconvplace implements rule GID-277: substantial conversion between
-// transport messages and domain models lives in its boundary-owned convert package.
+// protobuf messages and domain or DAL representations lives in its boundary-owned
+// convert package.
 //
 // GID-215 already catches a domain package that directly fills an entity
 // literal. This rule closes the complementary adapter gap: a gRPC handler,
-// Kafka adapter, or domain service wrapping a gRPC client can otherwise hide a
-// protobuf/model converter in an ordinary helper. GID-224 separately forbids
+// Kafka adapter, domain service, or DAL repository wrapping a gRPC client can
+// otherwise hide a protobuf converter in an ordinary helper. GID-224 separately forbids
 // transport and event code from importing DAL entities at all.
 //
 // A function is judged when all of the following hold:
-//   - it is under /server/grpc/service, /event, or /domain/service;
+//   - it is under /server/grpc/service, /event, /domain/service, or
+//     /dal/repository;
 //   - it is outside the permitted conversion package: inbound gRPC conversion
 //     belongs in /server/grpc/service/handler/convert, Kafka conversion belongs
-//     in the matching /event/kafka/{producer,consumer}/convert package, and
-//     outbound gRPC-client conversion belongs in /domain/service/convert;
-//   - its parameters and results cross the domain-model and generated-protobuf
-//     representation families;
+//     in the matching /event/kafka/{producer,consumer}/convert package,
+//     outbound domain gRPC-client conversion belongs in /domain/service/convert,
+//     and protobuf/entity conversion belongs in /dal/repository/convert;
+//   - its parameters and results cross generated-protobuf and domain-model or
+//     DAL-entity representation families;
 //   - its body constructs a result-family composite literal with at least two
 //     elements. The size threshold leaves one-field transport status/outcome
 //     wrappers in handlers.
@@ -38,6 +41,7 @@ const (
 	ruleID             = "GID-277"
 	familyNone  family = 0
 	familyModel family = 1 << iota
+	familyEntity
 	familyProto
 )
 
@@ -83,7 +87,8 @@ func run(pass *analysis.Pass) (any, error) {
 }
 
 func judgedLayer(pkgPath string) bool {
-	return isGRPCService(pkgPath) || isDomainService(pkgPath) || pathseg.HasLayer(pkgPath, "event")
+	return isGRPCService(pkgPath) || isDomainService(pkgPath) || isDALRepository(pkgPath) ||
+		pathseg.HasLayer(pkgPath, "event")
 }
 
 func allowedConversionPackage(pkgPath string) bool {
@@ -92,6 +97,8 @@ func allowedConversionPackage(pkgPath string) bool {
 		return exactLayerPackage(pkgPath, "server", "grpc", "service", "handler", "convert")
 	case isDomainService(pkgPath):
 		return exactLayerPackage(pkgPath, "domain", "service", "convert")
+	case isDALRepository(pkgPath):
+		return exactLayerPackage(pkgPath, "dal", "repository", "convert")
 	default:
 		return exactLayerPackage(pkgPath, "event", "kafka", "producer", "convert") ||
 			exactLayerPackage(pkgPath, "event", "kafka", "consumer", "convert")
@@ -110,6 +117,9 @@ func conversionDestination(pkgPath string) string {
 	if isDomainService(pkgPath) {
 		return "/domain/service/convert"
 	}
+	if isDALRepository(pkgPath) {
+		return "/dal/repository/convert"
+	}
 
 	switch {
 	case pathseg.HasLayer(pkgPath, "event", "kafka", "producer"):
@@ -127,6 +137,10 @@ func isGRPCService(pkgPath string) bool {
 
 func isDomainService(pkgPath string) bool {
 	return pathseg.HasLayer(pkgPath, "domain", "service")
+}
+
+func isDALRepository(pkgPath string) bool {
+	return pathseg.HasLayer(pkgPath, "dal", "repository")
 }
 
 func fieldFamilies(pass *analysis.Pass, fields *ast.FieldList) family {
@@ -166,6 +180,8 @@ func typeFamily(t types.Type) family {
 		switch {
 		case pathseg.HasLayer(pkgPath, "domain", "model"):
 			return familyModel
+		case pathseg.HasLayer(pkgPath, "dal", "entity"):
+			return familyEntity
 		case isProtoMessage(typed):
 			return familyProto
 		}
@@ -181,11 +197,10 @@ func isProtoMessage(named *types.Named) bool {
 }
 
 func crossesRepresentations(from, to family) bool {
-	if from == familyNone || to == familyNone {
-		return false
-	}
+	const nonProto = familyModel | familyEntity
 
-	return from&^to != 0 || to&^from != 0
+	return from&familyProto != 0 && to&nonProto != 0 ||
+		to&familyProto != 0 && from&nonProto != 0
 }
 
 func buildsSubstantialResult(pass *analysis.Pass, body *ast.BlockStmt, results family) bool {
