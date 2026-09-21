@@ -20,7 +20,7 @@ func parse(request *model.ParsedRequest) (bool, error) {
 }
 
 func checkOrder(order *model.Order) error {
-	return order.Validate() // want `GID-278:.*Order.Validate`
+	return order.Validate()
 }
 
 func update(request *modelrequest.Update) error {

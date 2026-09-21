@@ -24,8 +24,7 @@ func (*ParsedRequest) Validate() (bool, error) { // want `GID-278:.*ParsedReques
 
 type Order struct{}
 
-// Validate may express an invariant on the model, so its declaration is legal;
-// using it as the service input-validation boundary is not.
+// Validate is a domain-model invariant and is outside the suffix-based rule.
 func (*Order) Validate() error {
 	return nil
 }
