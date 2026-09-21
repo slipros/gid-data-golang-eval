@@ -1117,7 +1117,7 @@ linters:
         #   prefix: common
       gidprotoconvplace:
         type: module
-        description: 'GID-277: substantial protobuf/model field mapping under server/grpc/service lives in handler/convert; event mapping lives in event/kafka/producer/convert'
+        description: 'GID-277: substantial protobuf/model field mapping under server/grpc/service lives in handler/convert; event mapping lives in the matching event/kafka/producer/convert or event/kafka/consumer/convert'
         original-url: github.com/slipros/gid-data-golang-eval
       giderrswallow:
         type: module

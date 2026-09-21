@@ -11,7 +11,8 @@
 //   - it is under /server/grpc/service or /event;
 //   - it is outside the permitted conversion package: gRPC conversion belongs
 //     specifically in /server/grpc/service/handler/convert, while event
-//     conversion belongs specifically in /event/kafka/producer/convert;
+//     conversion belongs specifically in the matching
+//     /event/kafka/{producer,consumer}/convert package;
 //   - its parameters and results cross the domain-model and generated-protobuf
 //     representation families;
 //   - its body constructs a result-family composite literal with at least two
@@ -90,7 +91,8 @@ func allowedConversionPackage(pkgPath string) bool {
 		return exactLayerPackage(pkgPath, "server", "grpc", "service", "handler", "convert")
 	}
 
-	return exactLayerPackage(pkgPath, "event", "kafka", "producer", "convert")
+	return exactLayerPackage(pkgPath, "event", "kafka", "producer", "convert") ||
+		exactLayerPackage(pkgPath, "event", "kafka", "consumer", "convert")
 }
 
 func exactLayerPackage(pkgPath string, segments ...string) bool {
@@ -103,7 +105,14 @@ func conversionDestination(pkgPath string) string {
 		return "/server/grpc/service/handler/convert"
 	}
 
-	return "/event/kafka/producer/convert"
+	switch {
+	case pathseg.HasLayer(pkgPath, "event", "kafka", "producer"):
+		return "/event/kafka/producer/convert"
+	case pathseg.HasLayer(pkgPath, "event", "kafka", "consumer"):
+		return "/event/kafka/consumer/convert"
+	default:
+		return "/event/kafka/producer/convert or /event/kafka/consumer/convert"
+	}
 }
 
 func isGRPCService(pkgPath string) bool {
