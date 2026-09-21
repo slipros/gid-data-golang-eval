@@ -5,7 +5,7 @@ import (
 	"svc/internal/domain/model"
 )
 
-// Negative: substantial conversion is allowed in the leaf convert package.
+// Negative: substantial conversion is allowed in the exact handler/convert package.
 func CreateOrderFromProto(req *orderpb.CreateOrderRequest) model.CreateOrder {
 	return model.CreateOrder{
 		Title:  req.Title,

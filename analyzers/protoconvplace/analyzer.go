@@ -1,5 +1,5 @@
 // Package protoconvplace implements rule GID-277: substantial conversion between
-// transport messages and domain models lives in a leaf convert package.
+// transport messages and domain models lives in its boundary-owned convert package.
 //
 // GID-215 already catches a domain package that directly fills an entity
 // literal. This rule closes the complementary adapter gap: a gRPC handler or
@@ -8,8 +8,10 @@
 // DAL entities at all.
 //
 // A function is judged when all of the following hold:
-//   - it is in /server/grpc/service/handler or /event, but not in a leaf convert
-//     package;
+//   - it is under /server/grpc/service or /event;
+//   - it is outside the permitted conversion package: gRPC conversion belongs
+//     specifically in /server/grpc/service/handler/convert, while event
+//     conversion belongs specifically in /event/kafka/producer/convert;
 //   - its parameters and results cross the domain-model and generated-protobuf
 //     representation families;
 //   - its body constructs a result-family composite literal with at least two
@@ -39,10 +41,10 @@ const (
 )
 
 // Analyzer — rule GID-277: substantial cross-representation conversion lives
-// in a leaf convert package.
+// in its boundary-owned convert package.
 var Analyzer = &analysis.Analyzer{
 	Name:     "gidprotoconvplace",
-	Doc:      ruleID + ": substantial protobuf/model conversion belongs in a leaf convert package",
+	Doc:      ruleID + ": substantial protobuf/model conversion belongs in its boundary-owned convert package",
 	Requires: astwalk.Requires,
 	Run:      run,
 }
@@ -51,9 +53,11 @@ type family uint8
 
 func run(pass *analysis.Pass) (any, error) {
 	pkgPath := pass.Pkg.Path()
-	if pathseg.EndsWith(pkgPath, "convert") || !judgedLayer(pkgPath) {
+	if !judgedLayer(pkgPath) || allowedConversionPackage(pkgPath) {
 		return nil, nil
 	}
+
+	destination := conversionDestination(pkgPath)
 
 	astwalk.NodesOf(pass, func(file *ast.File) bool {
 		return ast.IsGenerated(file) || srcfile.IsTest(pass, file)
@@ -69,19 +73,41 @@ func run(pass *analysis.Pass) (any, error) {
 		}
 
 		pass.Reportf(fn.Name.Pos(),
-			"%s: function %q performs substantial cross-representation conversion outside a convert package. "+
-				"Fix: move the field mapping to a leaf convert package and call it from %q",
-			ruleID, fn.Name.Name, pass.Pkg.Name())
+			"%s: function %q performs substantial cross-representation conversion outside %s. "+
+				"Fix: move the field mapping to %s and call it from %q",
+			ruleID, fn.Name.Name, destination, destination, pass.Pkg.Name())
 	})
 
 	return nil, nil
 }
 
 func judgedLayer(pkgPath string) bool {
-	isGRPCHandler := pathseg.HasLayer(pkgPath, "server", "grpc", "service", "handler") &&
-		pathseg.EndsWith(pkgPath, "handler")
+	return isGRPCService(pkgPath) || pathseg.HasLayer(pkgPath, "event")
+}
 
-	return isGRPCHandler || pathseg.HasLayer(pkgPath, "event")
+func allowedConversionPackage(pkgPath string) bool {
+	if isGRPCService(pkgPath) {
+		return exactLayerPackage(pkgPath, "server", "grpc", "service", "handler", "convert")
+	}
+
+	return exactLayerPackage(pkgPath, "event", "kafka", "producer", "convert")
+}
+
+func exactLayerPackage(pkgPath string, segments ...string) bool {
+	return len(pathseg.LayerSegments(pkgPath)) == len(segments) &&
+		pathseg.HasLayer(pkgPath, segments...)
+}
+
+func conversionDestination(pkgPath string) string {
+	if isGRPCService(pkgPath) {
+		return "/server/grpc/service/handler/convert"
+	}
+
+	return "/event/kafka/producer/convert"
+}
+
+func isGRPCService(pkgPath string) bool {
+	return pathseg.HasLayer(pkgPath, "server", "grpc", "service")
 }
 
 func fieldFamilies(pass *analysis.Pass, fields *ast.FieldList) family {

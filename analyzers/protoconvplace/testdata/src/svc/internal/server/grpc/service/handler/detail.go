@@ -7,7 +7,7 @@ import (
 )
 
 // Positive: a substantial protobuf-to-model helper in a handler is conversion.
-func createOrderFromProto( // want `GID-277: function "createOrderFromProto" performs substantial cross-representation conversion outside a convert package\. Fix: move the field mapping to a leaf convert package and call it from "handler"`
+func createOrderFromProto( // want `GID-277: function "createOrderFromProto" performs substantial cross-representation conversion outside /server/grpc/service/handler/convert\. Fix: move the field mapping to /server/grpc/service/handler/convert and call it from "handler"`
 	req *orderpb.CreateOrderRequest,
 ) model.CreateOrder {
 	// Calling a converter for a subfield or unrelated value must not exempt
