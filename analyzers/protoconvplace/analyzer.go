@@ -8,7 +8,8 @@
 // DAL entities at all.
 //
 // A function is judged when all of the following hold:
-//   - it is in /server/grpc or /event, but not in a leaf convert package;
+//   - it is in /server/grpc/.../handler or /event, but not in a leaf convert
+//     package;
 //   - its parameters and results cross the domain-model and generated-protobuf
 //     representation families;
 //   - its body constructs a result-family composite literal with at least two
@@ -77,8 +78,10 @@ func run(pass *analysis.Pass) (any, error) {
 }
 
 func judgedLayer(pkgPath string) bool {
-	return pathseg.HasLayer(pkgPath, "server", "grpc") ||
-		pathseg.HasLayer(pkgPath, "event")
+	isGRPCHandler := pathseg.HasLayer(pkgPath, "server", "grpc") &&
+		pathseg.EndsWith(pkgPath, "handler")
+
+	return isGRPCHandler || pathseg.HasLayer(pkgPath, "event")
 }
 
 func fieldFamilies(pass *analysis.Pass, fields *ast.FieldList) family {

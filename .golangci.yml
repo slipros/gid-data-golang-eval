@@ -1117,7 +1117,7 @@ linters:
         #   prefix: common
       gidprotoconvplace:
         type: module
-        description: 'GID-277: substantial protobuf/model field mapping in gRPC or event code lives in a leaf convert package; complete delegation and one-field outcome wrappers remain local'
+        description: 'GID-277: substantial protobuf/model field mapping in gRPC handlers or event code lives in a leaf convert package; complete delegation and one-field outcome wrappers remain local'
         original-url: github.com/slipros/gid-data-golang-eval
       giderrswallow:
         type: module
