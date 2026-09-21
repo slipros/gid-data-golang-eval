@@ -1,4 +1,4 @@
-// Package convplace implements rule GID-277: substantial conversion between
+// Package protoconvplace implements rule GID-277: substantial conversion between
 // transport messages and domain models lives in a leaf convert package.
 //
 // GID-215 already catches a domain package that directly fills an entity
@@ -15,9 +15,9 @@
 //     elements. The size threshold leaves one-field transport status/outcome
 //     wrappers in handlers.
 //
-// Generated files and _test.go files are skipped. The gidconvplace identifier
+// Generated files and _test.go files are skipped. The gidprotoconvplace identifier
 // supports targeted suppression.
-package convplace
+package protoconvplace
 
 import (
 	"go/ast"
@@ -40,7 +40,7 @@ const (
 // Analyzer — rule GID-277: substantial cross-representation conversion lives
 // in a leaf convert package.
 var Analyzer = &analysis.Analyzer{
-	Name:     "gidconvplace",
+	Name:     "gidprotoconvplace",
 	Doc:      ruleID + ": substantial protobuf/model conversion belongs in a leaf convert package",
 	Requires: astwalk.Requires,
 	Run:      run,

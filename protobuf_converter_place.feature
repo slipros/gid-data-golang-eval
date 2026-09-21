@@ -1,5 +1,5 @@
 # language: en
-Feature: GID-277 — substantial cross-representation conversion lives in convert
+Feature: GID-277 — substantial protobuf conversion lives in convert
   As a service developer
   I want protobuf/model field mapping centralized in leaf convert packages
   So that gRPC and event adapters keep boundary ownership explicit

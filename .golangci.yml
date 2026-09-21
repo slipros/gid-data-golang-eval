@@ -196,7 +196,7 @@ linters:
     - gidclosurector   # GID-273
     - gidifaceassert   # GID-274
     - gidimportalias   # GID-275
-    - gidconvplace     # GID-277
+    - gidprotoconvplace # GID-277
     - gidsentinelwrap  # GID-244
     - gidscanrow       # GID-245
     - gidapproot       # GID-246
@@ -1115,7 +1115,7 @@ linters:
         # (pinpoint — //nolint:gidimportalias):
         # settings:
         #   prefix: common
-      gidconvplace:
+      gidprotoconvplace:
         type: module
         description: 'GID-277: substantial protobuf/model field mapping in gRPC or event code lives in a leaf convert package; complete delegation and one-field outcome wrappers remain local'
         original-url: github.com/slipros/gid-data-golang-eval

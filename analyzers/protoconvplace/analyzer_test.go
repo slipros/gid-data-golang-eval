@@ -1,4 +1,4 @@
-package convplace
+package protoconvplace
 
 import (
 	"testing"

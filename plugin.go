@@ -27,7 +27,6 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/constscope"
 	"github.com/slipros/gid-data-golang-eval/analyzers/constvarorder"
 	"github.com/slipros/gid-data-golang-eval/analyzers/convnaming"
-	"github.com/slipros/gid-data-golang-eval/analyzers/convplace"
 	"github.com/slipros/gid-data-golang-eval/analyzers/convpolicy"
 	"github.com/slipros/gid-data-golang-eval/analyzers/convpure"
 	"github.com/slipros/gid-data-golang-eval/analyzers/createupdate"
@@ -107,6 +106,7 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/patterns"
 	"github.com/slipros/gid-data-golang-eval/analyzers/pkgstutter"
 	"github.com/slipros/gid-data-golang-eval/analyzers/privatefunc"
+	"github.com/slipros/gid-data-golang-eval/analyzers/protoconvplace"
 	"github.com/slipros/gid-data-golang-eval/analyzers/protorequired"
 	"github.com/slipros/gid-data-golang-eval/analyzers/receivernaming"
 	"github.com/slipros/gid-data-golang-eval/analyzers/scanrow"
@@ -177,7 +177,7 @@ func init() {
 	register.Plugin("gidtestpackage", newConfigurablePlugin(testpackage.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidloggerplace", newConfigurablePlugin(loggerplace.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidconvpolicy", newConfigurablePlugin(convpolicy.NewAnalyzer, register.LoadModeTypesInfo))
-	register.Plugin("gidconvplace", newSingleAnalyzerPlugin(convplace.Analyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidprotoconvplace", newSingleAnalyzerPlugin(protoconvplace.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidnoptr", newSingleAnalyzerPlugin(noptr.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidsqlnull", newSingleAnalyzerPlugin(sqlnull.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidenumstring", newSingleAnalyzerPlugin(enumstring.Analyzer, register.LoadModeTypesInfo))
