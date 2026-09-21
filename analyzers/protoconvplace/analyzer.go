@@ -8,7 +8,7 @@
 // DAL entities at all.
 //
 // A function is judged when all of the following hold:
-//   - it is in /server/grpc/.../handler or /event, but not in a leaf convert
+//   - it is in /server/grpc/service/handler or /event, but not in a leaf convert
 //     package;
 //   - its parameters and results cross the domain-model and generated-protobuf
 //     representation families;
@@ -78,7 +78,7 @@ func run(pass *analysis.Pass) (any, error) {
 }
 
 func judgedLayer(pkgPath string) bool {
-	isGRPCHandler := pathseg.HasLayer(pkgPath, "server", "grpc") &&
+	isGRPCHandler := pathseg.HasLayer(pkgPath, "server", "grpc", "service", "handler") &&
 		pathseg.EndsWith(pkgPath, "handler")
 
 	return isGRPCHandler || pathseg.HasLayer(pkgPath, "event")

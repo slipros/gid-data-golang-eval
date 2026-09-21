@@ -5,7 +5,7 @@ Feature: GID-277 — substantial protobuf conversion lives in convert
   So that gRPC handlers and event adapters keep boundary ownership explicit
 
   Scenario: substantial protobuf-to-model mapping in a gRPC handler — violation
-    Given a handler helper accepts a generated protobuf request
+    Given a helper under /server/grpc/service/handler accepts a generated protobuf request
     And it returns a domain model by constructing a value with multiple fields
     When the analyzer checks the package
     Then a "GID-277" diagnostic is reported on the helper
@@ -27,6 +27,6 @@ Feature: GID-277 — substantial protobuf conversion lives in convert
     Then a "GID-277" diagnostic is reported on the handler helper
 
   Scenario: test fixture or unrelated package — the rule does not apply
-    Given a cross-representation fixture is in a _test.go file or outside gRPC handler and event packages
+    Given a cross-representation fixture is in a _test.go file or outside /server/grpc/service/handler and event packages
     When the analyzer checks the package
     Then no diagnostic is reported

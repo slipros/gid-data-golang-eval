@@ -3,7 +3,7 @@ package handler
 import (
 	"svc/genproto/orderpb"
 	"svc/internal/domain/model"
-	handlerconvert "svc/internal/server/grpc/order/handler/convert"
+	handlerconvert "svc/internal/server/grpc/service/handler/convert"
 )
 
 // Positive: a substantial protobuf-to-model helper in a handler is conversion.
