@@ -3,6 +3,7 @@ Feature: GID-277 — substantial protobuf conversion lives in the boundary-owned
   As a service developer
   I want gRPC protobuf/model mapping in /server/grpc/service/handler/convert
   And event protobuf/model mapping in the matching producer/convert or consumer/convert package
+  And outbound gRPC-client mapping in /domain/service/convert
   So that gRPC handlers and event adapters keep boundary ownership explicit
 
   Scenario: substantial protobuf-to-model mapping in a gRPC handler — violation
@@ -38,6 +39,16 @@ Feature: GID-277 — substantial protobuf conversion lives in the boundary-owned
     Or it is in a convert descendant below /event/kafka/producer/convert
     When the analyzer checks the package
     Then a "GID-277" diagnostic directs it to /event/kafka/producer/convert
+
+  Scenario: substantial mapping in a domain service — violation
+    Given a protobuf-to-model helper is in /domain/service
+    When the analyzer checks the package
+    Then a "GID-277" diagnostic directs it to /domain/service/convert
+
+  Scenario: substantial mapping in domain/service/convert — ok
+    Given the same helper is in /domain/service/convert
+    When the analyzer checks the package
+    Then no diagnostic is reported
 
   Scenario: complete delegation or local one-field policy — boundary
     Given a handler returns the result of a convert function without local field mapping

@@ -2,17 +2,17 @@
 // transport messages and domain models lives in its boundary-owned convert package.
 //
 // GID-215 already catches a domain package that directly fills an entity
-// literal. This rule closes the complementary adapter gap: a gRPC handler or
-// event adapter can otherwise hide a protobuf/model converter in an ordinary
-// helper. GID-224 separately forbids transport and event code from importing
-// DAL entities at all.
+// literal. This rule closes the complementary adapter gap: a gRPC handler,
+// Kafka adapter, or domain service wrapping a gRPC client can otherwise hide a
+// protobuf/model converter in an ordinary helper. GID-224 separately forbids
+// transport and event code from importing DAL entities at all.
 //
 // A function is judged when all of the following hold:
-//   - it is under /server/grpc/service or /event;
-//   - it is outside the permitted conversion package: gRPC conversion belongs
-//     specifically in /server/grpc/service/handler/convert, while event
-//     conversion belongs specifically in the matching
-//     /event/kafka/{producer,consumer}/convert package;
+//   - it is under /server/grpc/service, /event, or /domain/service;
+//   - it is outside the permitted conversion package: inbound gRPC conversion
+//     belongs in /server/grpc/service/handler/convert, Kafka conversion belongs
+//     in the matching /event/kafka/{producer,consumer}/convert package, and
+//     outbound gRPC-client conversion belongs in /domain/service/convert;
 //   - its parameters and results cross the domain-model and generated-protobuf
 //     representation families;
 //   - its body constructs a result-family composite literal with at least two
@@ -83,16 +83,19 @@ func run(pass *analysis.Pass) (any, error) {
 }
 
 func judgedLayer(pkgPath string) bool {
-	return isGRPCService(pkgPath) || pathseg.HasLayer(pkgPath, "event")
+	return isGRPCService(pkgPath) || isDomainService(pkgPath) || pathseg.HasLayer(pkgPath, "event")
 }
 
 func allowedConversionPackage(pkgPath string) bool {
-	if isGRPCService(pkgPath) {
+	switch {
+	case isGRPCService(pkgPath):
 		return exactLayerPackage(pkgPath, "server", "grpc", "service", "handler", "convert")
+	case isDomainService(pkgPath):
+		return exactLayerPackage(pkgPath, "domain", "service", "convert")
+	default:
+		return exactLayerPackage(pkgPath, "event", "kafka", "producer", "convert") ||
+			exactLayerPackage(pkgPath, "event", "kafka", "consumer", "convert")
 	}
-
-	return exactLayerPackage(pkgPath, "event", "kafka", "producer", "convert") ||
-		exactLayerPackage(pkgPath, "event", "kafka", "consumer", "convert")
 }
 
 func exactLayerPackage(pkgPath string, segments ...string) bool {
@@ -103,6 +106,9 @@ func exactLayerPackage(pkgPath string, segments ...string) bool {
 func conversionDestination(pkgPath string) string {
 	if isGRPCService(pkgPath) {
 		return "/server/grpc/service/handler/convert"
+	}
+	if isDomainService(pkgPath) {
+		return "/domain/service/convert"
 	}
 
 	switch {
@@ -117,6 +123,10 @@ func conversionDestination(pkgPath string) string {
 
 func isGRPCService(pkgPath string) bool {
 	return pathseg.HasLayer(pkgPath, "server", "grpc", "service")
+}
+
+func isDomainService(pkgPath string) bool {
+	return pathseg.HasLayer(pkgPath, "domain", "service")
 }
 
 func fieldFamilies(pass *analysis.Pass, fields *ast.FieldList) family {
