@@ -196,6 +196,7 @@ linters:
     - gidclosurector   # GID-273
     - gidifaceassert   # GID-274
     - gidimportalias   # GID-275
+    - gidconvplace     # GID-277
     - gidsentinelwrap  # GID-244
     - gidscanrow       # GID-245
     - gidapproot       # GID-246
@@ -1114,6 +1115,10 @@ linters:
         # (pinpoint — //nolint:gidimportalias):
         # settings:
         #   prefix: common
+      gidconvplace:
+        type: module
+        description: 'GID-277: substantial protobuf/model field mapping in transport or event code lives in a leaf convert package; complete delegation and one-field outcome wrappers remain local'
+        original-url: github.com/slipros/gid-data-golang-eval
       giderrswallow:
         type: module
         description: 'GID-258: in /domain/**, a function that checks an error must be able to return one — logging it and moving on hides the failure from the caller; add error to the results'
