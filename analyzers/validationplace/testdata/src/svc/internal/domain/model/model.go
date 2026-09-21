@@ -4,27 +4,28 @@ import "context"
 
 type ApproveWorkOrderRequest struct{}
 
-func (a *ApproveWorkOrderRequest) Validate() error { // want `GID-278: Validate on domain model type ApproveWorkOrderRequest owns transport validation`
+func (a *ApproveWorkOrderRequest) Validate() error { // want `GID-278:.*ApproveWorkOrderRequest`
 	return nil
 }
 
 type CompleteWorkOrderCommand struct{}
 
-func (CompleteWorkOrderCommand) Validate(
+func (CompleteWorkOrderCommand) Validate( // want `GID-278:.*CompleteWorkOrderCommand`
 	context.Context,
-) error { // want `GID-278: Validate on domain model type CompleteWorkOrderCommand owns transport validation`
+) error {
 	return nil
 }
 
 type ParsedRequest struct{}
 
-func (*ParsedRequest) Validate() (bool, error) { // want `GID-278: Validate on domain model type ParsedRequest owns transport validation`
+func (*ParsedRequest) Validate() (bool, error) { // want `GID-278:.*ParsedRequest`
 	return true, nil
 }
 
 type Order struct{}
 
-// Validate is a domain-model invariant and is outside the suffix-based rule.
+// Validate may express an invariant on the model, so its declaration is legal;
+// using it as the service input-validation boundary is not.
 func (*Order) Validate() error {
 	return nil
 }

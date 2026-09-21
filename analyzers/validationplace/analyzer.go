@@ -1,17 +1,16 @@
 // Package validationplace implements rule GID-278: transport request and
 // command validation belongs to the ingress validate package, not the domain.
 //
-// The rule deliberately recognises only the structural convention that can be
-// enforced without guessing business semantics:
-//   - a /domain/model type whose name ends in Request or Command must not own
-//     an error-returning method named Validate;
-//   - /domain/service and /domain/usecase must not call such a method on a
-//     model type from their own module.
+// The rule deliberately recognises only structural boundaries:
+//   - a /domain/model type whose name ends in Request or Command, or any type
+//     in /domain/model/request, must not own an error-returning Validate method;
+//   - /domain/service and /domain/usecase must not call an error-returning
+//     Validate method on any model type from their own module.
 //
-// A domain entity with a Validate method is not judged: its method may enforce
-// a business invariant. ValidateState and methods that do not return error are
-// also outside the transport-validator convention. Generated and test files
-// are skipped.
+// A domain entity may still declare Validate for a business invariant, but the
+// domain execution layers cannot use that generic method as an input-validation
+// boundary. ValidateState and methods that do not return error remain outside
+// the convention. Generated and test files are skipped.
 package validationplace
 
 import (
@@ -31,8 +30,8 @@ const ruleID = "GID-278"
 // Analyzer rejects transport-validation ownership in the domain layer.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidvalidationplace",
-	Doc: ruleID + ": transport Request and Command validation belongs to the ingress validate package, " +
-		"not /domain/model, /domain/service or /domain/usecase",
+	Doc: ruleID + ": transport validation belongs to the ingress validate package; " +
+		"domain services and usecases do not validate domain models",
 	Requires: astwalk.Requires,
 	Run:      run,
 }
@@ -98,12 +97,12 @@ func checkDomainCalls(pass *analysis.Pass, layer string) {
 		if !ok {
 			return
 		}
-		typeName, modelPkg, ok := transportValidationReceiverPackage(fn)
+		typeName, modelPkg, ok := domainModelValidationReceiverPackage(fn)
 		if !ok || pathseg.ModuleRoot(modelPkg) != pathseg.ModuleRoot(pass.Pkg.Path()) {
 			return
 		}
 		pass.Reportf(call.Pos(),
-			"%s: /domain/%s calls %s.Validate; transport requests and commands must be validated at ingress. "+
+			"%s: /domain/%s calls %s.Validate on a domain model; validation must run at ingress. "+
 				"Fix: validate before conversion in the HTTP, gRPC or Kafka validate package and remove the domain call",
 			ruleID, layer, typeName)
 	})
@@ -115,6 +114,14 @@ func transportValidationReceiver(fn *types.Func) (string, bool) {
 }
 
 func transportValidationReceiverPackage(fn *types.Func) (name, pkgPath string, ok bool) {
+	name, pkgPath, ok = domainModelValidationReceiverPackage(fn)
+	if !ok || !transportModelType(pkgPath, name) {
+		return "", "", false
+	}
+	return name, pkgPath, true
+}
+
+func domainModelValidationReceiverPackage(fn *types.Func) (name, pkgPath string, ok bool) {
 	sig, ok := fn.Type().(*types.Signature)
 	if !ok || sig.Recv() == nil || !hasErrorResult(sig) {
 		return "", "", false
@@ -126,7 +133,7 @@ func transportValidationReceiverPackage(fn *types.Func) (name, pkgPath string, o
 	}
 	obj := named.Obj()
 	pkg := obj.Pkg()
-	if pkg == nil || !pathseg.HasLayer(pkg.Path(), "domain", "model") || !transportTypeName(obj.Name()) {
+	if pkg == nil || !pathseg.HasLayer(pkg.Path(), "domain", "model") {
 		return "", "", false
 	}
 	return obj.Name(), pkg.Path(), true
@@ -153,8 +160,10 @@ func hasErrorResult(sig *types.Signature) bool {
 	return false
 }
 
-func transportTypeName(name string) bool {
-	return strings.HasSuffix(name, "Request") || strings.HasSuffix(name, "Command")
+func transportModelType(pkgPath, name string) bool {
+	return pathseg.EndsWith(pkgPath, "request") ||
+		strings.HasSuffix(name, "Request") ||
+		strings.HasSuffix(name, "Command")
 }
 
 func executionLayer(pkgPath string) string {

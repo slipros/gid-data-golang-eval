@@ -583,7 +583,7 @@ linters:
         #     - kafka/consumer/validate  # package path suffix
       gidvalidationplace:
         type: module
-        description: 'GID-278: Request and Command transport validation belongs at ingress, not in domain models, services or usecases'
+        description: 'GID-278: transport validation belongs at ingress; domain services and usecases do not call Validate on domain models'
         original-url: github.com/slipros/gid-data-golang-eval
       gidctxkeys:
         type: module

@@ -7,11 +7,12 @@ Feature: GID-278 — transport validation stays at ingress (gidvalidationplace)
 
   # The rule intentionally enforces a structural boundary rather than guessing
   # whether an arbitrary branch is transport policy or a business invariant.
-  # A transport-validation method is an error-returning method named Validate on
-  # a /domain/model type whose name ends in Request or Command. Such a method is
-  # reported at its declaration. A call to it from /domain/service or
-  # /domain/usecase of the same module is also reported, so the diagnostic still
-  # exists when only the calling package is selected for linting.
+  # A transport-validation declaration is an error-returning method named
+  # Validate on a /domain/model type whose name ends in Request or Command, or
+  # on any type under /domain/model/request. Domain service and usecase calls
+  # are intentionally broader: they must not call an error-returning Validate
+  # method on any same-module domain model, regardless of its type name. This
+  # catches misplaced input validation without relying on naming conventions.
   #
   # Scope uses pathseg.HasLayer, covering internal/domain/... and
   # pkg/<module>/domain/... while staying anchored to the module root. Calls on
@@ -42,6 +43,18 @@ Feature: GID-278 — transport validation stays at ingress (gidvalidationplace)
     When the gidvalidationplace analyzer checks the package
     Then the same ingress diagnostic is reported
 
+  Scenario: positive — domain service validation does not depend on the type name
+    Given Order in /domain/model has an error-returning Validate method
+    And /domain/service calls Order.Validate
+    When the gidvalidationplace analyzer checks the service
+    Then a GID-278 diagnostic requires validation at ingress
+    But the model declaration itself is not reported as transport validation
+
+  Scenario: positive — request package marks transport ownership
+    Given Update in /domain/model/request has an error-returning Validate method
+    When the gidvalidationplace analyzer checks the model and service packages
+    Then the declaration and the domain-service call are both reported
+
   Scenario: positive — pkg module layout
     Given RefundRequest and its service live under pkg/billing/domain
     When the gidvalidationplace analyzer checks the packages
@@ -49,10 +62,10 @@ Feature: GID-278 — transport validation stays at ingress (gidvalidationplace)
 
   # --- Class 2: negative ---
 
-  Scenario: negative — business entity invariant
+  Scenario: negative — business entity invariant declaration
     Given Order in /domain/model has "Validate() error"
-    When the gidvalidationplace analyzer checks the package
-    Then no diagnostic is reported because Order is neither a Request nor a Command
+    When the gidvalidationplace analyzer checks only the model declaration
+    Then no diagnostic is reported because Order is not structurally a transport model
 
   Scenario: negative — a differently named business method
     Given ListRequest in /domain/model has "ValidateState() error"
