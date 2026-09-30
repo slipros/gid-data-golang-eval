@@ -18,6 +18,7 @@ import (
 	"golang.org/x/tools/go/analysis"
 
 	"github.com/slipros/gid-data-golang-eval/internal/exclude"
+	"github.com/slipros/gid-data-golang-eval/internal/movable"
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 )
 
@@ -74,7 +75,7 @@ func checkFunc(pass *analysis.Pass, fn *ast.FuncDecl, s Settings) {
 	if fn.Name.IsExported() || fn.Name.Name == "init" || fn.Type.TypeParams != nil {
 		return
 	}
-	if exclude.Match(s.Exclude, recvTypeName(fn), fn.Name.Name) {
+	if exclude.Match(s.Exclude, movable.RecvTypeName(fn), fn.Name.Name) {
 		return
 	}
 	param, ok := singleModelParam(pass, fn)
@@ -83,12 +84,12 @@ func checkFunc(pass *analysis.Pass, fn *ast.FuncDecl, s Settings) {
 	}
 	// A method that uses its receiver is not movable — it legitimately
 	// belongs to its struct.
-	if fn.Recv != nil && usesReceiver(pass, fn) {
+	if fn.Recv != nil && movable.UsesReceiver(pass, fn) {
 		return
 	}
 	// Dependence on package-level symbols of its own package (including
 	// package types in the signature) — the function cannot be moved to model.
-	if dependsOnPackage(pass, fn) {
+	if movable.DependsOnPackage(pass, fn) {
 		return
 	}
 	paramObj := param.Obj()
@@ -122,81 +123,8 @@ func singleModelParam(pass *analysis.Pass, fn *ast.FuncDecl) (*types.Named, bool
 	if _, ok := field.Type.(*ast.Ellipsis); ok {
 		return nil, false
 	}
-	t := pass.TypesInfo.TypeOf(field.Type)
-	if ptr, ok := t.(*types.Pointer); ok {
-		t = ptr.Elem()
-	}
-	named, ok := types.Unalias(t).(*types.Named)
-	if !ok {
-		return nil, false
-	}
-	// A method cannot be added to an interface — it does not "own" behaviour.
-	if _, ok := named.Underlying().(*types.Interface); ok {
-		return nil, false
-	}
-	obj := named.Obj()
-	pkg := obj.Pkg()
-	if pkg == nil || !pathseg.HasLayer(pkg.Path(), "domain", "model") {
-		return nil, false
-	}
-	return named, true
-}
 
-// usesReceiver reports whether the method body accesses the receiver.
-func usesReceiver(pass *analysis.Pass, fn *ast.FuncDecl) bool {
-	if len(fn.Recv.List) == 0 || len(fn.Recv.List[0].Names) == 0 {
-		return false // unnamed receiver
-	}
-	recv := fn.Recv.List[0].Names[0]
-	if recv.Name == "_" {
-		return false
-	}
-	obj := pass.TypesInfo.Defs[recv]
-	if obj == nil || fn.Body == nil {
-		return false
-	}
-	used := false
-	ast.Inspect(fn.Body, func(n ast.Node) bool {
-		if id, ok := n.(*ast.Ident); ok && pass.TypesInfo.Uses[id] == obj {
-			used = true
-		}
-		return !used
-	})
-	return used
-}
-
-// dependsOnPackage reports whether the function (signature and body) refers
-// to package-level symbols of its own package — such a function is not movable.
-func dependsOnPackage(pass *analysis.Pass, fn *ast.FuncDecl) bool {
-	self := pass.TypesInfo.Defs[fn.Name]
-	depends := false
-	check := func(n ast.Node) {
-		ast.Inspect(n, func(node ast.Node) bool {
-			id, ok := node.(*ast.Ident)
-			if !ok {
-				return true
-			}
-			obj := pass.TypesInfo.Uses[id]
-			if obj == nil || obj == self || obj.Pkg() != pass.Pkg {
-				return true
-			}
-			switch obj.(type) {
-			case *types.PkgName, *types.Label:
-				return true // imports and labels are not a dependency
-			}
-			// A package-level symbol (Parent == package scope) or a member
-			// of a package type — a field/method (Parent == nil).
-			if obj.Parent() == pass.Pkg.Scope() || obj.Parent() == nil {
-				depends = true
-			}
-			return !depends
-		})
-	}
-	check(fn.Type)
-	if fn.Body != nil {
-		check(fn.Body)
-	}
-	return depends
+	return movable.ModelNamed(pass, field.Type)
 }
 
 func inScope(pkgPath string) bool {
@@ -206,20 +134,6 @@ func inScope(pkgPath string) bool {
 		}
 	}
 	return false
-}
-
-func recvTypeName(fn *ast.FuncDecl) string {
-	if fn.Recv == nil || len(fn.Recv.List) == 0 {
-		return ""
-	}
-	t := fn.Recv.List[0].Type
-	if star, ok := t.(*ast.StarExpr); ok {
-		t = star.X
-	}
-	if ident, ok := t.(*ast.Ident); ok {
-		return ident.Name
-	}
-	return ""
 }
 
 func isTestFile(pass *analysis.Pass, file *ast.File) bool {

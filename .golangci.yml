@@ -104,6 +104,7 @@ linters:
     - gidconstscope    # GID-194
     - gidconstexpr     # GID-254
     - gidmodelmethod   # GID-195
+    - gidpuremodel    # GID-278
     - gidchainperline  # GID-196
     - gidifacemin      # GID-197
     - gidinout         # GID-111
@@ -457,6 +458,15 @@ linters:
         #   exclude:
         #     - 'legacyTitle'            # function name
         #     - 'Service.legacyRender'   # Type.Method
+      gidpuremodel:
+        type: module
+        description: 'GID-278: a service/usecase function over model values that uses neither its receiver nor its package is a model method'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # Exclusions (besides //nolint:gidpuremodel):
+        # settings:
+        #   exclude:
+        #     - 'LegacyChanged'            # function name
+        #     - 'Service.LegacyChanged'    # Type.Method
       gidchainperline:
         type: module
         description: 'GID-196: call chain: one call per line, including the first'

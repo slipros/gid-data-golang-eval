@@ -108,6 +108,7 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/privatefunc"
 	"github.com/slipros/gid-data-golang-eval/analyzers/protoconvplace"
 	"github.com/slipros/gid-data-golang-eval/analyzers/protorequired"
+	"github.com/slipros/gid-data-golang-eval/analyzers/puremodel"
 	"github.com/slipros/gid-data-golang-eval/analyzers/receivernaming"
 	"github.com/slipros/gid-data-golang-eval/analyzers/scanrow"
 	"github.com/slipros/gid-data-golang-eval/analyzers/sentinelwrap"
@@ -154,6 +155,7 @@ func init() {
 	register.Plugin("gidconstscope", newConfigurablePlugin(constscope.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidconstexpr", newSingleAnalyzerPlugin(constexpr.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidmodelmethod", newConfigurablePlugin(modelmethod.NewAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidpuremodel", newConfigurablePlugin(puremodel.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidmodelplace", newConfigurablePlugin(modelplace.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidchainperline", newConfigurablePlugin(chainperline.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidifacemin", newConfigurablePlugin(ifacemin.NewAnalyzer, register.LoadModeTypesInfo))
