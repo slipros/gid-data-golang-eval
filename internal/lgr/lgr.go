@@ -24,8 +24,6 @@ import (
 
 // Level method names shared by both stacks — spelled once so the two terminal
 // sets below stay in sync.
-//
-//nolint:gidconstscope // GID-194: lgr is the shared logger vocabulary of the analyzers, not model/entity
 const (
 	// KindNone — not a logger.
 	KindNone Kind = iota

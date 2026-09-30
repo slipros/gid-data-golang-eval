@@ -129,3 +129,17 @@ Feature: GID-194 — constants are declared where they are used
 #  [x] Case classes covered: positive, negative, boundary, non-applicability
 #  [x] testdata with // want for analysistest
 #  [x] Rule enabled in .golangci.yml
+
+  Scenario: non-applicability — an exported constant in a library module
+    Given the module has no internal/app and no domain+dal pair (modlayout.IsServiceModule is false)
+    And an exported constant "ContextKeyQueryName", an exported iota block and an exported constant used by one function are declared
+    When the analyzer checks the package
+    Then no diagnostic is reported
+    # a library has no model/entity to move them to; the constant is part of its public API
+
+  Scenario: boundary — an unexported single-use constant in a library module
+    Given the same library module declares an unexported constant used by exactly one function
+    When the analyzer checks the package
+    Then a "GID-194" diagnostic is still reported: declare it inside that function
+    # advice about the code, not about the layout
+

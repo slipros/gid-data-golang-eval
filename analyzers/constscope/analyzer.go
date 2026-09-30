@@ -9,6 +9,13 @@
 // outside model/entity and an unexported const used by exactly one
 // function — its place is inside that function.
 //
+// A library module (modlayout.IsServiceModule is false) has no model/entity to
+// move an exported constant to, and the constant is part of its public API —
+// ContextKeyQueryName of libs/trino is imported by the callers. Exported
+// constants are not reported there; the localization of an unexported one
+// (used by exactly one function) is advice about the code, not the layout, and
+// stays.
+//
 // A definitional block — an iota block, or a group of ≥2 constants of the same
 // named type (a GID-123 string/int enum) — is a single unit: it is localized
 // only as a whole, and only when every one of its constants is used by one and
@@ -26,6 +33,7 @@ import (
 
 	"golang.org/x/tools/go/analysis"
 
+	"github.com/slipros/gid-data-golang-eval/internal/modlayout"
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 )
 
@@ -80,7 +88,7 @@ func run(pass *analysis.Pass, excluded map[string]struct{}) (any, error) {
 	if inAllowedScope(pass.Pkg.Path()) {
 		return nil, nil
 	}
-	groups := collectGroups(pass, excluded)
+	groups := collectGroups(pass, excluded, !modlayout.IsServiceModule(pass))
 	if len(groups) == 0 {
 		return nil, nil
 	}
@@ -92,8 +100,9 @@ func run(pass *analysis.Pass, excluded map[string]struct{}) (any, error) {
 }
 
 // collectGroups collects package-level const blocks and immediately reports
-// exported constants — shared constants live in model/entity.
-func collectGroups(pass *analysis.Pass, excluded map[string]struct{}) []*constGroup {
+// exported constants — shared constants live in model/entity. In a library
+// module they are public API and are not reported.
+func collectGroups(pass *analysis.Pass, excluded map[string]struct{}, library bool) []*constGroup {
 	var out []*constGroup
 	for _, file := range pass.Files {
 		if ast.IsGenerated(file) || isTestFile(pass, file) {
@@ -117,6 +126,9 @@ func collectGroups(pass *analysis.Pass, excluded map[string]struct{}) []*constGr
 						g.skipLocal = true
 					case name.IsExported():
 						g.skipLocal = true
+						if library {
+							continue
+						}
 						pass.Reportf(name.Pos(),
 							"%s: exported constant %q is declared outside model/entity. "+
 								"Fix: keep shared constants in /domain/model or /dal/entity, and declare local ones where they are used",
