@@ -33,6 +33,20 @@
 //   - a mirror `return errors.Wrap(err, "msg")` in the SAME block, over the
 //     same err object, with an IDENTICAL string-literal message.
 //
+// The same shape inside a switch is reported too: two or more case clauses of ONE
+// switch, each a single `return [..., ]errors.Wrap(<staticErr>, "msg")` with the SAME
+// string-literal message, wrap their own error four times where one Wrap would do:
+//
+//	switch {
+//	case errors.Is(err, client.ErrRateLimit):
+//	    return 0, errors.Wrap(&entity.CabinetError{Reason: Unavailable}, "upload") // GID-244
+//	case errors.Is(err, client.ErrCredentialsInvalid):
+//	    return 0, errors.Wrap(&entity.CabinetError{Reason: Rejected}, "upload")
+//	}
+//
+// The fix assigns err in each case and wraps once after the switch. A case body with
+// anything but the one return, distinct messages, or a wrapped err are not judged.
+//
 // Only errors.Wrap is considered (not Wrapf); messages must be string literals.
 // pkg/errors is detected by the import path github.com/pkg/errors. Generated
 // code (ast.IsGenerated) is skipped.
@@ -94,6 +108,11 @@ func run(pass *analysis.Pass, s Settings) (any, error) {
 
 func checkFunc(pass *analysis.Pass, fn *ast.FuncDecl) {
 	ast.Inspect(fn.Body, func(n ast.Node) bool {
+		if sw, ok := n.(*ast.SwitchStmt); ok {
+			checkSwitch(pass, sw)
+
+			return true
+		}
 		block, ok := n.(*ast.BlockStmt)
 		if !ok {
 			return true
@@ -111,6 +130,50 @@ func checkFunc(pass *analysis.Pass, fn *ast.FuncDecl) {
 		}
 		return true
 	})
+}
+
+// checkSwitch reports a switch with two or more case clauses that each return
+// `errors.Wrap(<staticErr>, "msg")` with one and the same message. Reported once
+// per repeated message, on the first clause that carries it.
+func checkSwitch(pass *analysis.Pass, sw *ast.SwitchStmt) {
+	const minClauses = 2
+	type group struct {
+		first token.Pos
+		count int
+	}
+	groups := map[string]*group{}
+	var order []string
+	for _, stmt := range sw.Body.List {
+		clause, ok := stmt.(*ast.CaseClause)
+		if !ok || len(clause.Body) != 1 {
+			continue
+		}
+		ret, ok := clause.Body[0].(*ast.ReturnStmt)
+		if !ok || len(ret.Results) == 0 {
+			continue
+		}
+		msg, ok := wrapStaticSentinel(pass, ret.Results[len(ret.Results)-1])
+		if !ok {
+			continue
+		}
+		g := groups[msg]
+		if g == nil {
+			g = &group{first: clause.Pos()}
+			groups[msg] = g
+			order = append(order, msg)
+		}
+		g.count++
+	}
+	for _, msg := range order {
+		g := groups[msg]
+		if g.count < minClauses {
+			continue
+		}
+		pass.Reportf(g.first,
+			"%s: %d case clauses wrap their own error with the same message %s. "+
+				"Fix: assign err in each case (err = &entity.XError{...}) and wrap once after the switch: errors.Wrap(err, %s)",
+			ruleID, g.count, msg, msg)
+	}
 }
 
 // guardInfo — the parts of a sentinel guard needed to find its mirror.

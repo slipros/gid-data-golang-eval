@@ -111,6 +111,7 @@ linters:
     - gidconstscope     # GID-194
     - gidmodelmethod    # GID-195
     - gidpuremodel    # GID-278
+    - giderrswitch      # GID-279
     - gidchainperline   # GID-196
     - gidifacemin       # GID-197
     - gidinout          # GID-111
@@ -469,6 +470,11 @@ linters:
         #   exclude:
         #     - 'LegacyChanged'            # function name
         #     - 'Service.LegacyChanged'    # Type.Method
+      giderrswitch:
+        type: module
+        description: 'GID-279: a switch over an error variable sits inside if err != nil — the error is checked with if first, then classified'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # No settings; pinpoint exclusions via //nolint:giderrswitch.
       gidchainperline:
         type: module
         description: 'GID-196: call chain: one call per line, including the first'

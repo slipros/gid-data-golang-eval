@@ -2,7 +2,9 @@
 //
 //   - GID-144 (giddomainerrors): all domain errors live in /domain/model.
 //     service and usecase neither declare nor create errors — they exchange
-//     received errors for errors from model.
+//     received errors for errors from model. A declared error TYPE (a named
+//     type with an Error() string method) is a declaration too: its home is
+//     model, the layer only constructs it.
 //   - GID-145 (giddalerrors): all dal errors live in /dal/entity.
 //     The repository exchanges connection errors for errors from entity
 //     (if no exchange happened — it passes the original through, which is not creation).
@@ -13,7 +15,8 @@
 //     the "home" layer for errors, while GID-169 picks the exact file inside it.
 //
 // Forbidden outside the allowed package: declaring package-level variables
-// of type error and calling error constructors (errors.New, fmt.Errorf,
+// of type error, declaring error types (a named non-interface type whose
+// pointer has Error() string — an interface or an alias declares none) and calling error constructors (errors.New, fmt.Errorf,
 // errors.Errorf). Exchange and enrichment — errors.Wrap/WithStack/WithMessage
 // (github.com/pkg/errors) and typed gderror errors — are allowed.
 //
@@ -85,6 +88,7 @@ func newRun(cfg *config) func(*analysis.Pass) (any, error) {
 				continue
 			}
 			checkErrorVars(pass, cfg, file)
+			checkErrorTypes(pass, cfg, file)
 			checkErrorCtors(pass, cfg, file)
 		}
 		return nil, nil
@@ -117,6 +121,65 @@ func checkErrorVars(pass *analysis.Pass, cfg *config, file *ast.File) {
 			}
 		}
 	}
+}
+
+// checkErrorTypes looks for package-level named types that are errors: a type
+// declared in the layer outside its error home carries the layer's errors away
+// from it just as a sentinel variable would (incident 2026-09-30: a
+// classifiedError in a repository, holding an entity sentinel and the client's
+// cause in one Unwrap() []error chain). An interface (a contract such as
+// `interface{ error; NotFound() bool }`) and an alias declare no error value
+// type and are not judged.
+func checkErrorTypes(pass *analysis.Pass, cfg *config, file *ast.File) {
+	for _, decl := range file.Decls {
+		gd, ok := decl.(*ast.GenDecl)
+		if !ok || gd.Tok != token.TYPE {
+			continue
+		}
+		for _, spec := range gd.Specs {
+			ts, ok := spec.(*ast.TypeSpec)
+			if !ok || ts.Assign.IsValid() || ts.Name.Name == "_" {
+				continue
+			}
+			obj, ok := pass.TypesInfo.Defs[ts.Name].(*types.TypeName)
+			if !ok || !isErrorType(obj) {
+				continue
+			}
+			pass.Reportf(ts.Name.Pos(),
+				"%s: error type %q is declared in %q. Fix: declare the type in %s, this layer only constructs it",
+				cfg.ruleID, ts.Name.Name, pass.Pkg.Path(), cfg.home)
+		}
+	}
+}
+
+// isErrorType reports whether the named, non-interface type has an
+// `Error() string` method on the type or its pointer (promoted ones included).
+func isErrorType(obj *types.TypeName) bool {
+	named, ok := obj.Type().(*types.Named)
+	if !ok {
+		return false
+	}
+	if _, isIface := named.Underlying().(*types.Interface); isIface {
+		return false
+	}
+	method, _, _ := types.LookupFieldOrMethod(types.NewPointer(named), true, obj.Pkg(), "Error")
+	fn, ok := method.(*types.Func)
+	if !ok {
+		return false
+	}
+	sig, ok := fn.Type().(*types.Signature)
+	if !ok {
+		return false
+	}
+	params := sig.Params()
+	results := sig.Results()
+	if params.Len() != 0 || results.Len() != 1 {
+		return false
+	}
+	result := results.At(0)
+	res, ok := result.Type().(*types.Basic)
+
+	return ok && res.Kind() == types.String
 }
 
 // checkErrorCtors looks for calls to error constructors.

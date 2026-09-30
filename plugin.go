@@ -51,6 +51,7 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/errnew"
 	"github.com/slipros/gid-data-golang-eval/analyzers/errplace"
 	"github.com/slipros/gid-data-golang-eval/analyzers/errswallow"
+	"github.com/slipros/gid-data-golang-eval/analyzers/errswitch"
 	"github.com/slipros/gid-data-golang-eval/analyzers/errtext"
 	"github.com/slipros/gid-data-golang-eval/analyzers/errwrap"
 	"github.com/slipros/gid-data-golang-eval/analyzers/errzeroret"
@@ -155,6 +156,7 @@ func init() {
 	register.Plugin("gidconstscope", newConfigurablePlugin(constscope.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidconstexpr", newSingleAnalyzerPlugin(constexpr.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidmodelmethod", newConfigurablePlugin(modelmethod.NewAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("giderrswitch", newSingleAnalyzerPlugin(errswitch.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidpuremodel", newConfigurablePlugin(puremodel.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidmodelplace", newConfigurablePlugin(modelplace.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidchainperline", newConfigurablePlugin(chainperline.NewAnalyzer, register.LoadModeTypesInfo))

@@ -8,3 +8,8 @@ package dal
 import "github.com/pkg/errors"
 
 var ErrInterceptor = errors.New("interceptor failure")
+
+// Boundary: same as above for an error TYPE — this "dal" is not the dal layer.
+type InterceptorError struct{}
+
+func (InterceptorError) Error() string { return "interceptor" }

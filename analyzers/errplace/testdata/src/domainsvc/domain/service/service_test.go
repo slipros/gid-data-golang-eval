@@ -17,3 +17,8 @@ func TestSnapshot(t *testing.T) {
 		t.Fatal(errRepoDown)
 	}
 }
+
+// fakeRepoError is a double's error type — the test's own composition, not judged.
+type fakeRepoError struct{}
+
+func (fakeRepoError) Error() string { return "fake" }

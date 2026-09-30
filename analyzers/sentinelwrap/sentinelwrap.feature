@@ -101,3 +101,23 @@ Feature: GID-244 — map a boundary error to a sentinel by reassign-then-wrap-on
 #  [x] Case classes covered: positive, negative, boundary, non-applicability
 #  [x] testdata with // want for analysistest
 #  [ ] Rule enabled in .golangci.yml
+
+  # --- The switch shape (owner decision of 2026-09-30; incident: ad-cabinet-connector) ---
+  # Two or more clauses of ONE switch, each a single `return [..., ]errors.Wrap(<staticErr>, "msg")`
+  # with the SAME string-literal message, are reported once per message on the first such clause:
+  # assign err in each case and wrap once after the switch.
+
+  Scenario: positive — several clauses wrap their own error with one message
+    Given a switch whose clauses return errors.Wrap(&entity.CabinetError{…}, "upload") three times
+    When the analyzer checks the package
+    Then a "GID-244" diagnostic is reported once, on the first such clause, with the count of clauses
+
+  Scenario: negative — assign per case, wrap once
+    Given the cases only assign "err = …" and one errors.Wrap(err, "upload") follows the switch
+    When the analyzer checks the package
+    Then no diagnostic is reported
+
+  Scenario: boundary — distinct messages, wrapped err, a clause with extra statements
+    Given the clauses wrap with different messages, or wrap err itself, or hold more than the single return
+    When the analyzer checks the package
+    Then no diagnostic is reported
