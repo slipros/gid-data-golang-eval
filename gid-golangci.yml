@@ -603,7 +603,7 @@ linters:
         original-url: github.com/slipros/gid-data-golang-eval
       gidreceiver:
         type: module
-        description: 'GID-103: receiver is the lowercase first letter of the type, two for slice types; no exceptions'
+        description: 'GID-103: receiver is the lowercase first letter of the type, first two word initials for slices (a doubled initial for one word); no exceptions'
         original-url: github.com/slipros/gid-data-golang-eval
       gidctor:
         type: module

@@ -7,7 +7,7 @@ type Snapshots []Snapshot
 
 // --- Positive cases ---
 
-func (svc *Snapshot) Bad() string { return svc.name } // want `GID-103: receiver of type Snapshot is named "s"\. Fix: use the lowercase first letter of the type \(two for slice types\), got "svc"`
+func (svc *Snapshot) Bad() string { return svc.name } // want `GID-103: receiver of type Snapshot is named "s"\. Fix: use the lowercase first letter of the type \(first two word initials for slices; double the initial for one word\), got "svc"`
 
 func (this *Snapshot) Worse() string { return this.name } // want `GID-103: receiver of type Snapshot is named "s"`
 

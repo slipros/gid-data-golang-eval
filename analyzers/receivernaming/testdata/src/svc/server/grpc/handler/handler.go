@@ -3,4 +3,4 @@ package handler
 
 type Snapshot struct{}
 
-func (h *Snapshot) Get() string { return "" } // want `GID-103: receiver of type Snapshot is named "s"\. Fix: use the lowercase first letter of the type \(two for slice types\), got "h"`
+func (h *Snapshot) Get() string { return "" } // want `GID-103: receiver of type Snapshot is named "s"\. Fix: use the lowercase first letter of the type \(first two word initials for slices; double the initial for one word\), got "h"`

@@ -1,6 +1,6 @@
 // Package receivernaming implements rule GID-103: a receiver is named by the
-// lowercase first letter of the struct name; for slice types — by two letters
-// (type Snapshots []Snapshot -> ss).
+// lowercase first letter of the type name; for slice types — by the initials of
+// the first two words (ConsentProfiles -> cp), or a doubled initial (Snapshots -> ss).
 //
 // No exceptions: the rule applies uniformly, including validate and handler
 // packages.
@@ -17,10 +17,10 @@ import (
 
 const ruleID = "GID-103"
 
-// Analyzer — rule GID-103: a receiver is the type's first letter (two for slice types).
+// Analyzer checks receiver names against type initials.
 var Analyzer = &analysis.Analyzer{
 	Name: "gidreceiver",
-	Doc:  ruleID + ": a receiver is the lowercase first letter of the type, two for slice types. Fix: rename the receiver",
+	Doc:  ruleID + ": a receiver is the lowercase first letter of the type; slices use the first two word initials (a doubled initial for one word). Fix: rename the receiver",
 	Run:  run,
 }
 
@@ -55,7 +55,7 @@ func checkReceiver(pass *analysis.Pass, fn *ast.FuncDecl) {
 		return
 	}
 	pass.Reportf(recv.Names[0].Pos(),
-		"%s: receiver of type %s is named %q. Fix: use the lowercase first letter of the type (two for slice types), got %q",
+		"%s: receiver of type %s is named %q. Fix: use the lowercase first letter of the type (first two word initials for slices; double the initial for one word), got %q",
 		ruleID, typeName, want, got)
 }
 
@@ -77,6 +77,19 @@ func expected(typeName string, isSlice bool) string {
 	r, _ := utf8.DecodeRuneInString(typeName)
 	letter := string(unicode.ToLower(r))
 	if isSlice {
+		runes := []rune(typeName)
+		for i := 1; i < len(runes); i++ {
+			if !unicode.IsUpper(runes[i]) {
+				continue
+			}
+			if unicode.IsUpper(runes[i-1]) && i+2 == len(runes) && runes[i+1] == 's' {
+				continue // A plural acronym such as URLs is still one word.
+			}
+			if unicode.IsLower(runes[i-1]) || unicode.IsDigit(runes[i-1]) ||
+				(unicode.IsUpper(runes[i-1]) && i+1 < len(runes) && unicode.IsLower(runes[i+1])) {
+				return letter + string(unicode.ToLower(runes[i]))
+			}
+		}
 		return letter + letter
 	}
 	return letter

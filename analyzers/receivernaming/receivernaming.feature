@@ -10,8 +10,9 @@ Feature: GID-103 — a receiver is the type's first letter (gidreceiver)
   # receiver type is resolved through the type info, so a pointer receiver and
   # a named slice type are both handled).
   # Expected name: the lowercase first letter of the type name; for a type
-  # whose underlying type is a slice — that letter doubled
-  # (type Snapshots []Snapshot -> ss).
+  # whose underlying type is a slice — the initials of its first two words.
+  # Acronyms count as one word (HTTPProfiles -> hp); one-word names double
+  # the initial (Snapshots -> ss). ConsentProfileIdentifiers -> cp.
   # An unnamed receiver and "_" are left alone: there is no name to check.
   # No exceptions by layer — validate and handler packages included.
   # Generated code (ast.IsGenerated) is skipped.
@@ -21,7 +22,7 @@ Feature: GID-103 — a receiver is the type's first letter (gidreceiver)
   Scenario: positive — a letter that is not the type's
     Given "func (h *Snapshot) Get() string"
     When the gidreceiver analyzer checks the file
-    Then the diagnostic "GID-103: receiver of type Snapshot is named \"s\". Fix: use the lowercase first letter of the type (two for slice types), got \"h\"" is reported on the receiver
+    Then the diagnostic "GID-103: receiver of type Snapshot is named \"s\". Fix: use the lowercase first letter of the type (first two word initials for slices; double the initial for one word), got \"h\"" is reported on the receiver
 
   Scenario: positive — an abbreviation instead of a letter
     Given "func (svc *Snapshot) Bad() string"
@@ -48,6 +49,21 @@ Feature: GID-103 — a receiver is the type's first letter (gidreceiver)
 
   Scenario: negative — a slice type with the doubled letter
     Given "type Snapshots []Snapshot" and "func (ss Snapshots) IDs() []string"
+    When the gidreceiver analyzer checks the file
+    Then no diagnostic is reported
+
+  Scenario: negative — a slice type with two word initials
+    Given "type ConsentProfiles []ConsentProfile" and "func (cp ConsentProfiles) OwnForEvent()"
+    When the gidreceiver analyzer checks the file
+    Then no diagnostic is reported
+
+  Scenario: positive — doubled initials for a multiword slice type
+    Given "func (cc ConsentProfiles) OwnForEvent()"
+    When the gidreceiver analyzer checks the file
+    Then the diagnostic "GID-103: receiver of type ConsentProfiles is named \"cp\". … got \"cc\"" is reported
+
+  Scenario: negative — an acronym counts as one word
+    Given "type HTTPProfiles []ConsentProfile" and "func (hp *HTTPProfiles) Reset()"
     When the gidreceiver analyzer checks the file
     Then no diagnostic is reported
 
