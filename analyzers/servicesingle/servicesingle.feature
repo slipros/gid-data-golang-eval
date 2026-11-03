@@ -83,3 +83,23 @@ Feature: GID-148 — a service serves one entity and does not depend on another 
 #  [x] Case classes covered: positive, negative, boundary, non-applicability
 #  [x] testdata with // want for analysistest
 #  [x] Rule enabled in .golangci.yml
+
+  Scenario: positive — a service constructs a different service in a method
+    Given a Job method creates Snapshot using "&Snapshot{repo: s.repo}", "Snapshot{}", "new(Snapshot)" or "NewSnapshot(s.repo)"
+    When the gidservicesingle analyzer checks the file
+    Then GID-148 names Job and Snapshot and asks to move construction and orchestration to usecase
+
+  Scenario: boundary — aliases and value receivers
+    Given a value-receiver Job method creates a type alias of Snapshot
+    When the gidservicesingle analyzer checks the file
+    Then GID-148 names the underlying Snapshot service
+
+  Scenario: negative — constructors, own type and Options
+    Given package-level New functions assemble services and a Job method creates Job or SnapshotOptions
+    When the gidservicesingle analyzer checks the file
+    Then no construction diagnostic is reported
+
+  Scenario: non-applicability — a test harness constructs services in a method
+    Given a test harness method creates Snapshot in a _test.go file
+    When the gidservicesingle analyzer checks the file
+    Then no diagnostic is reported

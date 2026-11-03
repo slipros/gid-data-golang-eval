@@ -1,6 +1,6 @@
 // Package errswitch implements rule GID-279: an error is first checked with an
-// `if err != nil`, and only then classified — a switch over an error variable
-// sits inside that `if`.
+// `if err != nil`, and only then classified — switches and errors.Is/As
+// conditions sit inside that `if`.
 //
 //	id, err := client.Upload(ctx, body)
 //
@@ -55,6 +55,7 @@ import (
 	"go/types"
 
 	"golang.org/x/tools/go/analysis"
+	"golang.org/x/tools/go/types/typeutil"
 
 	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
 	"github.com/slipros/gid-data-golang-eval/internal/srcfile"
@@ -65,7 +66,7 @@ const ruleID = "GID-279"
 // Analyzer — rule GID-279.
 var Analyzer = &analysis.Analyzer{
 	Name: "giderrswitch",
-	Doc: ruleID + ": a switch over an error variable sits inside if err != nil. " +
+	Doc: ruleID + ": error classification with switch or errors.Is/As sits inside if err != nil. " +
 		"Fix: check the error with if first, if err != nil { switch … ; return …, errors.Wrap(err, \"op\") }, " +
 		"and return the result after the check",
 	Requires: astwalk.Requires,
@@ -101,6 +102,7 @@ func run(pass *analysis.Pass) (any, error) {
 		}
 		if ifStmt, ok := n.(*ast.IfStmt); ok {
 			if push {
+				checkClassification(pass, params, enclosing, ifStmt)
 				enclosing = append(enclosing, ifStmt)
 			} else {
 				enclosing = enclosing[:len(enclosing)-1]
@@ -299,4 +301,31 @@ func isNilIdent(expr ast.Expr) bool {
 	id, ok := ast.Unparen(expr).(*ast.Ident)
 
 	return ok && id.Name == "nil"
+}
+
+func checkClassification(pass *analysis.Pass, params map[*types.Var]bool, enclosing []*ast.IfStmt, stmt *ast.IfStmt) {
+	seen := map[string]bool{}
+	ast.Inspect(stmt.Cond, func(n ast.Node) bool {
+		if _, ok := n.(*ast.FuncLit); ok {
+			return false
+		}
+		call, ok := n.(*ast.CallExpr)
+		if !ok || len(call.Args) == 0 {
+			return true
+		}
+		fn, ok := typeutil.Callee(pass.TypesInfo, call).(*types.Func)
+		if !ok || (fn.Name() != "Is" && fn.Name() != "As") {
+			return true
+		}
+		pkg := fn.Pkg()
+		if pkg == nil || (pkg.Path() != "errors" && pkg.Path() != "github.com/pkg/errors") {
+			return true
+		}
+		key, ok := errorVariable(pass, params, ast.Unparen(call.Args[0]))
+		if ok && !seen[key] && !guarded(enclosing, stmt, key) {
+			seen[key] = true
+			pass.Reportf(call.Pos(), "%s: the error %q is classified before checking it for nil. Fix: if %s != nil { if errors.%s(%s, target) { … }; return …, %s }; return result, nil", ruleID, key, key, fn.Name(), key, key)
+		}
+		return true
+	})
 }

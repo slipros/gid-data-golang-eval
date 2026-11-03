@@ -1,6 +1,6 @@
 # language: en
 
-Feature: GID-279 — a switch over an error sits inside `if err != nil`
+Feature: GID-279 — error classification sits inside `if err != nil`
   As a developer
   I want an error to be checked with if first and only then classified
   So that the success path is not one of the branches that classify failures
@@ -65,5 +65,25 @@ Feature: GID-279 — a switch over an error sits inside `if err != nil`
 
   Scenario: non-applicability — a _test.go file
     Given a test with "switch { case err == nil: return; default: t.Fatal(err) }"
+    When the analyzer checks the package
+    Then no diagnostic is reported
+
+  Scenario: positive — sentinel classification in an if without a non-nil guard
+    Given "query, err := s.query(); if errors.Is(err, ErrMissing) || errors.Is(err, ErrForbidden) { return Query{}, ErrNotFound }; return query, err"
+    When the analyzer checks the package
+    Then one GID-279 diagnostic asks for an enclosing "if err != nil" and success "return query, nil"
+
+  Scenario: negative — classification and propagation inside the non-nil guard
+    Given "query, err := s.query(); if err != nil { if errors.Is(err, ErrMissing) { return Query{}, ErrNotFound }; return Query{}, err }; return query, nil"
+    When the analyzer checks the package
+    Then no diagnostic is reported
+
+  Scenario: boundary — a combined check is not a separate error branch
+    Given "if err != nil && errors.Is(err, ErrMissing) { return ErrNotFound }"
+    When the analyzer checks the package
+    Then GID-279 asks for a separate enclosing non-nil guard
+
+  Scenario: non-applicability — error classifiers taking an error parameter
+    Given "func isMissing(err error) bool { if errors.Is(err, ErrMissing) { return true }; return false }"
     When the analyzer checks the package
     Then no diagnostic is reported

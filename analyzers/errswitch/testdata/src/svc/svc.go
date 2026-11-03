@@ -393,3 +393,65 @@ func typeSwitchOnAny(v any) int {
 
 	return 0
 }
+
+func queryClassifiedWithoutGuard(c client) (int, error) {
+	query, err := c.upload()
+	if errors.Is(err, ErrRate) || errors.Is(err, ErrNoTable) { // want `GID-279: the error "err" is classified before checking it for nil`
+		return 0, ErrRejected
+	}
+	return query, err
+}
+
+func queryClassifiedWithGuard(c client) (int, error) {
+	query, err := c.upload()
+	if err != nil {
+		if errors.Is(err, ErrRate) || errors.Is(err, ErrNoTable) {
+			return 0, ErrRejected
+		}
+		return 0, err
+	}
+	return query, nil
+}
+
+func asWithoutGuard(c client) error {
+	err := c.failure()
+	var target *rateError
+	if errors.As(err, &target) { // want `GID-279: the error "err" is classified before checking it for nil`
+		return target
+	}
+	return err
+}
+
+func classifyParameter(err error) bool {
+	if errors.Is(err, ErrRate) {
+		return true
+	}
+	return false
+}
+
+func classifyInElse(c client) error {
+	err := c.failure()
+	if err == nil {
+		return nil
+	} else {
+		if errors.Is(err, ErrRate) {
+			return ErrRejected
+		}
+		return err
+	}
+}
+
+func classifyInit(c client) error {
+	if err := c.failure(); errors.Is(err, ErrRate) { // want `GID-279: the error "err" is classified before checking it for nil`
+		return ErrRejected
+	}
+	return nil
+}
+
+func combinedGuard(c client) error {
+	err := c.failure()
+	if err != nil && errors.Is(err, ErrRate) { // want `GID-279: the error "err" is classified before checking it for nil`
+		return ErrRejected
+	}
+	return err
+}

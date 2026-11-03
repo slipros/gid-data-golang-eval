@@ -5,7 +5,8 @@
 //
 // The deterministic check: in the root of /domain/service a struct field
 // whose type is another struct from the same package (except *Options) means
-// a service-on-service dependency.
+// a service-on-service dependency. Constructing a different same-package service
+// inside a method (literal, new, or New* factory) is also a dependency.
 //
 // A _test.go file is not judged: tests live in the same package (GID-250), and
 // a test harness — a capture struct holding the service under test, a fixture
@@ -19,6 +20,7 @@ import (
 	"strings"
 
 	"golang.org/x/tools/go/analysis"
+	"golang.org/x/tools/go/types/typeutil"
 
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 	"github.com/slipros/gid-data-golang-eval/internal/srcfile"
@@ -42,6 +44,9 @@ func run(pass *analysis.Pass) (any, error) {
 			continue
 		}
 		for _, decl := range file.Decls {
+			if fn, ok := decl.(*ast.FuncDecl); ok && fn.Recv != nil && fn.Body != nil {
+				checkConstruction(pass, fn)
+			}
 			gd, ok := decl.(*ast.GenDecl)
 			if !ok {
 				continue
@@ -82,10 +87,11 @@ func samePackageStruct(pass *analysis.Pass, expr ast.Expr) (string, bool) {
 	if t == nil {
 		return "", false
 	}
+	t = types.Unalias(t)
 	if ptr, ok := t.(*types.Pointer); ok {
 		t = ptr.Elem()
 	}
-	named, ok := t.(*types.Named)
+	named, ok := types.Unalias(t).(*types.Named)
 	if !ok {
 		return "", false
 	}
@@ -101,4 +107,40 @@ func samePackageStruct(pass *analysis.Pass, expr ast.Expr) (string, bool) {
 		return "", false
 	}
 	return name, true
+}
+
+func checkConstruction(pass *analysis.Pass, fn *ast.FuncDecl) {
+	owner, ok := samePackageStruct(pass, fn.Recv.List[0].Type)
+	if !ok {
+		return
+	}
+	ast.Inspect(fn.Body, func(n ast.Node) bool {
+		var expr ast.Expr
+		switch node := n.(type) {
+		case *ast.CompositeLit:
+			expr = node
+		case *ast.CallExpr:
+			callee := typeutil.Callee(pass.TypesInfo, node)
+			switch c := callee.(type) {
+			case *types.Builtin:
+				if c.Name() != "new" {
+					return true
+				}
+			case *types.Func:
+				if c.Pkg() != pass.Pkg || !strings.HasPrefix(c.Name(), "New") {
+					return true
+				}
+			default:
+				return true
+			}
+			expr = node
+		default:
+			return true
+		}
+		dep, ok := samePackageStruct(pass, expr)
+		if ok && dep != owner {
+			pass.Reportf(expr.Pos(), "%s: service %q constructs service %q inside a method. Fix: move service construction and orchestration to usecase", ruleID, owner, dep)
+		}
+		return true
+	})
 }

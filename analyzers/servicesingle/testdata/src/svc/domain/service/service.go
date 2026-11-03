@@ -32,3 +32,28 @@ type Upload struct {
 }
 
 // --- Negative: interface dependencies and Options are the norm (see Snapshot, Job) ---
+
+func (s *Job) prepare() {
+	preparer := &Snapshot{repo: s.repo} // want `GID-148: service "Job" constructs service "Snapshot" inside a method\. Fix:`
+	_ = preparer
+	_ = Snapshot{}          // want `GID-148: service "Job" constructs service "Snapshot" inside a method`
+	_ = new(Snapshot)       // want `GID-148: service "Job" constructs service "Snapshot" inside a method`
+	_ = NewSnapshot(s.repo) // want `GID-148: service "Job" constructs service "Snapshot" inside a method`
+	_ = &SnapshotOptions{}
+	_ = &Job{repo: s.repo}
+}
+
+func NewSnapshot(repo SnapshotRepository) *Snapshot {
+	return &Snapshot{repo: repo}
+}
+
+func NewJob(repo SnapshotRepository) *Job {
+	_ = NewSnapshot(repo)
+	return &Job{repo: repo}
+}
+
+type SnapshotAlias = Snapshot
+
+func (s Job) byValue() {
+	_ = &SnapshotAlias{} // want `GID-148: service "Job" constructs service "Snapshot" inside a method`
+}

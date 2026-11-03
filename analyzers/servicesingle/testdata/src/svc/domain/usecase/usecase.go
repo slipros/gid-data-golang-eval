@@ -20,3 +20,5 @@ type Upload struct {
 	jobs      JobService
 	h         helper
 }
+
+func (u *Upload) prepare() { _ = &helper{} }

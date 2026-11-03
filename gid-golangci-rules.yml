@@ -326,7 +326,7 @@ linters:
         original-url: github.com/slipros/gid-data-golang-eval
       gidservicesingle:
         type: module
-        description: 'GID-148: a service does not depend on another service'
+        description: 'GID-148: a service does not hold or construct another service inside a method'
         original-url: github.com/slipros/gid-data-golang-eval
       gidlayerimports:
         type: module
@@ -405,7 +405,7 @@ linters:
         #     - 'Service.LegacyChanged'    # Type.Method
       giderrswitch:
         type: module
-        description: 'GID-279: a switch over an error variable sits inside if err != nil — the error is checked with if first, then classified'
+        description: 'GID-279: error classification with switch or errors.Is/As sits inside if err != nil — the error is checked with if first, then classified'
         original-url: github.com/slipros/gid-data-golang-eval
         # No settings; pinpoint exclusions via //nolint:giderrswitch.
       gidchainperline:

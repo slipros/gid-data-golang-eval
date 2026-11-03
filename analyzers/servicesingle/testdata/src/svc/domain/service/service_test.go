@@ -18,3 +18,8 @@ func TestSnapshotHarness(t *testing.T) {
 		t.Fatal("nil service")
 	}
 }
+
+func (h *snapshotHarness) prepare() {
+	_ = &Snapshot{}
+	_ = NewSnapshot(nil)
+}
