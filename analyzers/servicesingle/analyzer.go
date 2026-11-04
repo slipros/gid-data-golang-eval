@@ -4,9 +4,11 @@
 // several services.
 //
 // The deterministic check: in the root of /domain/service a struct field
-// whose type is another struct from the same package (except *Options) means
-// a service-on-service dependency. Constructing a different same-package service
+// whose type is another domain service/usecase struct (except *Options) means
+// a service-on-service dependency. Constructing a different domain service
 // inside a method (literal, new, or New* factory) is also a dependency.
+// Production wiring also checks concrete service/usecase implementations passed
+// through interfaces to a service constructor or literal.
 //
 // A _test.go file is not judged: tests live in the same package (GID-250), and
 // a test harness — a capture struct holding the service under test, a fixture
@@ -22,6 +24,8 @@ import (
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/types/typeutil"
 
+	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
+	"github.com/slipros/gid-data-golang-eval/internal/dependencywiring"
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 	"github.com/slipros/gid-data-golang-eval/internal/srcfile"
 )
@@ -30,12 +34,24 @@ const ruleID = "GID-148"
 
 // Analyzer — rule GID-148: a service must not depend on another service; entity orchestration happens in usecase. Fix: move orchestration to usecase.
 var Analyzer = &analysis.Analyzer{
-	Name: "gidservicesingle",
-	Doc:  ruleID + ": a service must not depend on another service; entity orchestration happens in usecase. Fix: move orchestration to usecase",
-	Run:  run,
+	Name:     "gidservicesingle",
+	Doc:      ruleID + ": a service must not depend on another service; entity orchestration happens in usecase. Fix: move orchestration to usecase",
+	Run:      run,
+	Requires: astwalk.Requires,
 }
 
 func run(pass *analysis.Pass) (any, error) {
+	for _, edge := range dependencywiring.Edges(pass) {
+		dep := edge.Dependency.Obj()
+		if strings.HasSuffix(dep.Name(), "Options") {
+			continue
+		}
+		if dependencywiring.InRootLayer(edge.Dependency, "domain", "service") || dependencywiring.InRootLayer(edge.Dependency, "domain", "usecase") {
+			owner := edge.Service.Obj()
+			pass.Reportf(edge.Pos, "%s: service %q receives domain dependency %q. Fix: move service orchestration to usecase", ruleID, owner.Name(), dep.Name())
+		}
+	}
+
 	if !pathseg.EndsWith(pass.Pkg.Path(), "domain", "service") {
 		return nil, nil
 	}
@@ -80,8 +96,8 @@ func checkServiceStruct(pass *analysis.Pass, owner string, st *ast.StructType) {
 	}
 }
 
-// samePackageStruct returns the type name if the field type is a struct
-// (or a pointer to a struct) from the same package and not an Options type.
+// samePackageStruct recognises the local service and concrete domain dependencies,
+// including those declared in another module. Options are not services.
 func samePackageStruct(pass *analysis.Pass, expr ast.Expr) (string, bool) {
 	t := pass.TypesInfo.TypeOf(expr)
 	if t == nil {
@@ -96,7 +112,7 @@ func samePackageStruct(pass *analysis.Pass, expr ast.Expr) (string, bool) {
 		return "", false
 	}
 	namedObj := named.Obj()
-	if namedObj.Pkg() != pass.Pkg {
+	if namedObj.Pkg() != pass.Pkg && !dependencywiring.InRootLayer(named, "domain", "service") && !dependencywiring.InRootLayer(named, "domain", "usecase") {
 		return "", false
 	}
 	if _, ok := named.Underlying().(*types.Struct); !ok {
@@ -127,7 +143,7 @@ func checkConstruction(pass *analysis.Pass, fn *ast.FuncDecl) {
 					return true
 				}
 			case *types.Func:
-				if c.Pkg() != pass.Pkg || !strings.HasPrefix(c.Name(), "New") {
+				if !strings.HasPrefix(c.Name(), "New") {
 					return true
 				}
 			default:

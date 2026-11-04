@@ -103,3 +103,24 @@ Feature: GID-148 — a service serves one entity and does not depend on another 
     Given a test harness method creates Snapshot in a _test.go file
     When the gidservicesingle analyzer checks the file
     Then no diagnostic is reported
+
+  Scenario: positive — interface injection in composition root
+    Given a service constructor takes a local interface
+    And app supplies a concrete service or usecase through that interface
+    When gidservicesingle checks the wiring package
+    Then GID-148 asks to move orchestration to usecase
+
+  Scenario: boundary — a single-assignment interface alias
+    Given a concrete service is assigned to an interface variable and then aliased
+    When another service is constructed with that alias
+    Then GID-148 is reported
+
+  Scenario: negative — repositories and unknown interfaces
+    Given a service receives a repository or an interface parameter of unknown implementation
+    When the analyzer runs
+    Then no speculative wiring diagnostic is reported
+
+  Scenario: non-applicability — converter helpers and options
+    Given a type in domain/service/convert or a type named Options or ending in Options
+    When it is constructed or passed to a service
+    Then it is not classified as a domain service dependency

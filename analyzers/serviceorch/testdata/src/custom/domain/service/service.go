@@ -1,6 +1,6 @@
 // Eval of the GID-260 settings: settings.suffixes adds "Store" on top of the
 // default "Repository"; settings.exclude clears a whole struct ("LegacyWriter")
-// and a single field ("Mixed.tx").
+// and a single field ("Mixed.store").
 package service
 
 import (
@@ -32,10 +32,9 @@ type LegacyWriter struct {
 	store CoreSnapshotStore
 }
 
-// --- Non-applicability: only the tx field is excluded, the pair of sources is
-// still reported ---
+// --- Non-applicability: a repository field is excluded, leaving one source ---
 
-type Mixed struct { // want `GID-260: service "Mixed" depends on 2 repositories`
+type Mixed struct {
 	tx    model.InTransactionFunc
 	repo  SnapshotRepository
 	store CoreSnapshotStore

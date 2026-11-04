@@ -42,17 +42,17 @@ type Integration struct { // want `GID-260: service "Integration" depends on 2 r
 	repo     SnapshotRepository
 }
 
-// --- Positive: a transaction held by a service ---
+// --- Negative: a transaction held by a service is allowed ---
 
 type Writer struct {
-	tx   model.InTransactionFunc // want `GID-260: service "Writer" holds a transaction — a service does not coordinate several writes\. Fix: keep the transaction in a usecase, which calls the services it composes \(or //nolint:gidserviceorch when explicitly intended\)`
+	tx   model.InTransactionFunc
 	repo SnapshotRepository
 }
 
-// --- Positive: the incident shape — both markers at once ---
+// --- Positive: a transaction does not exempt two repositories ---
 
 type CoreAndTypeWriter struct { // want `GID-260: service "CoreAndTypeWriter" depends on 2 repositories`
-	tx       model.InTransactionFunc // want `GID-260: service "CoreAndTypeWriter" holds a transaction`
+	tx       model.InTransactionFunc
 	coreRepo CoreSnapshotRepository
 	repo     SnapshotRepository
 }

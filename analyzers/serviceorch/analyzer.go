@@ -3,32 +3,8 @@
 // several data sources, and holding them together in a transaction, is what a
 // usecase is for.
 //
-// Two markers, both read off the service struct in /domain/service:
-//
-//  1. more than one repository field (a named type whose name ends with a
-//     configured suffix, settings.suffixes, default "Repository") — two sources
-//     in one service is composition;
-//  2. a transaction field — a func value whose last parameter is itself a func
-//     returning error and which returns error (model.InTransactionFunc,
-//     GID-175). A service that opens a transaction does so to keep several
-//     writes atomic; the writes it coordinates are somebody else's.
-//
-// This is what GID-236 (a repository of a FOREIGN entity) could not say on its
-// own: the incident service (2026-08-06, resource-registry
-// pkg/integration/push/firebase/domain/service/integration.go) carried
-// tx + coreRepo + repo and answered GID-236 with a //nolint stating that
-// "orchestration IS the essence of this service" — which is precisely the
-// verdict, addressed to the wrong layer. The correct shape: a core integration
-// service over the core repository, a firebase service over the firebase
-// repository, and a usecase in the module composing the two under the
-// transaction.
-//
-// A _test.go file is not judged: tests live in the same package (GID-250), and
-// a harness bundling several doubles is composition of the test, not of a
-// service (same relaxation as GID-148/236).
-//
-// Exceptions: //nolint:gidserviceorch, or settings.exclude
-// ("Struct" as a whole | "Struct.Field").
+// A service may hold a transaction function to keep operations on its entity
+// atomic. Only multiple repository dependencies imply orchestration here.
 package serviceorch
 
 import (
@@ -69,7 +45,7 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 
 	return &analysis.Analyzer{
 		Name: "gidserviceorch",
-		Doc: ruleID + ": a service does not orchestrate — no second repository and no transaction " +
+		Doc: ruleID + ": a service does not orchestrate — no second repository " +
 			"in its fields. Fix: move the composition to a usecase",
 		Run: func(pass *analysis.Pass) (any, error) {
 			return run(pass, suffixes, s.Exclude)
@@ -129,13 +105,6 @@ func checkServiceStruct(
 			repos = append(repos, name)
 			continue
 		}
-		if isTransactionFunc(t) && !exclude.Match(excl, owner, fieldName(field, "")) {
-			pass.Reportf(field.Pos(),
-				"%s: service %q holds a transaction — a service does not coordinate several writes. "+
-					"Fix: keep the transaction in a usecase, which calls the services it composes "+
-					"(or //nolint:gidserviceorch when explicitly intended)",
-				ruleID, owner)
-		}
 	}
 
 	if len(repos) > 1 {
@@ -168,44 +137,6 @@ func repositoryName(t types.Type, suffixes []string) (string, bool) {
 	}
 
 	return "", false
-}
-
-// isTransactionFunc reports whether the field type is a transaction runner:
-// a func value returning exactly error whose last parameter is itself a func
-// returning exactly error (model.InTransactionFunc — func(ctx context.Context,
-// fn func(ctx context.Context) error) error). Matched by signature, so a
-// project's own name for the type is handled.
-func isTransactionFunc(t types.Type) bool {
-	sig, ok := t.Underlying().(*types.Signature)
-	if !ok || !returnsOnlyError(sig) {
-		return false
-	}
-	params := sig.Params()
-	if params.Len() == 0 {
-		return false
-	}
-	last := params.At(params.Len() - 1)
-	lastType := last.Type()
-	inner, ok := lastType.Underlying().(*types.Signature)
-
-	return ok && returnsOnlyError(inner)
-}
-
-// returnsOnlyError reports whether the signature has exactly one result and it
-// is the error interface.
-func returnsOnlyError(sig *types.Signature) bool {
-	results := sig.Results()
-	if results.Len() != 1 {
-		return false
-	}
-	result := results.At(0)
-	named, ok := result.Type().(*types.Named)
-	if !ok {
-		return false
-	}
-	obj := named.Obj()
-
-	return obj.Name() == "error" && obj.Pkg() == nil
 }
 
 // fieldName returns the field's name for the exclusion list; an embedded field

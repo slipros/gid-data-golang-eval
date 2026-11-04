@@ -176,6 +176,7 @@ linters:
     - giderrtext
     - gidmapout
     - giderrswallow
+    - gidrepoowner # GID-280
     - giddupdep
     - gidarglimit
     - gidclosurector
@@ -326,7 +327,7 @@ linters:
         original-url: github.com/slipros/gid-data-golang-eval
       gidservicesingle:
         type: module
-        description: 'GID-148: a service does not hold or construct another service inside a method'
+        description: 'GID-148: a service does not hold, construct or receive another service or usecase; interface wiring is checked in composition root'
         original-url: github.com/slipros/gid-data-golang-eval
       gidlayerimports:
         type: module
@@ -889,7 +890,7 @@ linters:
         #     - 'Legacy'                  # the whole service struct
       gidserviceorch:
         type: module
-        description: 'GID-260: a service does not orchestrate — two repositories or a transaction in its fields mean the composition belongs to a usecase'
+        description: 'GID-260: a service does not orchestrate — multiple repositories belong in usecase; a transaction on one entity is allowed in service'
         original-url: github.com/slipros/gid-data-golang-eval
         # Type-name suffixes that mark a repository dependency, and exceptions:
         # settings:
@@ -1024,6 +1025,12 @@ linters:
         # settings:
         #   exclude:
         #     - 'Resolver.legacyResolveChunk'
+      gidrepoowner:
+        type: module
+        description: 'GID-280: a repository belongs to one service. Fix: give it one owning service and orchestrate through usecase'
+        original-url: github.com/slipros/gid-data-golang-eval
+        # settings:
+        #   exclude: [example/internal/dal/repository.Legacy]
       giddupdep:
         type: module
         description: 'GID-268: a constructor takes the same dependency twice under two different interfaces — one entity passed under several roles overstates the collaborator count. Fix: merge the interfaces into one and take the dependency as a single parameter'

@@ -111,6 +111,7 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/protorequired"
 	"github.com/slipros/gid-data-golang-eval/analyzers/puremodel"
 	"github.com/slipros/gid-data-golang-eval/analyzers/receivernaming"
+	"github.com/slipros/gid-data-golang-eval/analyzers/repoowner"
 	"github.com/slipros/gid-data-golang-eval/analyzers/scanrow"
 	"github.com/slipros/gid-data-golang-eval/analyzers/sentinelwrap"
 	"github.com/slipros/gid-data-golang-eval/analyzers/serviceentity"
@@ -246,6 +247,7 @@ func init() {
 	register.Plugin("giderrtext", newConfigurablePlugin(errtext.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("giderrswallow", newConfigurablePlugin(errswallow.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidmapout", newConfigurablePlugin(mapout.NewAnalyzer, register.LoadModeTypesInfo))
+	register.Plugin("gidrepoowner", newConfigurablePlugin(repoowner.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("giddupdep", newConfigurablePlugin(dupdep.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidarglimit", newConfigurablePlugin(arglimit.NewAnalyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidclosurector", newConfigurablePlugin(closurector.NewAnalyzer, register.LoadModeTypesInfo))

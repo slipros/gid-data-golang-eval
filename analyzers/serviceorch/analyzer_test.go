@@ -12,11 +12,11 @@ func TestAnalyzer(t *testing.T) {
 
 // TestAnalyzerSettings — settings.suffixes adds a custom repository-name suffix
 // on top of the default "Repository"; settings.exclude clears a whole struct
-// ("LegacyWriter") or a single field ("Mixed.tx").
+// ("LegacyWriter") or a single field ("Mixed.store").
 func TestAnalyzerSettings(t *testing.T) {
 	a := NewAnalyzer(Settings{
 		Suffixes: []string{"Repository", "Store"},
-		Exclude:  []string{"LegacyWriter", "Mixed.tx"},
+		Exclude:  []string{"LegacyWriter", "Mixed.store"},
 	})
 	analysistest.Run(t, analysistest.TestData(), a, "custom/...")
 }
