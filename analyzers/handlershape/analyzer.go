@@ -158,9 +158,16 @@ func checkHandler(pass *analysis.Pass, ts *ast.TypeSpec, st *ast.StructType) {
 			continue
 		}
 		for _, name := range field.Names {
-			pass.Reportf(name.Pos(),
+			pass.Reportf(
+				name.Pos(),
 				"%s: handler %q interface dependency %q must be named %q or %q. Fix: type %s interface{ Validate(ctx context.Context, req *rpc.Request) error }",
-				ruleID, ts.Name.Name, got, wantValidator, wantService, wantValidator)
+				ruleID,
+				ts.Name.Name,
+				got,
+				wantValidator,
+				wantService,
+				wantValidator,
+			)
 		}
 	}
 }

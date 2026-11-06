@@ -19,6 +19,7 @@ import (
 
 	"golang.org/x/tools/go/analysis"
 
+	"github.com/slipros/gid-data-golang-eval/internal/librarypath"
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 )
 
@@ -94,7 +95,7 @@ func checkValidatorUsed(pass *analysis.Pass) {
 			if err != nil {
 				continue
 			}
-			if path == validatorLib || strings.HasPrefix(path, validatorLib+"/") {
+			if librarypath.Canonical(pass, path) == validatorLib || strings.HasPrefix(librarypath.Canonical(pass, path), validatorLib+"/") {
 				return // validator.go is used
 			}
 		}

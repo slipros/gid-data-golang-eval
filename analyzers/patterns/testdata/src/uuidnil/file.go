@@ -32,3 +32,7 @@ func badInCondition(in request) bool {
 	}
 	return false
 }
+
+func nilSentinel(id uuid.UUID) bool {
+	return id != uuid.Nil // want `GID-002: .*!id\.IsNil\(\)`
+}

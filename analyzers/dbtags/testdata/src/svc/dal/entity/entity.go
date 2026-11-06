@@ -23,3 +23,22 @@ type Job struct {
 type cursor struct {
 	offset int
 }
+
+// Errors describe transport failures and never map onto a database row.
+type AirflowNonJSONResponseError struct {
+	StatusCode  int
+	ContentType string
+}
+
+func (e *AirflowNonJSONResponseError) Error() string { return e.ContentType }
+
+type ValueError struct{ Reason string }
+
+func (e ValueError) Error() string { return e.Reason }
+
+// Boundary: a similarly named method that does not implement error is a row.
+type AlmostError struct {
+	StatusCode int // want `GID-125:`
+}
+
+func (e AlmostError) Error() int { return e.StatusCode }

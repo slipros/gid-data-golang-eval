@@ -63,9 +63,9 @@ Feature: GID-004 — iterate over a slice of structs through gdhelper.AllPtr (gi
     Given "files []File" and the loops "for i := range files" and "for range files"
     When the gidallptr analyzer checks the file
     Then no diagnostic is reported
-    # Nothing is copied without a value variable, and the suggested fix does not
-    # apply: AllPtr yields pointers, not indices, so it cannot replace such a
-    # loop.
+    # AllPtr yields index and pointer through iter.Seq2[int, *T]. These loops
+    # use only numeric indices or bind nothing, so the narrow field-access
+    # check does not apply.
 
   Scenario: non-applicability — a range over a map, a channel or an integer
     Given the loops "for k := range m", "for v := range ch" and "for i := range 10"
@@ -84,3 +84,16 @@ Feature: GID-004 — iterate over a slice of structs through gdhelper.AllPtr (gi
 #  [x] Case classes covered: positive, negative, boundary, non-applicability
 #  [x] testdata with // want for analysistest
 #  [x] Rule enabled in .golangci.yml
+
+  Scenario: Index-only field access and pointers
+    Given a slice of structs and a range loop binding only its index
+    And every index use accesses a field or takes the address of that same slice element
+    And the loop neither reassigns nor reslices the collection
+    When gidallptr analyzes the loop
+    Then it reports GID-004 with gdhelper.AllPtr
+
+  Scenario: Index semantics must survive
+    Given a loop uses its numeric index elsewhere, replaces whole elements, or changes the slice
+    Or the collection contains primitive values
+    When gidallptr analyzes the loop
+    Then it emits no index-only-loop diagnostic

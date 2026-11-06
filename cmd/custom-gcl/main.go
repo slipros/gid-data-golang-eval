@@ -144,6 +144,8 @@ func buildInfo() commands.BuildInfo {
 		info.GoVersion = raw.GoVersion
 	}
 
+	const modifiedSettingValue = "true"
+
 	var modified bool
 
 	for i := range raw.Settings {
@@ -155,7 +157,7 @@ func buildInfo() commands.BuildInfo {
 		case "vcs.time":
 			info.Date = setting.Value
 		case "vcs.modified":
-			modified = setting.Value == "true"
+			modified = setting.Value == modifiedSettingValue
 		}
 	}
 

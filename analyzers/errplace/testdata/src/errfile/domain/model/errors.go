@@ -4,6 +4,6 @@ package model
 
 import "github.com/pkg/errors"
 
-var ErrSnapshotNotFound = errors.New("snapshot not found") // want `GID-169: error "ErrSnapshotNotFound" is declared in errors\.go\. Fix: keep layer errors in error\.go`
+var ErrSnapshotNotFound = errors.New("snapshot not found") // want `GID-169: error "ErrSnapshotNotFound" is declared in errors\.go\. Fix: keep package errors in error\.go`
 
-var ErrSnapshotExpired = errors.New("snapshot expired") // want `GID-169: error "ErrSnapshotExpired" is declared in errors\.go\. Fix: keep layer errors in error\.go`
+var ErrSnapshotExpired = errors.New("snapshot expired") // want `GID-169: error "ErrSnapshotExpired" is declared in errors\.go\. Fix: keep package errors in error\.go`

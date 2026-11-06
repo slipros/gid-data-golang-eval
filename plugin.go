@@ -6,8 +6,13 @@
 package gidrules
 
 import (
+	"encoding/json"
+
 	"github.com/golangci/plugin-module-register/register"
+	"github.com/pkg/errors"
 	"golang.org/x/tools/go/analysis"
+
+	"github.com/slipros/gid-data-golang-eval/internal/librarypath"
 
 	"github.com/slipros/gid-data-golang-eval/analyzers/allptr"
 	"github.com/slipros/gid-data-golang-eval/analyzers/approot"
@@ -23,6 +28,7 @@ import (
 	"github.com/slipros/gid-data-golang-eval/analyzers/clientwiring"
 	"github.com/slipros/gid-data-golang-eval/analyzers/cliflags"
 	"github.com/slipros/gid-data-golang-eval/analyzers/closurector"
+	"github.com/slipros/gid-data-golang-eval/analyzers/codepolicy"
 	"github.com/slipros/gid-data-golang-eval/analyzers/constexpr"
 	"github.com/slipros/gid-data-golang-eval/analyzers/constscope"
 	"github.com/slipros/gid-data-golang-eval/analyzers/constvarorder"
@@ -130,6 +136,7 @@ import (
 
 //nolint:gochecknoinits // golangci-lint Module Plugin System contract — registration only via init
 func init() {
+	register.Plugin("gidcodepolicy", newSingleAnalyzerPlugin(codepolicy.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidnogetprefix", newSingleAnalyzerPlugin(nogetprefix.Analyzer, register.LoadModeSyntax))
 	register.Plugin("gidnobatch", newSingleAnalyzerPlugin(nobatch.Analyzer, register.LoadModeTypesInfo))
 	register.Plugin("gidonlygofrsuuid", newSingleAnalyzerPlugin(onlygofrsuuid.Analyzer, register.LoadModeSyntax))
@@ -267,8 +274,18 @@ func init() {
 // one rule = one linter. loadMode — LoadModeSyntax for pure AST checks,
 // LoadModeTypesInfo for checks that need type information.
 func newSingleAnalyzerPlugin(a *analysis.Analyzer, loadMode string) func(settings any) (register.LinterPlugin, error) {
-	return func(_ any) (register.LinterPlugin, error) {
-		return &singleAnalyzerPlugin{analyzer: a, loadMode: loadMode}, nil
+	return func(settings any) (register.LinterPlugin, error) {
+		_, libraries, err := takeLibrarySettings(settings)
+		if err != nil {
+			return nil, err
+		}
+
+		configured, err := librarypath.Configure(a, libraries)
+		if err != nil {
+			return nil, err
+		}
+
+		return &singleAnalyzerPlugin{analyzer: configured, loadMode: loadMode}, nil
 	}
 }
 
@@ -279,11 +296,21 @@ func newConfigurablePlugin[T any](
 	loadMode string,
 ) func(settings any) (register.LinterPlugin, error) {
 	return func(settings any) (register.LinterPlugin, error) {
-		cfg, err := register.DecodeSettings[T](settings)
+		remaining, libraries, err := takeLibrarySettings(settings)
 		if err != nil {
 			return nil, err
 		}
-		return &singleAnalyzerPlugin{analyzer: build(cfg), loadMode: loadMode}, nil
+
+		cfg, err := register.DecodeSettings[T](remaining)
+		if err != nil {
+			return nil, err
+		}
+		configured, err := librarypath.Configure(build(cfg), libraries)
+		if err != nil {
+			return nil, err
+		}
+
+		return &singleAnalyzerPlugin{analyzer: configured, loadMode: loadMode}, nil
 	}
 }
 
@@ -299,4 +326,21 @@ func (s *singleAnalyzerPlugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 //nolint:gidnogetprefix // the method name is the register.LinterPlugin interface contract
 func (s *singleAnalyzerPlugin) GetLoadMode() string {
 	return s.loadMode
+}
+
+func takeLibrarySettings(settings any) (remaining any, libraries map[string]string, err error) {
+	values, err := register.DecodeSettings[map[string]json.RawMessage](settings)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if raw, ok := values["libraries"]; ok {
+		if err := json.Unmarshal(raw, &libraries); err != nil {
+			return nil, nil, errors.Wrap(err, "decode library overrides")
+		}
+
+		delete(values, "libraries")
+	}
+
+	return values, libraries, nil
 }

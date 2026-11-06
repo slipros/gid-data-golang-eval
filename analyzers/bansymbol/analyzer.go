@@ -22,6 +22,7 @@ import (
 	"golang.org/x/tools/go/analysis"
 
 	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
+	"github.com/slipros/gid-data-golang-eval/internal/librarypath"
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 )
 
@@ -100,14 +101,14 @@ func run(pass *analysis.Pass, symbols []Symbol) (any, error) {
 			return
 		}
 		pkg := obj.Pkg()
-		objPkg := pkg.Path()
+		objPkg := librarypath.Canonical(pass, pkg.Path())
 		objName := obj.Name()
 		//nolint:gidallptr // the plugin does not depend on the internal gdhelper library
 		for _, s := range symbols {
 			if s.Name != objName {
 				continue
 			}
-			if !pkgMatches(objPkg, s.Pkg) {
+			if !pkgMatches(objPkg, librarypath.Canonical(pass, s.Pkg)) {
 				continue
 			}
 			report(pass, sel.Sel.Pos(), s, pkg.Name(), objName)

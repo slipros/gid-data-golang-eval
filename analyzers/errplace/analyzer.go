@@ -8,11 +8,10 @@
 //   - GID-145 (giddalerrors): all dal errors live in /dal/entity.
 //     The repository exchanges connection errors for errors from entity
 //     (if no exchange happened — it passes the original through, which is not creation).
-//   - GID-169 (giderrfile): layer errors live in a dedicated file.
-//     In the root packages /domain/model and /dal/entity, package-level
-//     variables of type error are declared only in a file from settings.files
-//     (default: error.go). Refines GID-144/GID-145: those define
-//     the "home" layer for errors, while GID-169 picks the exact file inside it.
+//   - GID-169 (giderrfile): package errors live in a dedicated file.
+//     In every production package, error variables, concrete error types and
+//     their methods are declared only in a file from settings.files
+//     (default: error.go). GID-144/GID-145 separately define layer ownership.
 //
 // Forbidden outside the allowed package: declaring package-level variables
 // of type error, declaring error types (a named non-interface type whose

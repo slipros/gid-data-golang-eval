@@ -74,6 +74,7 @@ linters:
     - perfsprint     # GID-208: strconv vs fmt, concatenation vs Sprintf
     - depguard       # GID-137: library bans by import path (uuid forks, see settings)
     # --- Layer 1: simple AST patterns (former ruleguard) ---
+    - gidcodepolicy
     - gidtimenow       # GID-001
     - giduuidnil       # GID-002
     - giduuidversion   # GID-003
@@ -323,6 +324,10 @@ linters:
         - performance
         - style
     custom:
+      gidcodepolicy:
+        type: module
+        description: 'GID-281–296: multiline constructs and explicit repository/domain idioms. Fix: use one item per line, named intermediates and batch converters.'
+        original-url: github.com/slipros/gid-data-golang-eval
       # --- Layer 1: simple AST patterns (former ruleguard) ---
       gidtimenow:
         type: module
@@ -365,6 +370,9 @@ linters:
         type: module
         description: 'GID-137: for UUID only github.com/gofrs/uuid is allowed'
         original-url: github.com/slipros/gid-data-golang-eval
+      # Every custom linter accepts settings.libraries, mapping original
+      # import path prefixes to forks. Share the map with a YAML anchor.
+      # See README.md Library forks for an example.
       gidallptr:
         type: module
         description: 'GID-004: iterate a slice of structs via gdhelper.AllPtr'
@@ -1256,6 +1264,15 @@ linters:
         linters:
           - goconst
           - mnd
+      # Analyzer names, import paths and AST token comparisons are rule data.
+      - path: (analyzers/|internal/pathseg/|internal/librarypath/)
+        text: '^GID-293:'
+        linters:
+          - gidcodepolicy
+      # The standalone linter intentionally has no corporate helper dependency.
+      - text: '^GID-286:'
+        linters:
+          - gidcodepolicy
       # GID-262 forbids a comment that references the development documentation,
       # and the package documenting that rule has to quote the very markers it
       # bans (ARD, @ФТ-11, VERIFY) as examples — the same carve-out testdata

@@ -81,9 +81,16 @@ func typesAndFuncs(file *ast.File) []ast.Node {
 
 func report(pass *analysis.Pass, iface *ast.TypeSpec, boundary ast.Node) {
 	head := declHead(boundary)
-	pass.Reportf(iface.Name.Pos(),
+	pass.Reportf(
+		iface.Name.Pos(),
 		"%s: interface %s is declared below %s (line %d); interfaces open the file, right after import, const and var. Fix: move type %s interface above %s",
-		ruleID, iface.Name.Name, head, pass.Fset.Position(boundary.Pos()).Line, iface.Name.Name, head)
+		ruleID,
+		iface.Name.Name,
+		head,
+		pass.Fset.Position(boundary.Pos()).Line,
+		iface.Name.Name,
+		head,
+	)
 }
 
 func isInterface(pass *analysis.Pass, ts *ast.TypeSpec) bool {

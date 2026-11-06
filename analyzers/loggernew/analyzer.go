@@ -28,6 +28,8 @@ import (
 
 	"golang.org/x/tools/go/analysis"
 
+	"github.com/slipros/gid-data-golang-eval/internal/librarypath"
+
 	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 )
@@ -107,7 +109,7 @@ func bannedLoggerCall(pass *analysis.Pass, call *ast.CallExpr) (pkgName, name st
 	if pkg == nil {
 		return "", "", false
 	}
-	banned, known := bannedFuncs[pkg.Path()]
+	banned, known := bannedFuncs[librarypath.Canonical(pass, pkg.Path())]
 	if !known {
 		return "", "", false
 	}

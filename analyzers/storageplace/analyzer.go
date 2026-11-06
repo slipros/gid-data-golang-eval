@@ -41,6 +41,7 @@ import (
 
 	"golang.org/x/tools/go/analysis"
 
+	"github.com/slipros/gid-data-golang-eval/internal/librarypath"
 	"github.com/slipros/gid-data-golang-eval/internal/modlayout"
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 )
@@ -60,7 +61,9 @@ var defaultDrivers = []string{
 	"github.com/jmoiron/sqlx",
 	"github.com/ClickHouse/clickhouse-go",
 	"gid.team/gid-data/tech/golang/libs/postgres.git",
+	"gitlab.gid.team/gid-data/tech/golang/libs/postgres.git",
 	"gid.team/gid-data/tech/golang/libs/clickhouse.git",
+	"gitlab.gid.team/gid-data/tech/golang/libs/clickhouse.git",
 	// key-value / NoSQL
 	"github.com/redis/go-redis",
 	"github.com/redis/rueidis",
@@ -74,6 +77,7 @@ var defaultDrivers = []string{
 	"github.com/gocql/gocql",
 	"github.com/elastic/go-elasticsearch",
 	"gid.team/gid-data/tech/golang/libs/redis.git",
+	"gitlab.gid.team/gid-data/tech/golang/libs/redis.git",
 }
 
 // observabilitySubpaths — subpackages of a driver library that carry no
@@ -97,10 +101,20 @@ var observabilitySubpaths = []string{
 // storage access; the moment sql.DB/sql.Open shows up, the file is flagged.
 var valueOnlySymbols = map[string]map[string]bool{
 	"database/sql": {
-		"NullBool": true, "NullByte": true, "NullFloat64": true, "NullInt16": true,
-		"NullInt32": true, "NullInt64": true, "NullString": true, "NullTime": true,
-		"Null": true, "RawBytes": true, "Scanner": true, "NamedArg": true, "Named": true,
-		"ErrNoRows": true,
+		"NullBool":    true,
+		"NullByte":    true,
+		"NullFloat64": true,
+		"NullInt16":   true,
+		"NullInt32":   true,
+		"NullInt64":   true,
+		"NullString":  true,
+		"NullTime":    true,
+		"Null":        true,
+		"RawBytes":    true,
+		"Scanner":     true,
+		"NamedArg":    true,
+		"Named":       true,
+		"ErrNoRows":   true,
 	},
 }
 
@@ -183,7 +197,7 @@ func checkImports(pass *analysis.Pass, file *ast.File, drivers, excluded []strin
 		if err != nil {
 			continue
 		}
-		if hasPrefixPath(path, excluded) || !isDriver(path, drivers) || usesValueSymbolsOnly(pass, file, path) {
+		if hasPrefixPath(path, excluded) || (!isDriver(path, drivers) && !isDriver(librarypath.Canonical(pass, path), drivers)) || usesValueSymbolsOnly(pass, file, path) {
 			continue
 		}
 		pass.Reportf(imp.Pos(),

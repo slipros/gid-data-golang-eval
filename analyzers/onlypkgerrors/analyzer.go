@@ -32,6 +32,8 @@ import (
 	"strconv"
 
 	"golang.org/x/tools/go/analysis"
+
+	"github.com/slipros/gid-data-golang-eval/internal/librarypath"
 	"golang.org/x/tools/go/types/typeutil"
 
 	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
@@ -76,7 +78,7 @@ func run(pass *analysis.Pass) (any, error) {
 			return
 		}
 		fPkg := f.Pkg()
-		names, ok := forbidden[fPkg.Path()]
+		names, ok := forbidden[librarypath.Canonical(pass, fPkg.Path())]
 		if !ok {
 			return
 		}

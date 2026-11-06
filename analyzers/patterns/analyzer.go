@@ -23,6 +23,8 @@ import (
 	"regexp"
 
 	"golang.org/x/tools/go/analysis"
+
+	"github.com/slipros/gid-data-golang-eval/internal/librarypath"
 	"golang.org/x/tools/go/types/typeutil"
 
 	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
@@ -91,7 +93,11 @@ var DeepEqualAnalyzer = &analysis.Analyzer{
 
 // uuidVersionFuncs — generator functions banned in favour of NewV7.
 var uuidVersionFuncs = map[string]struct{}{
-	"NewV1": {}, "NewV3": {}, "NewV4": {}, "NewV5": {}, "NewV6": {},
+	"NewV1": {},
+	"NewV3": {},
+	"NewV4": {},
+	"NewV5": {},
+	"NewV6": {},
 }
 
 // printfFormatArg maps a printf-like function (by package path + name) to the
@@ -135,7 +141,7 @@ func calleePkgPath(pass *analysis.Pass, call *ast.CallExpr) (pkgPath, funcName s
 	if pkg == nil {
 		return "", ""
 	}
-	return pkg.Path(), fn.Name()
+	return librarypath.Canonical(pass, pkg.Path()), fn.Name()
 }
 
 // inspectCalls calls fn for each CallExpr of every non-generated file, in
@@ -255,16 +261,20 @@ func runUUIDNil(pass *analysis.Pass) (any, error) {
 		// One side must be uuid.UUID{}, the other a uuid.UUID value.
 		var value ast.Expr
 		switch {
-		case uuidEmptyLit(pass, be.Y) && isGofrsUUID(pass.TypesInfo.TypeOf(be.X)):
+		case uuidEmptyLit(pass, be.Y) && isGofrsUUID(pass, pass.TypesInfo.TypeOf(be.X)):
 			value = be.X
-		case uuidEmptyLit(pass, be.X) && isGofrsUUID(pass.TypesInfo.TypeOf(be.Y)):
+		case uuidEmptyLit(pass, be.X) && isGofrsUUID(pass, pass.TypesInfo.TypeOf(be.Y)):
 			value = be.Y
 		default:
 			return
 		}
 
 		valueText := render(pass.Fset, value)
-		replacement := valueText + ".IsNil()"
+		method := "IsNil"
+		if obj, _, _ := types.LookupFieldOrMethod(pass.TypesInfo.TypeOf(value), true, pass.Pkg, "IsZero"); obj != nil {
+			method = "IsZero"
+		}
+		replacement := valueText + "." + method + "()"
 		op := "=="
 		if be.Op == token.NEQ {
 			replacement = "!" + replacement
@@ -275,7 +285,7 @@ func runUUIDNil(pass *analysis.Pass) (any, error) {
 			Message: "GID-002: do not compare a UUID with uuid.UUID{}. " +
 				`Fix: replace "` + valueText + " " + op + ` uuid.UUID{}" with "` + replacement + `".`,
 			SuggestedFixes: []analysis.SuggestedFix{{
-				Message: "use IsNil()",
+				Message: "use " + method + "()",
 				TextEdits: []analysis.TextEdit{{
 					Pos:     be.Pos(),
 					End:     be.End(),
@@ -317,23 +327,34 @@ func isConst(pass *analysis.Pass, e ast.Expr) bool {
 // uuid.UUID type (uuid.UUID{}). Parentheses are stripped: inside an if
 // condition the literal must be written as (uuid.UUID{}) to parse at all.
 func uuidEmptyLit(pass *analysis.Pass, e ast.Expr) bool {
+	if sel, ok := ast.Unparen(e).(*ast.SelectorExpr); ok {
+		obj := pass.TypesInfo.ObjectOf(sel.Sel)
+		if obj == nil || obj.Name() != "Nil" {
+			return false
+		}
+
+		pkg := obj.Pkg()
+		if pkg != nil && pathseg.SameLibrary(librarypath.Canonical(pass, pkg.Path()), gofrsUUID) {
+			return isGofrsUUID(pass, obj.Type())
+		}
+	}
 	cl, ok := ast.Unparen(e).(*ast.CompositeLit)
 	if !ok || len(cl.Elts) != 0 {
 		return false
 	}
-	return isGofrsUUID(pass.TypesInfo.TypeOf(cl))
+	return isGofrsUUID(pass, pass.TypesInfo.TypeOf(cl))
 }
 
 // isGofrsUUID reports whether t is the UUID type of github.com/gofrs/uuid at
 // any major version (v5 included — see pathseg.SameLibrary).
-func isGofrsUUID(t types.Type) bool {
+func isGofrsUUID(pass *analysis.Pass, t types.Type) bool {
 	named, ok := t.(*types.Named)
 	if !ok {
 		return false
 	}
 	obj := named.Obj()
 	pkg := obj.Pkg()
-	return obj.Name() == "UUID" && pkg != nil && pathseg.SameLibrary(pkg.Path(), gofrsUUID)
+	return obj.Name() == "UUID" && pkg != nil && pathseg.SameLibrary(librarypath.Canonical(pass, pkg.Path()), gofrsUUID)
 }
 
 // render prints an AST expression back to source text.

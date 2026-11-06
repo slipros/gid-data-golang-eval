@@ -44,6 +44,7 @@ func TestOwnModule(t *testing.T) {
 		{"foreign module", &analysis.Module{Path: root}, "git.example.com/team/lib/domain/model", false},
 		{"sibling with the same prefix", &analysis.Module{Path: root}, root + "-lib/domain/model", false},
 	}
+	//nolint:gidallptr // the standalone plugin does not depend on the corporate helper library
 	for i := range tests {
 		tt := &tests[i]
 		t.Run(tt.name, func(t *testing.T) {

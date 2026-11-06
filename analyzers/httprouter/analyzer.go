@@ -67,6 +67,7 @@ import (
 	"golang.org/x/tools/go/types/typeutil"
 
 	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
+	"github.com/slipros/gid-data-golang-eval/internal/librarypath"
 )
 
 const (
@@ -105,14 +106,16 @@ type Settings struct {
 
 // fromServerPackage reports whether the callee belongs to the http server
 // library.
-func (s Settings) fromServerPackage(fn *types.Func) bool {
+func (s Settings) fromServerPackage(pass *analysis.Pass, fn *types.Func) bool {
 	pkg := fn.Pkg()
 	if pkg == nil {
 		return false
 	}
 
 	for _, prefix := range s.Packages {
-		if pkg.Path() == prefix || strings.HasSuffix(pkg.Path(), "/"+strings.TrimPrefix(prefix, "/")) {
+		prefix = librarypath.Canonical(pass, prefix)
+		path := librarypath.Canonical(pass, pkg.Path())
+		if path == prefix || strings.HasSuffix(path, "/"+strings.TrimPrefix(prefix, "/")) {
 			return true
 		}
 	}
@@ -132,7 +135,7 @@ func (s Settings) classify(pass *analysis.Pass, arg ast.Expr) kind {
 		return kindBare
 	}
 
-	if s.fromServerPackage(fn) {
+	if s.fromServerPackage(pass, fn) {
 		switch name := fn.Name(); {
 		case strings.HasPrefix(name, "NewSystemRouter"):
 			return kindSystem
@@ -188,7 +191,7 @@ func NewAnalyzer(s Settings) *analysis.Analyzer {
 func run(pass *analysis.Pass, s Settings) (any, error) {
 	astwalk.NodesOf(pass, nil, func(_ *ast.File, call *ast.CallExpr) {
 		fn := typeutil.StaticCallee(pass.TypesInfo, call)
-		if fn == nil || !s.fromServerPackage(fn) {
+		if fn == nil || !s.fromServerPackage(pass, fn) {
 			return
 		}
 

@@ -59,8 +59,8 @@ func goodPtrSlice(files []*File) []string {
 
 // --- Not applicable: no value variable is bound ---
 
-// Index-only iteration copies nothing, and AllPtr yields pointers instead of
-// indices — it cannot replace this loop.
+// Index-only iteration copies nothing. AllPtr yields
+// indices together with pointers. Numeric-index-only loops are left unchanged.
 func notApplicableIndexOnly(files []File) int {
 	n := 0
 	for i := range files {
@@ -93,4 +93,44 @@ func notApplicableMap(byID map[string]File) []string {
 		out = append(out, id)
 	}
 	return out
+}
+
+// Positive: index is used only to reach the struct, including mutation.
+func indexedFields(files []File) {
+	for i := range files { // want `GID-004: index-only loop accesses struct elements`
+		files[i].Name = "changed"
+	}
+}
+
+func indexedAddress(files []File) {
+	for i := range files { // want `GID-004: index-only loop accesses struct elements`
+		current := &files[i]
+		current.Name = "changed"
+	}
+}
+
+// Boundary: the numeric index and element replacement must be preserved.
+func numericIndex(files []File) {
+	for i := range files {
+		files[i].Name = string(rune(i))
+	}
+}
+
+func replaceElement(files []File) {
+	for i := range files {
+		files[i] = File{}
+	}
+}
+
+func resizeSlice(files []File) {
+	for i := range files {
+		files[i].Name = "changed"
+		files = files[:len(files)-1]
+	}
+}
+
+func primitiveIndex(values []int) {
+	for i := range values {
+		values[i]++
+	}
 }

@@ -93,3 +93,9 @@ Feature: GID-125 — entity fields carry a DB column mapping tag
     Given a file with the "Code generated … DO NOT EDIT." marker declares an entity
     When the analyzer checks the file
     Then no diagnostic is reported
+
+  Scenario: Error values are not database rows
+    Given an entity struct implements error on either its value or pointer
+    When giddbtags analyzes a SQL-backed module
+    Then the error fields require no db tags
+    But a type with Error returning an integer still requires mapping tags

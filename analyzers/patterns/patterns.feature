@@ -186,3 +186,11 @@ Feature: GID-001…008 — the simple AST patterns (gidtimenow, giduuidnil, gidu
 #  [x] Case classes covered: positive, negative, boundary, non-applicability
 #  [x] testdata with // want for analysistest (one fixture package per rule)
 #  [x] Rules enabled in .golangci.yml
+
+  Scenario: UUID nil sentinel comparison respects the installed API
+    Given a gofrs UUID is compared with uuid.Nil on either side
+    When giduuidnil analyzes the equality or inequality
+    Then it recommends IsZero if the actual UUID type has that method
+    Otherwise it recommends IsNil for older gofrs releases
+    And inequality negates the method call
+    But comparisons of two nonzero UUID variables remain allowed

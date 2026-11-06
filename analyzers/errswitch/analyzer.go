@@ -324,7 +324,16 @@ func checkClassification(pass *analysis.Pass, params map[*types.Var]bool, enclos
 		key, ok := errorVariable(pass, params, ast.Unparen(call.Args[0]))
 		if ok && !seen[key] && !guarded(enclosing, stmt, key) {
 			seen[key] = true
-			pass.Reportf(call.Pos(), "%s: the error %q is classified before checking it for nil. Fix: if %s != nil { if errors.%s(%s, target) { … }; return …, %s }; return result, nil", ruleID, key, key, fn.Name(), key, key)
+			pass.Reportf(
+				call.Pos(),
+				"%s: the error %q is classified before checking it for nil. Fix: if %s != nil { if errors.%s(%s, target) { … }; return …, %s }; return result, nil",
+				ruleID,
+				key,
+				key,
+				fn.Name(),
+				key,
+				key,
+			)
 		}
 		return true
 	})

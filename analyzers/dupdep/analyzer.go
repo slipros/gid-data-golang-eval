@@ -121,10 +121,17 @@ func checkCall(pass *analysis.Pass, s Settings, call *ast.CallExpr) {
 			if !ok {
 				continue
 			}
-			pass.Reportf(call.Args[j].Pos(),
+			pass.Reportf(
+				call.Args[j].Pos(),
 				"%s: constructor %s receives the same value in parameters %s and %s — one dependency passed twice under different interfaces. "+
 					"Fix: merge %s and %s into a single interface and take the dependency as one parameter",
-				ruleID, name, paramDesc(params, i), paramDesc(params, j), ifaceI, ifaceJ)
+				ruleID,
+				name,
+				paramDesc(params, i),
+				paramDesc(params, j),
+				ifaceI,
+				ifaceJ,
+			)
 
 			return // one diagnostic per duplicated argument
 		}

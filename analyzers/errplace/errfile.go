@@ -3,29 +3,20 @@ package errplace
 import (
 	"go/ast"
 	"go/token"
+	"go/types"
 	"path/filepath"
 
 	"golang.org/x/tools/go/analysis"
-
-	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 )
 
 const errFileRuleID = "GID-169"
-
-// errFileScopes — root layer packages where GID-169 applies.
-// Layer roots only (pathseg.EndsWith): subpackages model/filter, entity/...
-// are not touched.
-var errFileScopes = [][]string{
-	{"domain", "model"},
-	{"dal", "entity"},
-}
 
 // FileAnalyzer — variant with the default file list (error.go).
 var FileAnalyzer = NewFileAnalyzer(Settings{})
 
 // Settings — settings of rule GID-169 from .golangci.yml.
 type Settings struct {
-	// Files — names of files where layer error declarations are allowed.
+	// Files — names of files where package error declarations are allowed.
 	// Empty → default ["error.go"] (the canonical layer-errors file name).
 	Files []string `json:"files"`
 }
@@ -42,7 +33,7 @@ func NewFileAnalyzer(s Settings) *analysis.Analyzer {
 	}
 	return &analysis.Analyzer{
 		Name: "giderrfile",
-		Doc:  errFileRuleID + ": layer errors live in a dedicated file (error.go). Fix: move errors into error.go",
+		Doc:  errFileRuleID + ": package errors live in a dedicated file (error.go). Fix: move errors into error.go",
 		Run: func(pass *analysis.Pass) (any, error) {
 			return runErrFile(pass, allowed)
 		},
@@ -50,9 +41,6 @@ func NewFileAnalyzer(s Settings) *analysis.Analyzer {
 }
 
 func runErrFile(pass *analysis.Pass, allowed map[string]struct{}) (any, error) {
-	if !inErrFileScope(pass.Pkg.Path()) {
-		return nil, nil
-	}
 	for _, file := range pass.Files {
 		if ast.IsGenerated(file) {
 			continue
@@ -65,17 +53,38 @@ func runErrFile(pass *analysis.Pass, allowed map[string]struct{}) (any, error) {
 			continue
 		}
 		checkErrFileVars(pass, fname, file)
-	}
-	return nil, nil
-}
-
-func inErrFileScope(pkgPath string) bool {
-	for _, scope := range errFileScopes {
-		if pathseg.EndsWith(pkgPath, scope...) {
-			return true
+		for _, decl := range file.Decls {
+			switch d := decl.(type) {
+			case *ast.GenDecl:
+				if d.Tok != token.TYPE {
+					continue
+				}
+				for _, spec := range d.Specs {
+					ts, ok := spec.(*ast.TypeSpec)
+					if !ok || ts.Assign.IsValid() {
+						continue
+					}
+					obj, ok := pass.TypesInfo.Defs[ts.Name].(*types.TypeName)
+					if ok && isErrorType(obj) {
+						pass.Reportf(ts.Pos(), "%s: error type %q is declared in %s. Fix: move the type and its methods to error.go", errFileRuleID, ts.Name.Name, fname)
+					}
+				}
+			case *ast.FuncDecl:
+				if d.Recv == nil || len(d.Recv.List) != 1 {
+					continue
+				}
+				t := pass.TypesInfo.TypeOf(d.Recv.List[0].Type)
+				if ptr, ok := t.(*types.Pointer); ok {
+					t = ptr.Elem()
+				}
+				if named, ok := t.(*types.Named); ok && isErrorType(named.Obj()) {
+					obj := named.Obj()
+					pass.Reportf(d.Name.Pos(), "%s: method of error type %q is declared in %s. Fix: move the method to error.go", errFileRuleID, obj.Name(), fname)
+				}
+			}
 		}
 	}
-	return false
+	return nil, nil
 }
 
 func isTestFile(fname string) bool {
@@ -104,7 +113,7 @@ func checkErrFileVars(pass *analysis.Pass, fname string, file *ast.File) {
 					continue
 				}
 				pass.Reportf(name.Pos(),
-					"%s: error %q is declared in %s. Fix: keep layer errors in error.go",
+					"%s: error %q is declared in %s. Fix: keep package errors in error.go",
 					errFileRuleID, name.Name, fname)
 			}
 		}

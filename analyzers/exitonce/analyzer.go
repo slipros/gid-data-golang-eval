@@ -15,6 +15,8 @@ import (
 	"go/types"
 
 	"golang.org/x/tools/go/analysis"
+
+	"github.com/slipros/gid-data-golang-eval/internal/librarypath"
 )
 
 const ruleID = "GID-181"
@@ -108,7 +110,7 @@ func exitName(pass *analysis.Pass, call *ast.CallExpr) (string, bool) {
 
 	// A method of a logrus type (*logrus.Entry / *logrus.Logger): Fatal*.
 	if recv := sig.Recv(); recv != nil {
-		if isLogrusType(recv.Type()) && isFatalName(fn.Name()) {
+		if isLogrusType(pass, recv.Type()) && isFatalName(fn.Name()) {
 			return "logrus." + fn.Name(), true
 		}
 		return "", false
@@ -119,7 +121,7 @@ func exitName(pass *analysis.Pass, call *ast.CallExpr) (string, bool) {
 		return "", false
 	}
 	pkg := fn.Pkg()
-	switch pkg.Path() {
+	switch librarypath.Canonical(pass, pkg.Path()) {
 	case "os":
 		if fn.Name() == "Exit" {
 			return "os.Exit", true
@@ -147,16 +149,16 @@ func isFatalName(name string) bool {
 }
 
 // isLogrusType reports whether the type belongs to the logrus package.
-func isLogrusType(t types.Type) bool {
+func isLogrusType(pass *analysis.Pass, t types.Type) bool {
 	switch tt := t.(type) {
 	case *types.Pointer:
-		return isLogrusType(tt.Elem())
+		return isLogrusType(pass, tt.Elem())
 	case *types.Alias:
-		return isLogrusType(types.Unalias(tt))
+		return isLogrusType(pass, types.Unalias(tt))
 	case *types.Named:
 		obj := tt.Obj()
 		pkg := obj.Pkg()
-		return pkg != nil && pkg.Path() == logrusPkgPath
+		return pkg != nil && librarypath.Canonical(pass, pkg.Path()) == logrusPkgPath
 	}
 	return false
 }

@@ -227,7 +227,13 @@ func runWrap(pass *analysis.Pass) (any, error) {
 				continue
 			}
 			callErrs := classifyCallErrors(pass, fn, boundary)
+			if pathseg.HasLayer(pkgPath, "dal", "repository") {
+				callErrs = repositoryUnambiguousCallErrors(pass, fn, callErrs)
+			}
 			checkMustWrap(pass, fn, callErrs)
+			if pathseg.HasLayer(pkgPath, "dal", "repository") {
+				checkRepositoryConversionWrap(pass, fn)
+			}
 			if domain {
 				checkDomainWrapBan(pass, fn, callErrs)
 			}
@@ -984,4 +990,203 @@ func isErrorType(t types.Type) bool {
 		return false
 	}
 	return types.Implements(t, errIface)
+}
+
+// checkRepositoryConversionWrap distinguishes internal conversion/build failures from I/O.
+func checkRepositoryConversionWrap(pass *analysis.Pass, fn *ast.FuncDecl) {
+	checkRepositoryBlock(pass, fn.Body, map[types.Object]bool{}, uncertainRepositoryErrors(pass, fn))
+}
+
+func checkRepositoryBlock(pass *analysis.Pass, block *ast.BlockStmt, incoming, uncertain map[types.Object]bool) {
+	localErrors := make(map[types.Object]bool, len(incoming))
+	for obj, local := range incoming {
+		localErrors[obj] = local
+	}
+	for _, statement := range block.List {
+		ast.Inspect(statement, func(n ast.Node) bool {
+			switch n := n.(type) {
+			case *ast.FuncLit:
+				return false
+			case *ast.ForStmt:
+				// The post statement executes after the body, and subsequent
+				// iterations may see any assignment from the loop.
+				loopErrors := invalidatedNestedRepositoryAssignments(pass, n, localErrors)
+				checkRepositoryBlock(pass, n.Body, loopErrors, uncertain)
+				return false
+			case *ast.RangeStmt:
+				loopErrors := invalidatedNestedRepositoryAssignments(pass, n, localErrors)
+				checkRepositoryBlock(pass, n.Body, loopErrors, uncertain)
+				return false
+			case *ast.BlockStmt:
+				checkRepositoryBlock(pass, n, localErrors, uncertain)
+				return false
+			case *ast.CaseClause:
+				checkRepositoryBlock(pass, &ast.BlockStmt{List: n.Body}, localErrors, uncertain)
+				return false
+			case *ast.CommClause:
+				clauseErrors := invalidatedNestedRepositoryAssignments(pass, n, localErrors)
+				checkRepositoryBlock(pass, &ast.BlockStmt{List: n.Body}, clauseErrors, uncertain)
+				return false
+			case *ast.AssignStmt:
+				// Wrappers on the right-hand side still refer to the old error.
+				for _, rhs := range n.Rhs {
+					ast.Inspect(rhs, func(node ast.Node) bool {
+						if _, ok := node.(*ast.FuncLit); ok {
+							return false
+						}
+						if call, ok := node.(*ast.CallExpr); ok {
+							checkRepositoryWrapper(pass, call, localErrors)
+						}
+						return true
+					})
+				}
+				local := len(n.Rhs) == 1 && repositoryConversionCall(pass, n.Rhs[0])
+				for _, lhs := range n.Lhs {
+					if id, ok := lhs.(*ast.Ident); ok {
+						obj := objectOf(pass, id)
+						if obj != nil && isErrorType(obj.Type()) {
+							localErrors[obj] = local && !uncertain[obj]
+						}
+					}
+				}
+				return false
+			case *ast.CallExpr:
+				checkRepositoryWrapper(pass, n, localErrors)
+			}
+			return true
+		})
+		// Assignments in conditional branches and loops have ambiguous provenance
+		// after their enclosing statement. Do not carry their classification out.
+		localErrors = invalidatedNestedRepositoryAssignments(pass, statement, localErrors)
+	}
+}
+
+func invalidatedNestedRepositoryAssignments(pass *analysis.Pass, statement ast.Node, incoming map[types.Object]bool) map[types.Object]bool {
+	localErrors := make(map[types.Object]bool, len(incoming))
+	for obj, local := range incoming {
+		localErrors[obj] = local
+	}
+	depth := 0
+	ast.Inspect(statement, func(n ast.Node) bool {
+		if n == nil {
+			depth--
+			return true
+		}
+		if _, ok := n.(*ast.FuncLit); ok {
+			return false
+		}
+		if loop, ok := n.(*ast.RangeStmt); ok {
+			for _, target := range []ast.Expr{loop.Key, loop.Value} {
+				if id, ok := target.(*ast.Ident); ok {
+					delete(localErrors, objectOf(pass, id))
+				}
+			}
+		}
+		if assignment, ok := n.(*ast.AssignStmt); ok && depth > 0 {
+			for _, lhs := range assignment.Lhs {
+				if id, ok := lhs.(*ast.Ident); ok {
+					delete(localErrors, objectOf(pass, id))
+				}
+			}
+		}
+		depth++
+		return true
+	})
+	return localErrors
+}
+
+func checkRepositoryWrapper(pass *analysis.Pass, call *ast.CallExpr, localErrors map[types.Object]bool) {
+	name := pkgErrorsCallName(pass, call)
+	if name != "Wrap" && name != "Wrapf" && name != "WithStack" || len(call.Args) == 0 {
+		return
+	}
+	if localErrors[objectOfErrExpr(pass, call.Args[0])] {
+		pass.Reportf(call.Pos(), "GID-176: repository conversion/build error is wrapped with a new stack. Fix: use errors.WithMessage(err, \"convert row\") for this internal call")
+	}
+}
+
+func repositoryConversionCall(pass *analysis.Pass, expr ast.Expr) bool {
+	call, ok := ast.Unparen(expr).(*ast.CallExpr)
+	if !ok {
+		return false
+	}
+	callee := typeutil.StaticCallee(pass.TypesInfo, call)
+	if callee == nil || callee.Pkg() == nil {
+		return false
+	}
+	pkg := callee.Pkg()
+	path := pkg.Path()
+	return sameModule(pass.Pkg.Path(), path) && (pathseg.EndsWith(path, "convert") || pathseg.EndsWith(path, "build") ||
+		pkg == pass.Pkg && (strings.HasPrefix(callee.Name(), "build") || strings.HasPrefix(callee.Name(), "Build")))
+}
+
+func repositoryUnambiguousCallErrors(pass *analysis.Pass, fn *ast.FuncDecl, incoming map[types.Object]errSource) map[types.Object]errSource {
+	unambiguous := make(map[types.Object]errSource, len(incoming))
+	for obj, source := range incoming {
+		unambiguous[obj] = source
+	}
+	ast.Inspect(fn.Body, func(n ast.Node) bool {
+		if _, ok := n.(*ast.FuncLit); ok {
+			return false
+		}
+		assignment, ok := n.(*ast.AssignStmt)
+		if !ok || len(assignment.Rhs) != 1 || !repositoryConversionCall(pass, assignment.Rhs[0]) {
+			return true
+		}
+		for _, lhs := range assignment.Lhs {
+			if id, ok := lhs.(*ast.Ident); ok {
+				delete(unambiguous, objectOf(pass, id))
+			}
+		}
+		return true
+	})
+	return unambiguous
+}
+
+// Address escapes and closure writes make a variable's source opaque to this local analysis.
+func uncertainRepositoryErrors(pass *analysis.Pass, fn *ast.FuncDecl) map[types.Object]bool {
+	uncertain := map[types.Object]bool{}
+	closureDepth := 0
+	var stack []bool
+	ast.Inspect(fn.Body, func(n ast.Node) bool {
+		if n == nil {
+			if stack[len(stack)-1] {
+				closureDepth--
+			}
+			stack = stack[:len(stack)-1]
+			return true
+		}
+		_, closure := n.(*ast.FuncLit)
+		if closure {
+			closureDepth++
+		}
+		var targets []ast.Expr
+		switch node := n.(type) {
+		case *ast.UnaryExpr:
+			if node.Op == token.AND {
+				targets = []ast.Expr{node.X}
+			}
+		case *ast.AssignStmt:
+			if closureDepth > 0 {
+				targets = node.Lhs
+			}
+		case *ast.RangeStmt:
+			if closureDepth > 0 {
+				targets = []ast.Expr{node.Key, node.Value}
+			}
+		}
+		for _, target := range targets {
+			id, ok := target.(*ast.Ident)
+			if !ok {
+				continue
+			}
+			obj := objectOf(pass, id)
+			if obj != nil && isErrorType(obj.Type()) {
+				uncertain[obj] = true
+			}
+		}
+		stack = append(stack, closure)
+		return true
+	})
+	return uncertain
 }

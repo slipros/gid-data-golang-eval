@@ -34,6 +34,8 @@ import (
 
 	"golang.org/x/tools/go/analysis"
 
+	"github.com/slipros/gid-data-golang-eval/internal/librarypath"
+
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 )
 
@@ -112,7 +114,7 @@ func checkImports(pass *analysis.Pass, file *ast.File, thirdParty []string) {
 			checkSameModule(pass, imp, path)
 			continue
 		}
-		checkThirdParty(pass, imp, path, thirdParty)
+		checkThirdParty(pass, imp, librarypath.Canonical(pass, path), thirdParty)
 	}
 }
 

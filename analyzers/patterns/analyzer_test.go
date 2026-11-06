@@ -40,3 +40,7 @@ func TestQuoteVerb(t *testing.T) {
 func TestDeepEqual(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), DeepEqualAnalyzer, "deepequal")
 }
+
+func TestUUIDNilMajorVersion(t *testing.T) {
+	analysistest.Run(t, analysistest.TestData(), UUIDNilAnalyzer, "uuidnilv5")
+}

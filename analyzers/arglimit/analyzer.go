@@ -91,12 +91,19 @@ func run(pass *analysis.Pass, maxArgs int, excluded []string) (any, error) {
 		if count <= maxArgs {
 			return
 		}
-		pass.Reportf(fn.Name.Pos(),
+		pass.Reportf(
+			fn.Name.Pos(),
 			"%s: %s takes %d substantive arguments (allowed: %d) — a function with that many parameters "+
 				"stopped being a conversion and became assembly. "+
 				"Fix: split it into smaller functions or introduce a type that groups the related fields "+
 				"(func %s(in In) Out instead of func %s(a, b, c, d int) Out)",
-			ruleID, methodLabel(fn), count, maxArgs, fn.Name.Name, fn.Name.Name)
+			ruleID,
+			methodLabel(fn),
+			count,
+			maxArgs,
+			fn.Name.Name,
+			fn.Name.Name,
+		)
 	})
 
 	return nil, nil

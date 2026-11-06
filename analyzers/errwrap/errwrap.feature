@@ -481,3 +481,28 @@ Feature: GID-176 / GID-177 / GID-237 / GID-248 — error handling by layer (errw
 #  [x] Case classes covered: positive, negative, boundary, non-applicability — for each analyzer
 #  [x] testdata with // want for analysistest
 #  [ ] Rule enabled in .golangci.yml
+
+  Scenario: Repository conversion and SQL builders keep the upstream stack
+    Given a repository receives an error from its own module's convert or build package
+    Or its own build-prefixed function
+    When the error is enriched with errors.Wrap, Wrapf or WithStack
+    Then giderrwrap reports GID-176 recommending errors.WithMessage
+    But errors.WithMessage and errors from external calls are not rejected by this check
+    And reassignment to an external call clears the internal-conversion classification
+
+  Scenario: A repository error variable has external and conversion sources
+    Given the same variable receives both an external error and a local conversion error
+    When the legacy function-wide external-error classification runs
+    Then the ambiguous variable is excluded from that classification
+    And proven conversion wrappers are still checked locally
+
+  Scenario: An error variable can be changed through a pointer or closure
+    Given the variable address escapes or a closure assigns the variable
+    When the repository wraps the variable
+    Then its conversion origin is treated as uncertain for the entire function
+    And a pointer alias created before the conversion is also treated as uncertain
+
+  Scenario: A range loop assigns an external error to an existing variable
+    Given the variable previously held a conversion error
+    When a range loop assigns its key or value to that variable
+    Then the conversion origin is invalidated inside and after the loop

@@ -41,11 +41,13 @@ func ModelNamed(pass *analysis.Pass, expr ast.Expr) (*types.Named, bool) {
 // UsesReceiver reports whether the method body accesses the receiver. An
 // unnamed or blank receiver is never used.
 func UsesReceiver(pass *analysis.Pass, fn *ast.FuncDecl) bool {
+	const blankIdentifier = "_"
+
 	if len(fn.Recv.List) == 0 || len(fn.Recv.List[0].Names) == 0 {
 		return false
 	}
 	recv := fn.Recv.List[0].Names[0]
-	if recv.Name == "_" {
+	if recv.Name == blankIdentifier {
 		return false
 	}
 	obj := pass.TypesInfo.Defs[recv]

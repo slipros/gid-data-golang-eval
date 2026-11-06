@@ -274,7 +274,9 @@ func toUpperSnake(name string) string {
 }
 
 func isUpperASCII(c byte) bool { return c >= 'A' && c <= 'Z' }
+
 func toLowerASCII(c byte) byte { return c - 'A' + 'a' }
+
 func toUpperASCII(c byte) byte {
 	if c >= 'a' && c <= 'z' {
 		return c - 'a' + 'A'

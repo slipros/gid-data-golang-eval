@@ -13,3 +13,7 @@ func NewV6() (UUID, error)            { return UUID{}, nil }
 func NewV7() (UUID, error)            { return UUID{}, nil }
 
 func Must(u UUID, err error) UUID { return u }
+
+var Nil UUID
+
+func (u UUID) IsZero() bool { return u == Nil }

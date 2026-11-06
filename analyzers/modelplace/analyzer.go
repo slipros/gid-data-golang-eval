@@ -131,12 +131,31 @@ func run(pass *analysis.Pass, suffixes, excl []string) (any, error) {
 	// one defect, one fix.
 	reported := map[string]struct{}{}
 	for _, ts := range typeSpecs {
-		if name, ok := checkType(pass, ts, layer, isConvert, suffixes, excl, withMethods, builtByCtor); ok {
+		if name, ok := checkType(
+			pass,
+			ts,
+			layer,
+			isConvert,
+			suffixes,
+			excl,
+			withMethods,
+			builtByCtor,
+		); ok {
 			reported[name] = struct{}{}
 		}
 	}
 
-	checkReturns(pass, skip, funcDecls, place(isConvert, layer), suffixes, excl, withMethods, builtByCtor, reported)
+	checkReturns(
+		pass,
+		skip,
+		funcDecls,
+		place(isConvert, layer),
+		suffixes,
+		excl,
+		withMethods,
+		builtByCtor,
+		reported,
+	)
 
 	return nil, nil
 }
@@ -158,8 +177,10 @@ func checkType(
 	ts *ast.TypeSpec,
 	layer string,
 	isConvert bool,
-	suffixes, excl []string,
-	withMethods, builtByCtor map[string]struct{},
+	suffixes []string,
+	excl []string,
+	withMethods map[string]struct{},
+	builtByCtor map[string]struct{},
 ) (string, bool) {
 	if _, ok := ts.Type.(*ast.StructType); !ok {
 		return "", false // only struct declarations are judged
@@ -207,8 +228,11 @@ func checkReturns(
 	skip func(*ast.File) bool,
 	funcDecls []*ast.FuncDecl,
 	place string,
-	suffixes, excl []string,
-	withMethods, builtByCtor, reported map[string]struct{},
+	suffixes []string,
+	excl []string,
+	withMethods map[string]struct{},
+	builtByCtor map[string]struct{},
+	reported map[string]struct{},
 ) {
 	judge := func(subject string, results *ast.FieldList) {
 		if results == nil {
@@ -249,7 +273,8 @@ func checkReturns(
 // exemptReturn reports whether the returned type keeps its place: the layer's
 // entity (methods or a constructor), the options convention, an explicit
 // exclusion, or a type already reported at its declaration.
-func exemptReturn(name string, suffixes, excl []string, withMethods, builtByCtor, reported map[string]struct{}) bool {
+func exemptReturn(name string, suffixes []string,
+	excl []string, withMethods, builtByCtor, reported map[string]struct{}) bool {
 	if slices.Contains(excl, name) || hasSuffix(name, suffixes) {
 		return true
 	}

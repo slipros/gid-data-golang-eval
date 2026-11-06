@@ -101,9 +101,16 @@ func report(pass *analysis.Pass, pkgName, name string, pos token.Pos) {
 	}
 	if stuttersSuffix(pkgName, name) {
 		base := name[:len(name)-len(pkgName)]
-		pass.Reportf(pos,
+		pass.Reportf(
+			pos,
 			"%s: %s repeats the package name %s. Fix: from outside it is %s.%s; drop the %q suffix and name the symbol after the entity",
-			ruleID, name, pkgName, pkgName, base, name[len(name)-len(pkgName):])
+			ruleID,
+			name,
+			pkgName,
+			pkgName,
+			base,
+			name[len(name)-len(pkgName):],
+		)
 	}
 }
 

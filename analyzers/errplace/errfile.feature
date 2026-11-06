@@ -1,16 +1,14 @@
 # language: en
 
-Feature: GID-169 — layer errors live in a dedicated file
+Feature: GID-169 — package errors live in a dedicated file
   As a developer
-  I want package-level error variables in /domain/model and /dal/entity
+  I want package-level error variables and concrete error types in every production package
   to be declared only in a dedicated file (error.go)
-  So that layer errors are collected in one place and are easy to find
+  So that package errors are collected in one place and are easy to find
 
-  # Refines GID-144 (domain-errors-in-model) and GID-145 (dal-errors-in-entity):
-  # those define the home package for layer errors, while GID-169 defines the
-  # specific file inside that home. Scope: only the root packages of the layer
-  # (the path ends with domain/model or dal/entity); subpackages (model/filter
-  # etc.) are not affected.
+  # GID-144 and GID-145 define error ownership by layer. GID-169 independently
+  # defines the declaration file in every production package, including client
+  # packages and subpackages such as domain/model/filter.
 
   Scenario: positive — an error var outside error.go in /domain/model
     Given the package path ends with the segments "domain/model"
@@ -88,18 +86,18 @@ Feature: GID-169 — layer errors live in a dedicated file
     When the analyzer checks the file
     Then no diagnostic is reported
 
-  Scenario: non-applicability — the /domain/service package
+  Scenario: positive — the /domain/service package
     Given the package path ends with the segments "domain/service"
     And "var ErrServiceLocal = errors.New(...)" is declared in the file "service.go"
     When the analyzer checks the file
-    Then no GID-169 diagnostic is reported
-    # (declaring an error here is the domain of GID-144, not GID-169)
+    Then a GID-169 diagnostic is reported
+    # GID-144 separately checks ownership.
 
-  Scenario: non-applicability — the /domain/model/filter subpackage
+  Scenario: positive — the /domain/model/filter subpackage
     Given the package path ends with the segments "domain/model/filter"
     And "var ErrBadFilter = errors.New(...)" is declared in the file "filter.go"
     When the analyzer checks the file
-    Then no GID-169 diagnostic is reported
+    Then a GID-169 diagnostic is reported
 
 # --- Checklist when adding a new rule ---
 #  [x] ID and description are recorded in the registry (GID-169, errors-in-error-file)
@@ -107,4 +105,11 @@ Feature: GID-169 — layer errors live in a dedicated file
 #  [x] Severity and message are defined ("GID-169: error %q is declared in %s — ...")
 #  [x] Case classes covered: positive, negative, boundary, non-applicability
 #  [x] testdata with // want for analysistest
-#  [ ] Rule enabled in .golangci.yml (outside the scope of the task)
+#  [x] Rule enabled in all three configs
+
+  Scenario: Error types and all their methods share the error file
+    Given a named concrete type implements error on its value or pointer
+    And its declaration or any receiver method is outside error.go
+    When giderrfile analyzes any production package
+    Then it reports GID-169 at each misplaced declaration
+    But aliases, interfaces, non-error types, tests and generated files remain outside this check

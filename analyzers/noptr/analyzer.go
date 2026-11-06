@@ -16,6 +16,8 @@ import (
 
 	"golang.org/x/tools/go/analysis"
 
+	"github.com/slipros/gid-data-golang-eval/internal/librarypath"
+
 	"github.com/slipros/gid-data-golang-eval/internal/astwalk"
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 )
@@ -61,7 +63,7 @@ func checkUUIDPointers(pass *analysis.Pass) {
 		if !ok {
 			return
 		}
-		if isUUID(ptr.Elem()) {
+		if isUUID(pass, ptr.Elem()) {
 			pass.Reportf(star.Pos(),
 				"%s: *uuid.UUID is forbidden. Fix: use uuid.UUID and check emptiness with IsNil()", ruleUUID)
 		}
@@ -108,7 +110,7 @@ func checkModelField(pass *analysis.Pass, field *ast.Field) {
 	}
 }
 
-func isUUID(t types.Type) bool {
+func isUUID(pass *analysis.Pass, t types.Type) bool {
 	const uuidPkg = "github.com/gofrs/uuid"
 	named, ok := t.(*types.Named)
 	if !ok {
@@ -119,7 +121,7 @@ func isUUID(t types.Type) bool {
 		return false
 	}
 	pkg := obj.Pkg()
-	path := pkg.Path()
+	path := librarypath.Canonical(pass, pkg.Path())
 	return pathseg.SameLibrary(path, uuidPkg) || pathseg.Contains(path, "gofrs", "uuid")
 }
 

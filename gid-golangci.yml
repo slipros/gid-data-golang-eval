@@ -76,11 +76,14 @@ linters:
     - usestdlibvars
     - wastedassign
     - whitespace
+    - wsl_v5
+    - grouper
     # --- layer 3, added on top of the base (GID-208, rationale — STYLEGUIDE_COVERAGE.md) ---
     - musttag        # GID-208: tags on marshaled structs
     - perfsprint     # GID-208: strconv vs fmt, concatenation vs Sprintf
     - depguard       # GID-137: library bans by import path (uuid forks, see settings)
     # --- Layer 1: simple AST patterns (former ruleguard) ---
+    - gidcodepolicy
     - gidtimenow        # GID-001
     - giduuidnil        # GID-002
     - giduuidversion    # GID-003
@@ -235,7 +238,6 @@ linters:
     - gomoddirectives
     - gomodguard
     - goprintffuncname
-    - grouper         # GID-208: declaration grouping
     - interfacebloat  # GID-208: small interfaces
     - lll             # GID-201: line width <= 120
     - maintidx
@@ -256,6 +258,17 @@ linters:
     - wsl
 
   settings:
+    wsl_v5:
+      default: none
+      enable:
+        - after-block
+        - after-decl
+        - decl
+        - for
+        - range
+      allow-first-in-block: true
+    grouper:
+      const-require-single-const: true
     dupl:
       threshold: 100
     errcheck:
@@ -330,6 +343,10 @@ linters:
         - performance
         - style
     custom:
+      gidcodepolicy:
+        type: module
+        description: 'GID-281–296: multiline constructs and explicit repository/domain idioms. Fix: use one item per line, named intermediates and batch converters.'
+        original-url: github.com/slipros/gid-data-golang-eval
       # --- Layer 1: simple AST patterns (former ruleguard) ---
       gidtimenow:
         type: module
@@ -372,6 +389,9 @@ linters:
         type: module
         description: 'GID-137: for UUID only github.com/gofrs/uuid is allowed'
         original-url: github.com/slipros/gid-data-golang-eval
+      # Every custom linter accepts settings.libraries, mapping original
+      # import path prefixes to forks. Share the map with a YAML anchor.
+      # See README.md Library forks for an example.
       gidallptr:
         type: module
         description: 'GID-004: iterate a slice of structs via gdhelper.AllPtr'

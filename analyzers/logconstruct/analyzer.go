@@ -69,7 +69,10 @@ var layerKeys = []*layerKey{
 // WithField for logrus, With for slog (WithGroup nests a group, which names
 // the entity just as well).
 var enrichMethods = map[string]struct{}{
-	"WithField": {}, "WithFields": {}, "With": {}, "WithGroup": {},
+	"WithField":  {},
+	"WithFields": {},
+	"With":       {},
+	"WithGroup":  {},
 }
 
 // Analyzer — rule GID-154: an entity constructor with a logger must name the entity on it. Fix: call logger.WithField(<entity>, <name>) (logrus) or logger.With("<entity>", <name>) (slog).

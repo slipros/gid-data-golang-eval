@@ -190,6 +190,42 @@ Two levels (details in [RULES.md](RULES.md)):
   (e.g. `gidcreateupdate.settings.exclude`, `giddbtags.settings.tags`,
   `giddirtree.settings.tree`).
 
+## Library forks
+
+Every custom linter accepts `settings.libraries`, mapping an original import
+path prefix to a fork. Subpackages retain their suffix. Matching and diagnostic
+paths use the mapping, with independent settings for each linter.
+
+Start from `custom-gcl gid-config > .golangci.yml`, then add the mapping to the
+relevant entries under `linters.settings.custom`. YAML anchors share one mapping
+across entries.
+
+```yaml
+linters:
+  settings:
+    custom:
+      gidallptr:
+        type: module
+        settings:
+          libraries: &libraries
+            gitlab.gid.team/gid-data/tech/golang/libs/helper.git: github.com/my-org/helper
+            gitlab.gid.team/gid-data/tech/golang/libs/postgres.git: github.com/my-org/postgres
+      gidbansymbol:
+        type: module
+        settings:
+          libraries: *libraries
+      gidcodepolicy:
+        type: module
+        settings:
+          libraries: *libraries
+```
+
+The same option applies to `gidhttprouter`, `gidstorageplace` and `gidvalidator`.
+Keep existing settings alongside `libraries`. Library-specific settings such as
+`gidhttprouter.settings.packages`, `gidstorageplace.settings.packages`,
+`giddbtags.settings.sql-imports` and `gidbansymbol.settings.symbols` also accept
+fork paths directly. Stock golangci-lint linters retain their own configuration.
+
 ## Adding a new rule
 
 The process is at the end of [RULES.md](RULES.md): registry row → `.feature` spec →

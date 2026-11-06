@@ -16,6 +16,8 @@ import (
 
 	"golang.org/x/tools/go/analysis"
 
+	"github.com/slipros/gid-data-golang-eval/internal/librarypath"
+
 	"github.com/slipros/gid-data-golang-eval/internal/pathseg"
 )
 
@@ -75,7 +77,7 @@ func run(pass *analysis.Pass, cachePkgs []string) (any, error) {
 			if err != nil {
 				continue
 			}
-			if !isCachePkg(path, cachePkgs) {
+			if !isCachePkg(path, cachePkgs) && !isCachePkg(librarypath.Canonical(pass, path), cachePkgs) {
 				continue
 			}
 			pass.Reportf(imp.Pos(),

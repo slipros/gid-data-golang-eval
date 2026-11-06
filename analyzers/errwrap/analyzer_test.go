@@ -38,3 +38,7 @@ func TestServiceMessageAnalyzer(t *testing.T) {
 	})
 	analysistest.Run(t, analysistest.TestData(), a, "servicemsgsvc/...")
 }
+
+func TestRepositoryConversionWrapping(t *testing.T) {
+	analysistest.Run(t, analysistest.TestData(), WrapAnalyzer, "convertsvc/...")
+}

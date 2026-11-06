@@ -17,6 +17,7 @@ package dbtags
 
 import (
 	"go/ast"
+	"go/types"
 	"reflect"
 	"strconv"
 	"strings"
@@ -109,6 +110,14 @@ func run(pass *analysis.Pass, tags, sqlImports []string) (any, error) {
 				st, ok := ts.Type.(*ast.StructType)
 				if !ok {
 					continue
+				}
+				obj := pass.TypesInfo.Defs[ts.Name]
+				if obj != nil {
+					errorObject := types.Universe.Lookup("error")
+					errorType := errorObject.Type()
+					if types.AssignableTo(obj.Type(), errorType) || types.AssignableTo(types.NewPointer(obj.Type()), errorType) {
+						continue
+					}
 				}
 				checkStruct(pass, ts.Name.Name, st, tags)
 			}
