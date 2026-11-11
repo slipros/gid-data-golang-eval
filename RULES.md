@@ -272,7 +272,7 @@ All rules below ship through `gidcodepolicy`. Generated files and `_test.go` are
 | GID-295 | function-separation | Adjacent function declarations have a blank line. A separating declaration satisfies the requirement. | `gidcodepolicy` | ✅ |
 | GID-296 | error-var-group | Adjacent package-level declarations containing only error variables use one var block. Unrelated declarations separate groups. | `gidcodepolicy` | ✅ |
 
-| GID-297 | sql-named-constant | Constant SQL expressions passed to calls in dal/repository must be extracted into named constants (including short queries and calls in if initializers). Named references and dynamic expressions are allowed. | `gidcodepolicy` | ✅ |
+| GID-297 | sql-named-constant | Constant SQL expressions passed to calls in dal/repository must be extracted into named constants (including short queries and calls in if initializers). Named references and dynamic expressions are allowed. SQL verb prefixes alone (e.g. the error message "insert delivery inbox") are insufficient: INSERT INTO, UPDATE … SET, DELETE FROM and WITH … AS (…) require statement structure. | `gidcodepolicy` | ✅ |
 
 GID-004 also checks index-only struct-slice loops when all index uses access element fields or take element addresses. Numeric index uses, whole-element replacements, and collection reassignment/reslicing are preserved. GID-125 exempts concrete error types from database mapping tags. GID-169 places error types and their receiver methods in error.go alongside sentinels. GID-176 requires WithMessage for same-module repository convert/build errors, while preserving external-call wrapping. GID-002 covers uuid.Nil and chooses IsZero when available, otherwise IsNil.
 

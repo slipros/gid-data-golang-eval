@@ -1,6 +1,10 @@
 package repository
 
-import "context"
+import (
+	"context"
+	"errors"
+	"fmt"
+)
 
 type connection struct{}
 
@@ -31,4 +35,32 @@ func inlineQueries(ctx context.Context, conn connection, table string) error {
 	conn.ScanRow(ctx, nil, "SELECT * FROM "+table, args)
 	conn.ScanRow(ctx, nil, "not a SQL query", args)
 	return nil
+}
+
+func queryErrors(err error) {
+	errors.New("insert delivery inbox")
+	fmt.Errorf("insert delivery inbox: %w", err)
+	errors.New("update delivery inbox")
+	errors.New("delete delivery inbox")
+	errors.New("with delivery inbox")
+}
+
+func statementShapes(conn connection) {
+	conn.ScanRow(nil, nil, "/* delivery */ INSERT /* inbox */ INTO inbox (id) VALUES (@id)", nil) // want `GID-297:`
+	conn.ScanRow(nil, nil, "WITH inbox AS NOT MATERIALIZED (SELECT 1) SELECT * FROM inbox", nil)  // want `GID-297:`
+	conn.ScanRow(nil, nil, "insert into inbox (id) values (@id)", nil)                            // want `GID-297:`
+	conn.ScanRow(nil, nil, "UPDATE inbox SET id=@id", nil)                                        // want `GID-297:`
+	conn.ScanRow(nil, nil, "DELETE FROM inbox WHERE id=@id", nil)                                 // want `GID-297:`
+	conn.ScanRow(nil, nil, "WITH inbox AS (SELECT 1) SELECT * FROM inbox", nil)                   // want `GID-297:`
+	conn.ScanRow(nil, nil, "WITH RECURSIVE inbox(id) AS (SELECT 1) SELECT * FROM inbox", nil)     // want `GID-297:`
+	conn.ScanRow(nil, nil, "UPDATE \"work order\" SET id=@id", nil)                               // want `GID-297:`
+}
+
+func lowercaseStatements(conn connection) {
+	conn.ScanRow(nil, nil, "select 1", nil)                                     // want `GID-297:`
+	conn.ScanRow(nil, nil, "insert into inbox (id) values (@id)", nil)          // want `GID-297:`
+	conn.ScanRow(nil, nil, "update inbox set id=@id", nil)                      // want `GID-297:`
+	conn.ScanRow(nil, nil, "delete from inbox where id=@id", nil)               // want `GID-297:`
+	conn.ScanRow(nil, nil, "with inbox as (select 1) select * from inbox", nil) // want `GID-297:`
+	conn.ScanRow(nil, nil, "iNsErT iNtO inbox (id) vAlUeS (@id)", nil)          // want `GID-297:`
 }

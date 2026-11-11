@@ -104,3 +104,16 @@ Feature: Explicit repository and orchestration code shapes
     Given inline SQL in a test file, generated file or unrelated package
     When gidcodepolicy analyzes the package
     Then it emits no GID-297 diagnostic
+
+  Scenario: Error messages starting with SQL verbs are ordinary text
+    Given repository code creates an error with "insert delivery inbox"
+    Or formats an error with "insert delivery inbox: %w"
+    Or uses messages starting with update, delete or with without SQL structure
+    When gidcodepolicy analyzes the calls
+    Then it emits no GID-297 diagnostic
+    And INSERT INTO, UPDATE SET, DELETE FROM and WITH AS queries remain subject to GID-297
+
+  Scenario: SQL keywords are case insensitive
+    Given inline SELECT, INSERT INTO, UPDATE SET, DELETE FROM or WITH AS queries
+    When SQL keywords are lowercase, uppercase or mixed case
+    Then GID-297 reports the queries regardless of keyword case

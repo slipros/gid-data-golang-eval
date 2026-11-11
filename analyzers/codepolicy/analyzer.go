@@ -18,8 +18,11 @@ import (
 	"github.com/slipros/gid-data-golang-eval/internal/srcfile"
 )
 
-var positional = regexp.MustCompile(`\$[1-9]\d*\b`)
-var sqlStart = regexp.MustCompile(`(?i)^\s*(SELECT|INSERT|UPDATE|DELETE|WITH)\b`)
+var (
+	positional        = regexp.MustCompile(`\$[1-9]\d*\b`)
+	sqlStart          = regexp.MustCompile(`(?i)^\s*(SELECT|INSERT|UPDATE|DELETE|WITH)\b`)
+	sqlStatementStart = regexp.MustCompile(`(?is)^\s*(SELECT\b|INSERT\s+INTO\b|UPDATE\s+.+?\s+SET\b|DELETE\s+FROM\b|WITH\s+.+?\bAS\s*(?:(?:NOT\s+)?MATERIALIZED\s*)?\()`)
+)
 
 // Analyzer groups the closely related code shape checks GID-281 through GID-297.
 var Analyzer = &analysis.Analyzer{
@@ -832,11 +835,12 @@ func checkSQLCall(pass *analysis.Pass, call *ast.CallExpr) {
 			continue
 		}
 		query := constant.StringVal(tv.Value)
-		if !sqlStart.MatchString(query) {
+		executable := sqlCode(query)
+		if !sqlStatementStart.MatchString(executable) {
 			continue
 		}
 		report(pass, arg, "297", "constant SQL is passed directly to a call", "declare const sqlQuery = `SELECT 1` before the call and pass sqlQuery")
-		if positional.MatchString(sqlCode(query)) {
+		if positional.MatchString(executable) {
 			report(pass, arg, "284", "repository SQL uses positional placeholders", "use @id with gdpostgres.NamedArgs")
 		}
 	}
