@@ -20,7 +20,7 @@ const literalDollar = `SELECT '$1', "$2", $$ $3 $$, $tag$ $4 $tag$ /* $5 */ -- $
 const longSQL = "SELECT identifier, description, creation_timestamp, update_timestamp FROM datamarts WHERE enabled = true" // want `GID-283:`
 
 func inline() {
-	gdpostgres.Query("SELECT id FROM datamarts WHERE id = @id", gdpostgres.NamedArgs{"id": 1}) // want `GID-285:`
+	gdpostgres.Query("SELECT id FROM datamarts WHERE id = @id", gdpostgres.NamedArgs{"id": 1}) // want `GID-285:` `GID-297:`
 }
 
 func explicit() {
@@ -43,5 +43,5 @@ SELECT identifier, description, creation_timestamp, update_timestamp FROM datama
 
 func inlineSQLPlaceholder() {
 	args := gdpostgres.NamedArgs{"id": 1}
-	gdpostgres.Query("SELECT id FROM datamarts WHERE id = $1", args) // want `GID-284:`
+	gdpostgres.Query("SELECT id FROM datamarts WHERE id = $1", args) // want `GID-284:` `GID-297:`
 }

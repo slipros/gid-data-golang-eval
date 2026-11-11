@@ -21,10 +21,10 @@ import (
 var positional = regexp.MustCompile(`\$[1-9]\d*\b`)
 var sqlStart = regexp.MustCompile(`(?i)^\s*(SELECT|INSERT|UPDATE|DELETE|WITH)\b`)
 
-// Analyzer groups the closely related code shape checks GID-281 through GID-296.
+// Analyzer groups the closely related code shape checks GID-281 through GID-297.
 var Analyzer = &analysis.Analyzer{
 	Name:     "gidcodepolicy",
-	Doc:      "GID-281–296: explicit repository/domain idioms and count-based multiline layout. Fix: use named intermediates, batch converters and one item per line.",
+	Doc:      "GID-281–297: explicit repository/domain idioms and count-based multiline layout. Fix: use named intermediates, batch converters and one item per line.",
 	Requires: astwalk.Requires,
 	Run:      run,
 }
@@ -817,10 +817,14 @@ func setReferenceRole(stack []ast.Node, id *ast.Ident) int {
 }
 
 func checkSQLCall(pass *analysis.Pass, call *ast.CallExpr) {
+	// A type conversion is part of the expression, not a query consumer.
+	if pass.TypesInfo.Types[call.Fun].IsType() {
+		return
+	}
 	for _, arg := range call.Args {
-		switch arg.(type) {
-		case *ast.BasicLit, *ast.BinaryExpr:
-		default:
+		switch ast.Unparen(arg).(type) {
+		case *ast.Ident, *ast.SelectorExpr:
+			// Named constants already satisfy the extraction requirement.
 			continue
 		}
 		tv := pass.TypesInfo.Types[arg]
@@ -828,7 +832,11 @@ func checkSQLCall(pass *analysis.Pass, call *ast.CallExpr) {
 			continue
 		}
 		query := constant.StringVal(tv.Value)
-		if sqlStart.MatchString(query) && positional.MatchString(sqlCode(query)) {
+		if !sqlStart.MatchString(query) {
+			continue
+		}
+		report(pass, arg, "297", "constant SQL is passed directly to a call", "declare const sqlQuery = `SELECT 1` before the call and pass sqlQuery")
+		if positional.MatchString(sqlCode(query)) {
 			report(pass, arg, "284", "repository SQL uses positional placeholders", "use @id with gdpostgres.NamedArgs")
 		}
 	}

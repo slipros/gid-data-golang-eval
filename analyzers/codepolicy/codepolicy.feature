@@ -84,3 +84,23 @@ Feature: Explicit repository and orchestration code shapes
     Given a package under domain/service/convert or domain/usecase/convert
     When a batch function converts each input and appends its output
     Then GID-290 is not reported because conversion belongs in that package
+
+  Scenario: Inline constant SQL is extracted before a call
+    Given production dal/repository code passes a SQL literal or constant concatenation to a call
+    When gidcodepolicy analyzes a regular call or a call in an if initializer
+    Then it reports GID-297 with a named const example
+
+  Scenario: Named and dynamic SQL arguments are preserved
+    Given a repository passes a named SQL constant or a runtime query expression
+    When gidcodepolicy analyzes the call
+    Then it emits no GID-297 diagnostic
+
+  Scenario: Even short inline SQL needs a name
+    Given a repository passes "SELECT 1" directly to a call
+    When gidcodepolicy analyzes the call
+    Then it reports GID-297 regardless of query length
+
+  Scenario: Inline SQL outside production repositories is out of scope
+    Given inline SQL in a test file, generated file or unrelated package
+    When gidcodepolicy analyzes the package
+    Then it emits no GID-297 diagnostic

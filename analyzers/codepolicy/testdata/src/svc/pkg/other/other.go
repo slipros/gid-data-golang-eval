@@ -20,3 +20,9 @@ func arbitraryMap() map[string]struct{} {
 	result["id"] = struct{}{}
 	return result
 }
+
+func inlineSQL() {
+	consumeSQL("SELECT 1")
+}
+
+func consumeSQL(string) {}

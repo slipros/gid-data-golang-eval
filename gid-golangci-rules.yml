@@ -266,7 +266,7 @@ linters:
     custom:
       gidcodepolicy:
         type: module
-        description: 'GID-281–296: multiline constructs and explicit repository/domain idioms. Fix: use one item per line, named intermediates and batch converters.'
+        description: 'GID-281–297: multiline constructs and explicit repository/domain idioms. Fix: use one item per line, named intermediates and batch converters.'
         original-url: github.com/slipros/gid-data-golang-eval
       # --- Layer 1: simple AST patterns (former ruleguard) ---
       gidtimenow:
