@@ -24,10 +24,10 @@ var (
 	sqlStatementStart = regexp.MustCompile(`(?is)^\s*(SELECT\b|INSERT\s+INTO\b|UPDATE\s+.+?\s+SET\b|DELETE\s+FROM\b|WITH\s+.+?\bAS\s*(?:(?:NOT\s+)?MATERIALIZED\s*)?\()`)
 )
 
-// Analyzer groups the closely related code shape checks GID-281 through GID-297.
+// Analyzer groups the closely related code shape checks GID-281 through GID-298.
 var Analyzer = &analysis.Analyzer{
 	Name:     "gidcodepolicy",
-	Doc:      "GID-281–297: explicit repository/domain idioms and count-based multiline layout. Fix: use named intermediates, batch converters and one item per line.",
+	Doc:      "GID-281–298: explicit repository/domain idioms and count-based multiline layout. Fix: use named intermediates, batch converters and one item per line.",
 	Requires: astwalk.Requires,
 	Run:      run,
 }
@@ -42,9 +42,11 @@ func run(pass *analysis.Pass) (any, error) {
 		switch fn := n.(type) {
 		case *ast.FuncDecl:
 			if fn.Body != nil {
+				checkNilSuccessReturns(pass, fn.Type, fn.Body)
 				functions = append(functions, &functionContext{fn.Body.Pos(), fn.Body.End(), returnsError(pass, fn.Type), fn.Body})
 			}
 		case *ast.FuncLit:
+			checkNilSuccessReturns(pass, fn.Type, fn.Body)
 			functions = append(functions, &functionContext{fn.Body.Pos(), fn.Body.End(), returnsError(pass, fn.Type), fn.Body})
 		}
 	})
@@ -73,6 +75,7 @@ func run(pass *analysis.Pass) (any, error) {
 				checkSQL(pass, n)
 			}
 		case *ast.BlockStmt:
+			checkSuccessNil(pass, n)
 			checkSuccessReturn(pass, n)
 			checkFailedResults(pass, n, functions)
 			checkSets(pass, n)

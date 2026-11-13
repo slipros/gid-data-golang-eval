@@ -117,3 +117,27 @@ Feature: Explicit repository and orchestration code shapes
     Given inline SELECT, INSERT INTO, UPDATE SET, DELETE FROM or WITH AS queries
     When SQL keywords are lowercase, uppercase or mixed case
     Then GID-297 reports the queries regardless of keyword case
+
+  Scenario: Successful non-slice results do not need nil checks
+    Given a call assigns a result and an error
+    And an immediately following error-not-nil guard returns
+    When the next if compares the result with nil, even in a compound condition
+    Then GID-298 asks to remove the nil comparison and preserve the other conditions
+
+  Scenario: Nil slices and unproven results remain valid
+    Given a successful slice result, a different error, or a non-terminating error guard
+    Or the result is reassigned, shadowed, or potentially mutated before its nil comparison
+    When gidcodepolicy analyzes the condition
+    Then it emits no GID-298 diagnostic
+
+  Scenario: A missing non-slice result is an error
+    Given a function or method returns a non-slice nil result and a nil error
+    When gidcodepolicy analyzes its return statement
+    Then it reports GID-298 at the return and asks to return an error for an absent result
+    And the check also covers explicit nil conversions and multiple result values
+
+  Scenario: Nil slices and unsuccessful returns are allowed
+    Given a nil slice with a nil error or a nil pointer with a non-nil error
+    When gidcodepolicy analyzes its return statement
+    Then it emits no GID-298 diagnostic
+    And nested function returns are checked against their own result types

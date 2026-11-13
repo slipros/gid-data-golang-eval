@@ -1269,6 +1269,12 @@ linters:
         text: '^GID-293:'
         linters:
           - gidcodepolicy
+      # go/analysis Run callbacks with no ResultType must return no result.
+      # This repository implements that framework API, not a data lookup API.
+      - path: '^analyzers/([^/]+/analyzer|enumstring/enumbased|errplace/errfile)\.go$'
+        text: '^GID-298: non-slice nil result is returned with a nil error'
+        linters:
+          - gidcodepolicy
       # The standalone linter intentionally has no corporate helper dependency.
       - text: '^GID-286:'
         linters:
